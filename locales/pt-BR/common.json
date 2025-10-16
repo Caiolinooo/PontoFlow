@@ -1,0 +1,30 @@
+{
+  "app": {
+    "title": "Gestor de Timesheet ABZ Group"
+  },
+  "nav": {
+    "admin": "Admin",
+    "manager": "Gerente",
+    "employee": "Colaborador"
+  },
+  "actions": {
+    "approve": "Aprovar",
+    "reject": "Reprovar",
+    "submit": "Enviar",
+    "resubmit": "Reenviar",
+    "addAnnotation": "Adicionar anotação"
+  },
+  "manager": {
+    "review": {
+      "title": "Revisão de Timesheet",
+      "closedMonthWarning": "Você está editando um mês já fechado."
+    }
+  },
+  "notifications": {
+    "deadline": {
+      "reminderDays": "Seu timesheet do período {period} está pendente. Tempo restante: {days} dias.",
+      "blocked": "Período {period} está bloqueado para edição. Contate seu gerente."
+    }
+  }
+}
+

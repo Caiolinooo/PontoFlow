@@ -1,0 +1,30 @@
+{
+  "app": {
+    "title": "ABZ Group Timesheet Manager"
+  },
+  "nav": {
+    "admin": "Admin",
+    "manager": "Manager",
+    "employee": "Employee"
+  },
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "submit": "Submit",
+    "resubmit": "Resubmit",
+    "addAnnotation": "Add annotation"
+  },
+  "manager": {
+    "review": {
+      "title": "Timesheet Review",
+      "closedMonthWarning": "You are editing a closed month."
+    }
+  },
+  "notifications": {
+    "deadline": {
+      "reminderDays": "Your timesheet for {period} is pending. Time left: {days} days.",
+      "blocked": "Period {period} is closed for editing. Please contact your manager."
+    }
+  }
+}
+
