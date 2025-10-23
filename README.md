@@ -83,3 +83,31 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 - Edição inline das entradas no editor do colaborador
 - Migrations automatizadas com Supabase CLI
 
+
+
+## UI/UX atualizado (Meta)
+- Cabeçalhos no estilo Meta (MetaPageHeader) com breadcrumbs opcionais
+- Chip de acesso rápido ao Dashboard no Header (aparece apenas fora do Dashboard)
+- AdminNav com TenantSwitcher integrado
+- Remoção da antiga barra fixa de Voltar/Início; navegação centralizada no Header e breadcrumbs
+
+## Boas práticas Next.js 15
+- Páginas cliente sob `app/[locale]/...` que usam `params` passaram a tratar `params` como Promise e a usar `React.use(params)`
+- Layouts de páginas protegidas passam o usuário carregado no servidor (`initialUser`) ao Header para evitar flicker
+
+## Segurança
+- `.env`, `.env.*` ignorados por padrão no Git; não comitar chaves sensíveis
+- Service Role do Supabase só no servidor; nunca expor `SUPABASE_SERVICE_ROLE_KEY` no cliente
+
+## Changelog
+
+### 1.0.1 (2025-10-23)
+- feat(ui): Cabeçalhos Meta com breadcrumbs opcionais (Delegações, Funcionários, Edição de Grupo)
+- feat(nav): Chip “Dashboard” no Header (estilo Meta), removendo barra antiga de Voltar/Início
+- fix(header): Evita flicker ao navegar (Header recebe `initialUser` pelo servidor em Dashboard, Employee, Manager, Reports e Settings)
+- fix(admin/delegations): Mensagens de erro mais claras ao abrir Grupo (exibe tenant_required, forbidden, etc.)
+- chore: `.gitignore` já ignora `.env*`; sem dados sensíveis nos commits
+- docs: README atualizado e adicionado LICENSE-COMMERCIAL.md
+
+### 1.0.0
+- Primeira versão pública do módulo web standalone
