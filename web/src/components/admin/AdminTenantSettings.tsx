@@ -82,17 +82,80 @@ export default function AdminTenantSettings({ locale, settings }: AdminTenantSet
         <div>
           <h3 className="text-md font-medium mb-3 text-[var(--foreground)]">Branding</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Logo (URL)</label>
-              <input name="logo_url" defaultValue={settings?.logo_url ?? ''} className="w-full rounded border p-2 bg-[var(--input)]" />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Logo (URL ou Upload)</label>
+              <div className="space-y-2">
+                <input
+                  name="logo_url"
+                  defaultValue={settings?.logo_url ?? ''}
+                  className="w-full rounded border p-2 bg-[var(--input)]"
+                  placeholder="https://exemplo.com/logo.png ou cole uma imagem base64"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="text-sm text-[var(--muted-foreground)] file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)] file:text-[var(--primary-foreground)] hover:file:opacity-90"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          const input = e.target.parentElement?.parentElement?.querySelector('input[name="logo_url"]') as HTMLInputElement;
+                          if (input) input.value = reader.result as string;
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <span className="text-xs text-[var(--muted-foreground)]">ou faça upload de uma imagem</span>
+                </div>
+                {settings?.logo_url && (
+                  <div className="mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={settings.logo_url} alt="Logo preview" className="h-16 w-auto object-contain border rounded p-2" />
+                  </div>
+                )}
+              </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">Marca d'água (texto)</label>
               <input name="watermark_text" defaultValue={settings?.watermark_text ?? ''} className="w-full rounded border p-2 bg-[var(--input)]" />
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Marca d'água (imagem - URL)</label>
-              <input name="watermark_url" defaultValue={settings?.watermark_url ?? ''} className="w-full rounded border p-2 bg-[var(--input)]" />
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Marca d'água (imagem - URL ou Upload)</label>
+              <div className="space-y-2">
+                <input
+                  name="watermark_url"
+                  defaultValue={settings?.watermark_url ?? ''}
+                  className="w-full rounded border p-2 bg-[var(--input)]"
+                  placeholder="https://exemplo.com/watermark.png"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="text-sm text-[var(--muted-foreground)] file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)] file:text-[var(--primary-foreground)] hover:file:opacity-90"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const input = e.target.parentElement?.querySelector('input[name="watermark_url"]') as HTMLInputElement;
+                        if (input) input.value = reader.result as string;
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                {settings?.watermark_url && (
+                  <div className="mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={settings.watermark_url} alt="Watermark preview" className="h-12 w-auto object-contain border rounded p-2" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
