@@ -1,0 +1,370 @@
+{
+  "app": {
+    "title": "PontoFlow"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Acesso rápido aos módulos",
+    "modules": {
+      "myTimesheet": {
+        "title": "Meu Timesheet",
+        "description": "Criar e editar lançamentos"
+      },
+      "managerPending": {
+        "title": "Pendências (Gerente)",
+        "description": "Aprovar/Recusar timesheets"
+      },
+      "reports": {
+        "title": "Relatórios",
+        "description": "Sumário e detalhado"
+      },
+      "settings": {
+        "title": "Configurações",
+        "description": "Idioma, notificações"
+      }
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "reports": "Relatórios",
+    "signIn": "Entrar",
+    "signOut": "Sair",
+    "myProfile": "Meu Perfil"
+  },
+  "theme": {
+    "light": "Claro",
+    "dark": "Escuro",
+    "system": "Sistema"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Entrar",
+      "subtitle": "Acesse sua conta para continuar",
+      "email": "E-mail",
+      "emailPlaceholder": "seu@email.com",
+      "password": "Senha",
+      "passwordPlaceholder": "Sua senha",
+      "signInButton": "Entrar",
+      "signingIn": "Entrando...",
+      "noAccount": "Não tem uma conta?",
+      "signUp": "Cadastre-se",
+      "forgotPassword": "Esqueci minha senha"
+    },
+    "signUp": {
+      "title": "Criar Conta",
+      "subtitle": "Preencha seus dados para começar",
+      "firstName": "Nome",
+      "firstNamePlaceholder": "Digite seu nome",
+      "lastName": "Sobrenome",
+      "lastNamePlaceholder": "Digite seu sobrenome",
+      "email": "E-mail",
+      "phoneNumber": "Telefone",
+      "position": "Cargo",
+      "positionPlaceholder": "Ex: Desenvolvedor",
+      "department": "Departamento",
+      "departmentPlaceholder": "Ex: TI",
+      "password": "Senha",
+      "confirmPassword": "Confirmar Senha",
+      "createButton": "Criar Conta",
+      "creating": "Criando...",
+      "hasAccount": "Já tem uma conta?",
+      "signInLink": "Entrar",
+      "successTitle": "Conta criada com sucesso!",
+      "successMessage": "Redirecionando para o login..."
+    },
+    "reset": {
+      "title": "Redefinir senha",
+      "subtitle": "Informe seu e-mail para receber o link de redefinição",
+      "email": "E-mail",
+      "sendLink": "Enviar link",
+      "sending": "Enviando...",
+      "successMessage": "Se o e-mail existir, enviaremos um link de redefinição.",
+      "backToSignIn": "Voltar ao login"
+    }
+  },
+  "actions": {
+    "approve": "Aprovar",
+    "reject": "Recusar",
+    "submit": "Enviar",
+    "cancel": "Cancelar",
+    "open": "Abrir",
+    "save": "Salvar"
+  },
+  "notifications": {
+    "preferences": "Preferências de Notificações",
+    "emailNotifications": "Notificações por Email",
+    "emailNotificationsDesc": "Receba notificações por email",
+    "pushNotifications": "Notificações Push",
+    "pushNotificationsDesc": "Receba notificações do navegador",
+    "deadlineReminders": "Lembretes de Prazo",
+    "deadlineRemindersDesc": "Seja lembrado antes do prazo",
+    "approvalNotifications": "Notificações de Aprovação",
+    "approvalNotificationsDesc": "Seja notificado quando seu timesheet for aprovado",
+    "rejectionNotifications": "Notificações de Recusa",
+    "rejectionNotificationsDesc": "Seja notificado quando seu timesheet for recusado",
+    "subscribe": "Inscrever",
+    "unsubscribe": "Desinscrever",
+    "loading": "Carregando...",
+    "notSupported": "Notificações push não são suportadas no seu navegador"
+  },
+  "invoice": {
+    "title": "Gerar Fatura",
+    "generate": "Gerar Fatura",
+    "export": "Exportar Fatura",
+    "invoiceNumber": "Número da Fatura",
+    "issueDate": "Data de Emissão",
+    "dueDate": "Data de Vencimento",
+    "issuer": "Emissor",
+    "recipient": "Destinatário",
+    "lineItems": "Itens",
+    "subtotal": "Subtotal",
+    "tax": "Imposto",
+    "total": "Total",
+    "status": "Status",
+    "draft": "Rascunho",
+    "issued": "Emitida",
+    "paid": "Paga",
+    "cancelled": "Cancelada",
+    "exportPDF": "Exportar PDF",
+    "exportJSON": "Exportar JSON",
+    "success": "Fatura gerada com sucesso",
+    "error": "Erro ao gerar fatura"
+  },
+  "manager": {
+    "review": {
+      "title": "Revisão de Timesheet",
+      "subtitle": "Analise as entradas e tome uma ação",
+      "timesheet": "Timesheet",
+      "employee": "Colaborador",
+      "period": "Período",
+      "status": "Status",
+      "entries": "Entradas",
+      "date": "Data",
+      "type": "Tipo",
+      "start": "Início",
+      "end": "Fim",
+      "note": "Observação",
+      "annotations": "Anotações",
+      "rejectReason": "Motivo da recusa",
+      "rejectTitle": "Recusar timesheet",
+      "addAnnotation": "Adicionar anotação",
+      "annotationField": "Campo (opcional)",
+      "annotationEntry": "Entrada (opcional)",
+      "annotationMessage": "Mensagem",
+      "approvals": "Histórico de aprovações",
+      "noEntries": "Sem lançamentos."
+    },
+    "pending": {
+      "title": "Timesheets Pendentes",
+      "subtitle": "Revise e aprove os timesheets submetidos",
+      "employee": "Colaborador",
+      "date": "Data",
+      "type": "Tipo",
+      "period": "Período",
+      "status": "Status",
+      "actions": "Ações",
+      "review": "Revisar",
+      "noPending": "Nenhum timesheet pendente",
+      "noPendingDescription": "Não há timesheets aguardando aprovação no momento."
+    }
+  },
+  "employee": {
+    "timesheets": {
+      "title": "Meus Timesheets",
+      "subtitle": "Gerencie seus lançamentos de horas",
+      "newTimesheet": "Novo Timesheet",
+      "newTimesheetDescription": "Defina o período do timesheet para iniciar.",
+      "noTimesheets": "Nenhum timesheet encontrado",
+      "noTimesheetsDescription": "Você ainda não criou nenhum timesheet. Comece criando seu primeiro lançamento.",
+      "createFirst": "Criar Primeiro Timesheet",
+      "errorLoading": "Erro ao carregar timesheets",
+      "fields": {
+        "periodStart": "Início do período",
+        "periodEnd": "Fim do período"
+      },
+      "actions": {
+        "create": "Criar",
+        "cancel": "Cancelar"
+      },
+      "errors": {
+        "employeeNotConfigured": "Seu perfil não está vinculado a um colaborador neste tenant. Contate o administrador.",
+        "missingTenant": "Sua conta não está associada a um tenant.",
+        "invalidPeriod": "Período inválido.",
+        "generic": "Ocorreu um erro. Tente novamente."
+      },
+      "table": {
+        "date": "Data",
+        "type": "Tipo",
+        "invoice": "Fatura",
+        "status": "Status",
+        "actions": "Ações",
+        "view": "Visualizar"
+      }
+    },
+    "editor": {
+      "title": "Meu Timesheet",
+      "subtitle": "Registre suas atividades e envie para aprovação",
+      "sectionTitle": "Entradas do período",
+      "submit": "Enviar para aprovação",
+      "blocked": "Período fechado. Edição desabilitada.",
+      "date": "Data",
+      "type": "Tipo",
+      "start": "Início",
+      "end": "Fim",
+      "note": "Observação",
+      "addEntry": "Adicionar entrada",
+      "delete": "Excluir",
+      "annotations": "Anotações do gerente",
+      "embarque": "Embarque",
+      "desembarque": "Desembarque",
+      "translado": "Translado"
+    }
+  },
+  "reports": {
+    "filters": "Filtros",
+    "startDate": "Data de início",
+    "endDate": "Data de fim",
+    "status": "Status",
+    "employee": "Colaborador",
+    "employeeId": "ID do colaborador",
+    "allStatuses": "Todos os status",
+    "draft": "Rascunho",
+    "submitted": "Enviado",
+    "approved": "Aprovado",
+    "rejected": "Recusado",
+    "locked": "Bloqueado",
+    "apply": "Aplicar filtros",
+    "reset": "Limpar",
+    "loading": "Carregando...",
+    "noData": "Nenhum dado para exibir",
+    "generatedAt": "Gerado em",
+    "exportCSV": "Exportar CSV",
+    "exportJSON": "Exportar JSON",
+    "total": "Total",
+    "pending": "Pendente",
+    "entries": "Entradas",
+    "period": "Período",
+    "details": "Detalhes",
+    "summary": "Relatório resumido",
+    "detailed": "Relatório detalhado",
+    "error": "Erro ao gerar relatório",
+    "exportError": "Erro ao exportar relatório"
+  },
+  "messages": {
+    "saved": "Preferências salvas com sucesso."
+  },
+  "errors": {
+    "generic": "Ocorreu um erro. Tente novamente."
+  },
+  "validation": {
+    "emailInvalid": "E-mail inválido",
+    "passwordMin": "Mínimo de {min} caracteres",
+    "passwordRequiresUpper": "Deve conter pelo menos uma letra maiúscula",
+    "passwordRequiresLower": "Deve conter pelo menos uma letra minúscula",
+    "passwordRequiresNumber": "Deve conter pelo menos um número",
+    "passwordRequiresSpecial": "Deve conter pelo menos um caractere especial",
+    "passwordsDoNotMatch": "As senhas não coincidem",
+    "firstNameTooShort": "Nome muito curto",
+    "lastNameTooShort": "Sobrenome muito curto"
+  },
+  "admin": {
+    "users": {
+      "title": "Gerenciamento de Usuários",
+      "subtitle": "Gerencie todos os usuários do sistema",
+      "newUser": "Novo Usuário",
+      "noUsers": "Nenhum usuário encontrado",
+      "noUsersDescription": "Comece criando o primeiro usuário do sistema",
+      "name": "Nome",
+      "email": "E-mail",
+      "role": "Função",
+      "department": "Departamento",
+      "status": "Status",
+      "actions": "Ações",
+      "active": "Ativo",
+      "inactive": "Inativo",
+      "edit": "Editar",
+      "delete": "Deletar",
+      "back": "Voltar",
+      "newUserDescription": "Preencha os dados para criar um novo usuário",
+      "editUser": "Editar Usuário",
+      "editUserDescription": "Atualize as informações do usuário",
+      "firstName": "Nome",
+      "lastName": "Sobrenome",
+      "phoneNumber": "Telefone",
+      "position": "Cargo",
+      "password": "Senha",
+      "roleUser": "Usuário",
+      "roleManagerTimesheet": "Gerente Timesheet",
+      "roleManager": "Gerente",
+      "roleAdmin": "Administrador",
+      "activeUser": "Usuário ativo",
+      "resetPassword": "Resetar Senha",
+      "resetPasswordTitle": "Resetar Senha do Usuário",
+      "resetPasswordConfirm": "Tem certeza que deseja resetar a senha deste usuário? Uma senha temporária será gerada.",
+      "resetPasswordButton": "Resetar Senha",
+      "resetting": "Resetando...",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "successTitle": "Sucesso!",
+      "successMessage": "Operação realizada com sucesso",
+      "searchPlaceholder": "Buscar por nome ou e-mail",
+      "anyRole": "Qualquer função",
+      "anyStatus": "Qualquer status",
+      "filter": "Filtrar"
+    },
+    "delegations": {
+      "title": "Delegações (Grupos)",
+      "subtitle": "Gerencie grupos, gerentes e membros",
+      "newGroup": "Novo Grupo",
+      "name": "Nome do grupo",
+      "actions": "Ações",
+      "managers": "Gerentes",
+      "members": "Membros",
+      "addManager": "Adicionar gerente",
+      "addMember": "Adicionar membro",
+      "remove": "Remover",
+      "back": "Voltar",
+      "save": "Salvar",
+      "editGroup": "Editar Grupo",
+      "createGroup": "Criar Grupo",
+      "noGroups": "Nenhum grupo cadastrado",
+      "noGroupsDescription": "Crie um grupo para iniciar o mapeamento de delegações.",
+      "searchManagers": "Buscar gerentes...",
+      "searchMembers": "Buscar membros...",
+      "searchVessels": "Buscar embarcações...",
+      "noResults": "Sem resultados",
+      "add": "Adicionar"
+    },
+    "employees": {
+      "newEmployeeTitle": "Novo Funcionário",
+      "selectTenant": "Selecionar tenant",
+      "profileId": "ID do Perfil",
+      "useUsersSource": "Usar Usuários como fonte de dados",
+      "searchPlaceholder": "Buscar por nome ou e-mail",
+      "search": "Pesquisar",
+      "searching": "Buscando...",
+      "select": "Selecionar",
+      "vesselId": "ID da Embarcação",
+      "position": "Cargo",
+      "positionPlaceholder": "ex.: Marinheiro",
+      "costCenter": "Centro de Custo",
+      "costCenterPlaceholder": "código (opcional)",
+      "saving": "Salvando...",
+      "create": "Criar",
+      "errors": {
+        "loadTenantsFailed": "Falha ao carregar tenants",
+        "createFailed": "Falha ao criar",
+        "setTenantFailed": "Falha ao definir tenant",
+        "searchUsersFailed": "Falha ao buscar usuários"
+      },
+      "listTitle": "Funcionários",
+      "listSubtitle": "Gerencie colaboradores vinculados ao tenant.",
+      "id": "ID",
+      "profile": "Perfil",
+      "groups": "Grupos",
+      "vessel": "Embarcação",
+      "actions": "Ações"
+    }
+  }
+}

@@ -1,0 +1,370 @@
+{
+  "app": {
+    "title": "PontoFlow"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Quick access to modules",
+    "modules": {
+      "myTimesheet": {
+        "title": "My Timesheet",
+        "description": "Create and edit entries"
+      },
+      "managerPending": {
+        "title": "Pending (Manager)",
+        "description": "Approve/Reject timesheets"
+      },
+      "reports": {
+        "title": "Reports",
+        "description": "Summary and detailed"
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Language, notifications"
+      }
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "reports": "Reports",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "myProfile": "My Profile"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Sign In",
+      "subtitle": "Access your account to continue",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "signInButton": "Sign In",
+      "signingIn": "Signing in...",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "forgotPassword": "Forgot password"
+    },
+    "signUp": {
+      "title": "Create Account",
+      "subtitle": "Fill in your details to get started",
+      "firstName": "First Name",
+      "firstNamePlaceholder": "Enter your first name",
+      "lastName": "Last Name",
+      "lastNamePlaceholder": "Enter your last name",
+      "email": "Email",
+      "phoneNumber": "Phone Number",
+      "position": "Position",
+      "positionPlaceholder": "e.g. Developer",
+      "department": "Department",
+      "departmentPlaceholder": "e.g. IT",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "createButton": "Create Account",
+      "creating": "Creating...",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in",
+      "successTitle": "Account created successfully!",
+      "successMessage": "Redirecting to login..."
+    },
+    "reset": {
+      "title": "Reset password",
+      "subtitle": "Enter your email to receive the reset link",
+      "email": "Email",
+      "sendLink": "Send link",
+      "sending": "Sending...",
+      "successMessage": "If the email exists, we'll send a reset link.",
+      "backToSignIn": "Back to sign in"
+    }
+  },
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "open": "Open",
+    "save": "Save"
+  },
+  "notifications": {
+    "preferences": "Notification Preferences",
+    "emailNotifications": "Email Notifications",
+    "emailNotificationsDesc": "Receive notifications via email",
+    "pushNotifications": "Push Notifications",
+    "pushNotificationsDesc": "Receive browser notifications",
+    "deadlineReminders": "Deadline Reminders",
+    "deadlineRemindersDesc": "Get reminded before deadline",
+    "approvalNotifications": "Approval Notifications",
+    "approvalNotificationsDesc": "Get notified when your timesheet is approved",
+    "rejectionNotifications": "Rejection Notifications",
+    "rejectionNotificationsDesc": "Get notified when your timesheet is rejected",
+    "subscribe": "Subscribe",
+    "unsubscribe": "Unsubscribe",
+    "loading": "Loading...",
+    "notSupported": "Push notifications are not supported in your browser"
+  },
+  "invoice": {
+    "title": "Generate Invoice",
+    "generate": "Generate Invoice",
+    "export": "Export Invoice",
+    "invoiceNumber": "Invoice Number",
+    "issueDate": "Issue Date",
+    "dueDate": "Due Date",
+    "issuer": "Issuer",
+    "recipient": "Recipient",
+    "lineItems": "Items",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "total": "Total",
+    "status": "Status",
+    "draft": "Draft",
+    "issued": "Issued",
+    "paid": "Paid",
+    "cancelled": "Cancelled",
+    "exportPDF": "Export PDF",
+    "exportJSON": "Export JSON",
+    "success": "Invoice generated successfully",
+    "error": "Error generating invoice"
+  },
+  "manager": {
+    "review": {
+      "title": "Timesheet Review",
+      "subtitle": "Check entries and take an action",
+      "timesheet": "Timesheet",
+      "employee": "Employee",
+      "period": "Period",
+      "status": "Status",
+      "entries": "Entries",
+      "date": "Date",
+      "type": "Type",
+      "start": "Start",
+      "end": "End",
+      "note": "Note",
+      "annotations": "Annotations",
+      "rejectReason": "Rejection reason",
+      "rejectTitle": "Reject timesheet",
+      "addAnnotation": "Add annotation",
+      "annotationField": "Field (optional)",
+      "annotationEntry": "Entry (optional)",
+      "annotationMessage": "Message",
+      "approvals": "Approvals history",
+      "noEntries": "No entries."
+    },
+    "pending": {
+      "title": "Pending Timesheets",
+      "subtitle": "Review and approve submitted timesheets",
+      "employee": "Employee",
+      "date": "Date",
+      "type": "Type",
+      "period": "Period",
+      "status": "Status",
+      "actions": "Actions",
+      "review": "Review",
+      "noPending": "No pending timesheets",
+      "noPendingDescription": "There are no timesheets awaiting approval at this time."
+    }
+  },
+  "employee": {
+    "timesheets": {
+      "title": "My Timesheets",
+      "subtitle": "Manage your time entries",
+      "newTimesheet": "New Timesheet",
+      "newTimesheetDescription": "Set the timesheet period to get started.",
+      "noTimesheets": "No timesheets found",
+      "noTimesheetsDescription": "You haven't created any timesheets yet. Start by creating your first entry.",
+      "createFirst": "Create First Timesheet",
+      "errorLoading": "Error loading timesheets",
+      "fields": {
+        "periodStart": "Period start",
+        "periodEnd": "Period end"
+      },
+      "actions": {
+        "create": "Create",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "employeeNotConfigured": "Your profile is not linked to an employee in this tenant. Please contact the administrator.",
+        "missingTenant": "Your account is not associated with a tenant.",
+        "invalidPeriod": "Invalid period.",
+        "generic": "Something went wrong. Please try again."
+      },
+      "table": {
+        "date": "Date",
+        "type": "Type",
+        "invoice": "Invoice",
+        "status": "Status",
+        "actions": "Actions",
+        "view": "View"
+      }
+    },
+    "editor": {
+      "title": "My Timesheet",
+      "subtitle": "Log your activities and submit for approval",
+      "sectionTitle": "Period entries",
+      "submit": "Submit for approval",
+      "blocked": "Period closed. Editing disabled.",
+      "date": "Date",
+      "type": "Type",
+      "start": "Start",
+      "end": "End",
+      "note": "Note",
+      "addEntry": "Add entry",
+      "delete": "Delete",
+      "annotations": "Manager annotations",
+      "embarque": "Boarding",
+      "desembarque": "Disembarking",
+      "translado": "Transfer"
+    }
+  },
+  "reports": {
+    "filters": "Filters",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "status": "Status",
+    "employee": "Employee",
+    "employeeId": "Employee ID",
+    "allStatuses": "All Statuses",
+    "draft": "Draft",
+    "submitted": "Submitted",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "locked": "Locked",
+    "apply": "Apply Filters",
+    "reset": "Reset",
+    "loading": "Loading...",
+    "noData": "No data to display",
+    "generatedAt": "Generated at",
+    "exportCSV": "Export CSV",
+    "exportJSON": "Export JSON",
+    "total": "Total",
+    "pending": "Pending",
+    "entries": "Entries",
+    "period": "Period",
+    "details": "Details",
+    "summary": "Summary Report",
+    "detailed": "Detailed Report",
+    "error": "Error generating report",
+    "exportError": "Error exporting report"
+  },
+  "messages": {
+    "saved": "Preferences saved."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again."
+  },
+  "validation": {
+    "emailInvalid": "Invalid email",
+    "passwordMin": "Minimum of {min} characters",
+    "passwordRequiresUpper": "Must contain at least one uppercase letter",
+    "passwordRequiresLower": "Must contain at least one lowercase letter",
+    "passwordRequiresNumber": "Must contain at least one number",
+    "passwordRequiresSpecial": "Must contain at least one special character",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "firstNameTooShort": "First name is too short",
+    "lastNameTooShort": "Last name is too short"
+  },
+  "admin": {
+    "users": {
+      "title": "User Management",
+      "subtitle": "Manage all system users",
+      "newUser": "New User",
+      "noUsers": "No users found",
+      "noUsersDescription": "Start by creating the first system user",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "department": "Department",
+      "status": "Status",
+      "actions": "Actions",
+      "active": "Active",
+      "inactive": "Inactive",
+      "edit": "Edit",
+      "delete": "Delete",
+      "back": "Back",
+      "newUserDescription": "Fill in the details to create a new user",
+      "editUser": "Edit User",
+      "editUserDescription": "Update user information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "phoneNumber": "Phone Number",
+      "position": "Position",
+      "password": "Password",
+      "roleUser": "User",
+      "roleManagerTimesheet": "Timesheet Manager",
+      "roleManager": "Manager",
+      "roleAdmin": "Administrator",
+      "activeUser": "Active user",
+      "resetPassword": "Reset Password",
+      "resetPasswordTitle": "Reset User Password",
+      "resetPasswordConfirm": "Are you sure you want to reset this user's password? A temporary password will be generated.",
+      "resetPasswordButton": "Reset Password",
+      "resetting": "Resetting...",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "successTitle": "Success!",
+      "successMessage": "Operation completed successfully",
+      "searchPlaceholder": "Search by name or email",
+      "anyRole": "Any role",
+      "anyStatus": "Any status",
+      "filter": "Filter"
+    },
+    "delegations": {
+      "title": "Delegations (Groups)",
+      "subtitle": "Manage groups, managers and members",
+      "newGroup": "New Group",
+      "name": "Group name",
+      "actions": "Actions",
+      "managers": "Managers",
+      "members": "Members",
+      "addManager": "Add manager",
+      "addMember": "Add member",
+      "remove": "Remove",
+      "back": "Back",
+      "save": "Save",
+      "editGroup": "Edit Group",
+      "createGroup": "Create Group",
+      "noGroups": "No groups found",
+      "noGroupsDescription": "Create a group to start mapping delegations.",
+      "searchManagers": "Search managers...",
+      "searchMembers": "Search members...",
+      "searchVessels": "Search vessels...",
+      "noResults": "No results",
+      "add": "Add"
+    },
+    "employees": {
+      "newEmployeeTitle": "New Employee",
+      "selectTenant": "Select tenant",
+      "profileId": "Profile ID",
+      "useUsersSource": "Use Users as data source",
+      "searchPlaceholder": "Search by name or email",
+      "search": "Search",
+      "searching": "Searching...",
+      "select": "Select",
+      "vesselId": "Vessel ID",
+      "position": "Position",
+      "positionPlaceholder": "e.g., Sailor",
+      "costCenter": "Cost Center",
+      "costCenterPlaceholder": "code (optional)",
+      "saving": "Saving...",
+      "create": "Create",
+      "errors": {
+        "loadTenantsFailed": "Failed to load tenants",
+        "createFailed": "Failed to create",
+        "setTenantFailed": "Failed to set tenant",
+        "searchUsersFailed": "Failed to search users"
+      },
+      "listTitle": "Employees",
+      "listSubtitle": "Manage employees linked to the tenant.",
+      "id": "ID",
+      "profile": "Profile",
+      "groups": "Groups",
+      "vessel": "Vessel",
+      "actions": "Actions"
+    }
+  }
+}

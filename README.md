@@ -101,6 +101,16 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
+
+### 0.1.5 (2025-10-24)
+- fix(ts): Next 15 compat (await headers, searchParams em Admin/Users)
+- fix(audit): adiciona actions `manager_edit_closed_period` e `employee_acknowledge_adjustment`
+- fix(notifications): payloads agora aceitam `tenantId` opcional para branding por tenant
+- fix(api): health route com tipos seguros e mask de env nulos; associações de tenants com `.select('id')` e formato null-safe
+- fix(manager): tipos explícitos nos mapeamentos de entries
+- fix(pdf): resposta `Blob` e import dinâmico de `puppeteer` com fallback para manter build verde sem dependência opcional
+- build: `npm run type-check` e `npm run build` passando
+
 ### 0.1.4 (2025-10-24)
 - chore(brand): Remoção de qualquer referência ABZ; branding padrão alterado para PontoFlow
 - chore(assets): Substituído logo padrão para `/brand/logo.svg`; removido `public/logo-abz.png`
