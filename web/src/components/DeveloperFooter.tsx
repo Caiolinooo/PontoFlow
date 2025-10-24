@@ -16,13 +16,13 @@ export default function DeveloperFooter() {
           <div className="flex items-center gap-4">
             <span className="hidden sm:inline">Desenvolvido por</span>
             <a
-              href="mailto:caiovaleriogoulartcorreia@gmail.com"
+              href="mailto:Caiovaleriogoulartcorreia@gmail.com"
               className="font-medium text-[var(--foreground)] hover:text-[var(--primary)] transition-colors"
               title="Email do desenvolvedor"
             >
               Caio Valério Goulart Correia
             </a>
-            
+
             {/* Social Links */}
             <div className="flex items-center gap-2">
               {/* GitHub */}
@@ -40,7 +40,7 @@ export default function DeveloperFooter() {
 
               {/* LinkedIn */}
               <a
-                href="https://www.linkedin.com/in/caio-correia-b77b8b1b9/"
+                href="https://www.linkedin.com/in/caio-goulart/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 rounded hover:bg-[var(--muted)] transition-colors"
@@ -53,7 +53,7 @@ export default function DeveloperFooter() {
 
               {/* Instagram */}
               <a
-                href="https://www.instagram.com/caiolinooo/"
+                href="https://www.instagram.com/tal_do_goulart/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 rounded hover:bg-[var(--muted)] transition-colors"
