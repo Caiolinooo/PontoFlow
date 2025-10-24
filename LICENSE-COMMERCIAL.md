@@ -1,4 +1,4 @@
-# Commercial Software License Agreement (ABZ Group Timesheet Manager)
+# Commercial Software License Agreement (PontoFlow)
 
 IMPORTANT: READ THIS AGREEMENT CAREFULLY BEFORE USING THE SOFTWARE. BY INSTALLING, COPYING, OR OTHERWISE USING THE SOFTWARE, YOU AGREE TO BE BOUND BY THE TERMS OF THIS AGREEMENT.
 
@@ -97,4 +97,4 @@ If any provision is held unenforceable, it will be reformed to the minimum exten
 
 Legal notices to Licensor may be delivered via the GitHub profile @Caiolinooo or as otherwise designated in writing by Licensor. Notices to Licensee may be delivered to Licensee’s primary contact or address of record.
 
-Copyright © 2025 Caio Correia (ABZ Group). All rights reserved.
+Copyright © 2025 Caio Correia. All rights reserved.

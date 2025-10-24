@@ -182,7 +182,7 @@ npm run lint
 4. **Tests Required**: Each feature must have tests
 5. **TypeScript Strict**: No `any` types without justification
 6. **Conventional Commits**: Follow commit message format
-7. **Corporate Branding**: Use ABZ colors and logo consistently
+7. **Corporate Branding**: Use your brand colors and logo consistently
 
 ## Useful Commands
 
@@ -203,7 +203,7 @@ git branch -a           # List branches
 
 # Database (Supabase)
 # Use Supabase dashboard at https://app.supabase.com
-# Project: Painel_ABZGroup (arzvingdtnttiejcvucs)
+# Project: <your Supabase project>
 ```
 
 ## Documentation Files

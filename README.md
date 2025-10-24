@@ -1,4 +1,4 @@
-# ABZ Group Timesheet Manager (Standalone)
+# PontoFlow (Timesheet Manager)
 
 Timesheet management system para colaboradores embarcados com fluxo de aprovação por gerente, prazos mensais com bloqueio e notificações bi‑idioma (pt‑BR/en‑GB). Projeto standalone com arquitetura preparada para integração futura ao Employee Hub.
 
@@ -78,7 +78,7 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 - RLS no banco isola tenant e delegação de gerente por grupo. Os endpoints gerenciais dependem disso.
 
 ## Próximos passos sugeridos
-- Padronizar layout corporativo de e‑mails (logo ABZ, cabeçalho/rodapé, tom formal, i18n)
+- Padronizar layout corporativo de e‑mails (logo da sua marca, cabeçalho/rodapé, tom formal, i18n)
 - Destaque visual das anotações por campo também na tela do gerente
 - Edição inline das entradas no editor do colaborador
 - Migrations automatizadas com Supabase CLI
@@ -101,7 +101,14 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
-### 1.0.1 (2025-10-23)
+### 0.1.4 (2025-10-24)
+- chore(brand): Remoção de qualquer referência ABZ; branding padrão alterado para PontoFlow
+- chore(assets): Substituído logo padrão para `/brand/logo.svg`; removido `public/logo-abz.png`
+- fix(admin/layout): Header sem flicker (passa `initialUser`); AdminNav recebe `locale` corretamente
+- chore(auth): Gradiente de fundo genérico (blue→indigo) nas telas de Auth
+- docs: README e LICENSE-COMMERCIAL atualizados; `.env.example` com MAIL_FROM do PontoFlow
+
+### 0.1.3 (2025-10-23)
 - feat(ui): Cabeçalhos Meta com breadcrumbs opcionais (Delegações, Funcionários, Edição de Grupo)
 - feat(nav): Chip “Dashboard” no Header (estilo Meta), removendo barra antiga de Voltar/Início
 - fix(header): Evita flicker ao navegar (Header recebe `initialUser` pelo servidor em Dashboard, Employee, Manager, Reports e Settings)
@@ -109,5 +116,5 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 - chore: `.gitignore` já ignora `.env*`; sem dados sensíveis nos commits
 - docs: README atualizado e adicionado LICENSE-COMMERCIAL.md
 
-### 1.0.0
+### 0.1.2
 - Primeira versão pública do módulo web standalone

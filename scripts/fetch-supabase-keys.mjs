@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import https from 'node:https';
 
-const HUB_PATH = process.env.HUB_PATH || 'D:/Projeto/Finalizados/Painel ABZ-BR-INT/painel-abz';
+const HUB_PATH = process.env.HUB_PATH || '';
 const OUT_ENV = path.resolve('.env.local');
 
 function tryReadEnvFiles(dir) {
@@ -30,14 +30,7 @@ function fetchRaw(url) {
 }
 
 async function tryGithub() {
-  const paths = ['.env.local', '.env', '.env.example'];
-  for (const p of paths) {
-    const raw = await fetchRaw(`https://raw.githubusercontent.com/Caiolinooo/painelabz/main/${p}`)
-             || await fetchRaw(`https://raw.githubusercontent.com/Caiolinooo/painelabz/master/${p}`);
-    if (!raw) continue;
-    const lines = raw.split(/\r?\n/).filter(l => /^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|SMTP_|MAIL_FROM)\s*=/.test(l));
-    if (lines.length) return lines;
-  }
+  // Disabled by default. Provide a custom GITHUB_RAW_BASE if you want to source envs.
   return null;
 }
 
