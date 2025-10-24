@@ -20,8 +20,8 @@ export function generateInvoice(request: InvoiceGenerationRequest, companyData: 
     status: 'draft',
 
     issuer: {
-      name: companyData.name || 'ABZ Group',
-      email: companyData.email || 'billing@abzgroup.com',
+      name: companyData.name || 'PontoFlow',
+      email: companyData.email || 'billing@pontoflow.app',
       phone: companyData.phone,
       address: companyData.address || {
         street: 'Rua Exemplo',

@@ -19,8 +19,8 @@ describe('Invoice Generator', () => {
   };
 
   const mockCompanyData = {
-    name: 'ABZ Group',
-    email: 'billing@abzgroup.com',
+    name: 'PontoFlow',
+    email: 'billing@pontoflow.app',
     phone: '+55 11 1234-5678',
     taxId: '12.345.678/0001-90',
     registrationNumber: '123456789',
@@ -78,8 +78,8 @@ describe('Invoice Generator', () => {
     it('should use default company data when not provided', () => {
       const invoice = generateInvoice(mockRequest, {});
 
-      expect(invoice.issuer.name).toBe('ABZ Group');
-      expect(invoice.issuer.email).toBe('billing@abzgroup.com');
+      expect(invoice.issuer.name).toBe('PontoFlow');
+      expect(invoice.issuer.email).toBe('billing@pontoflow.app');
     });
   });
 

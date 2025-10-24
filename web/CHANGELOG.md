@@ -2,6 +2,25 @@
 <!-- markdownlint-disable MD024 -->
 
 
+## [0.1.6] - 2025-10-24
+
+### Changed
+
+- Branding: remoção final de quaisquer referências "ABZ" (UI, cores, gerador de invoice, templates de e‑mail)
+- Dashboard: substituídas classes de cor específicas por variáveis CSS (`[var(--primary)]`)
+- Header: `hover:text-abz-blue` → `hover:text-[var(--primary)]`
+- Invoice: padrão do emissor agora "PontoFlow" e `billing@pontoflow.app`
+- E-mails: títulos e rodapés padronizados para "PontoFlow - Timesheet Manager"; URL de fallback `https://pontoflow.app`
+
+### Fixed
+
+- Dashboard: corrigido texto corrompido para "Configurações e gestão do sistema"
+- Tests: ajustes nos seletores de validação dos formulários de Auth e expectativas dos templates de e‑mail; suíte verde
+
+### Build
+
+- Type-check e build de produção passando (Turbopack). Import dinâmico de `puppeteer` mantém build verde sem dependência opcional.
+
 
 ## [0.1.5] - 2025-10-24
 

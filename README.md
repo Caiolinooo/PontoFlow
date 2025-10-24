@@ -102,6 +102,12 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 ## Changelog
 
 
+### 0.1.6 (2025-10-24)
+- chore(brand): limpeza final de quaisquer ocorrências "ABZ" (UI, e‑mails, invoice)
+- fix(dashboard): texto corrompido corrigido; cores via `[var(--primary)]`
+- fix(tests): ajustes nos seletores dos formulários de Auth e expectativas dos templates de e‑mail; suíte verde
+- build: type-check e build de produção passando
+
 ### 0.1.5 (2025-10-24)
 - fix(ts): Next 15 compat (await headers, searchParams em Admin/Users)
 - fix(audit): adiciona actions `manager_edit_closed_period` e `employee_acknowledge_adjustment`

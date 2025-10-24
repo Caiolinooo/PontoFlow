@@ -49,7 +49,7 @@ export function timesheetSubmittedEmail(data: {
 
     <p style="margin-top: 20px; color: #666; font-size: 13px;">
       ${t.regards},<br>
-      <strong>ABZ Group - Timesheet Manager</strong>
+      <strong>PontoFlow - Timesheet Manager</strong>
     </p>
   `;
 

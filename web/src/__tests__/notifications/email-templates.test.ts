@@ -156,14 +156,14 @@ describe('Email Templates', () => {
   });
 
   describe('Email Layout', () => {
-    it('should include ABZ logo', () => {
+    it('should include PontoFlow logo', () => {
       const layout = {
-        logoUrl: '/logo-abz.png',
-        logoAlt: 'ABZ Group'
+        logoUrl: '/brand/logo.svg',
+        logoAlt: 'PontoFlow'
       };
 
       expect(layout.logoUrl).toBeDefined();
-      expect(layout.logoAlt).toBe('ABZ Group');
+      expect(layout.logoAlt).toBe('PontoFlow');
     });
 
     it('should have gradient header', () => {
@@ -190,17 +190,17 @@ describe('Email Templates', () => {
     it('should have bilingual footer', () => {
       const footer = {
         'pt-BR': {
-          copyright: '© 2025 ABZ Group. Todos os direitos reservados.',
+          copyright: '© 2025 PontoFlow. Todos os direitos reservados.',
           disclaimer: 'Este é um email automático. Não responda.'
         },
         'en-GB': {
-          copyright: '© 2025 ABZ Group. All rights reserved.',
+          copyright: '© 2025 PontoFlow. All rights reserved.',
           disclaimer: 'This is an automated email. Do not reply.'
         }
       };
 
-      expect(footer['pt-BR'].copyright).toContain('ABZ Group');
-      expect(footer['en-GB'].copyright).toContain('ABZ Group');
+      expect(footer['pt-BR'].copyright).toContain('PontoFlow');
+      expect(footer['en-GB'].copyright).toContain('PontoFlow');
     });
   });
 

@@ -113,7 +113,7 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
                 ) : (
                   <a
                     href={`/${locale}/auth/signin`}
-                    className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-abz-blue transition-colors"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-[var(--primary)] transition-colors"
                   >
                     {tNav('signIn')}
                   </a>

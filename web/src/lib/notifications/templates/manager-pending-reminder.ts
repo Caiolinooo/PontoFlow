@@ -56,7 +56,7 @@ export function managerPendingReminderEmail(data: {
 
     <p style="margin-top: 20px; color: #666; font-size: 13px;">
       ${t.regards},<br>
-      <strong>ABZ Group - Timesheet Manager</strong>
+      <strong>PontoFlow - Timesheet Manager</strong>
     </p>
   `;
 
@@ -64,7 +64,7 @@ export function managerPendingReminderEmail(data: {
     locale: data.locale,
     subject: t.subject,
     content,
-    ctaUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://timesheet.abzgroup.com'}/${data.locale}/manager/pending`,
+    ctaUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://pontoflow.app'}/${data.locale}/manager/pending`,
     ctaText: t.cta
   });
 
