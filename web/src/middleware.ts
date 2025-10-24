@@ -27,9 +27,6 @@ const intlMiddleware = createMiddleware(routing);
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // First, handle i18n
-  const intlResponse = intlMiddleware(request);
-
   // Extract locale from pathname (e.g., /pt-BR/dashboard -> pt-BR)
   const localeMatch = pathname.match(/^\/(pt-BR|en-GB)/);
   const locale = localeMatch ? localeMatch[1] : 'pt-BR';
@@ -38,6 +35,16 @@ export async function middleware(request: NextRequest) {
   const pathnameWithoutLocale = localeMatch
     ? pathname.replace(`/${locale}`, '')
     : pathname;
+
+  // Redirect old timesheet routes to new route
+  if (pathnameWithoutLocale === '/employee/timesheets/current' ||
+      pathnameWithoutLocale.startsWith('/employee/timesheets/new') ||
+      pathnameWithoutLocale.match(/^\/employee\/timesheets\/[a-f0-9-]{36}$/)) {
+    return NextResponse.redirect(new URL(`/${locale}/employee/timesheets`, request.url));
+  }
+
+  // First, handle i18n
+  const intlResponse = intlMiddleware(request);
 
   // Handle root path - redirect based on authentication
   if (pathname === '/' || pathnameWithoutLocale === '' || pathnameWithoutLocale === '/') {

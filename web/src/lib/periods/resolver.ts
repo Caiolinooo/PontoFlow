@@ -29,6 +29,7 @@ export async function getEffectivePeriodLock(
       .select('locked, reason')
       .eq('tenant_id', tenantId)
       .eq('period_month', month)
+      .limit(1)
       .maybeSingle(),
   ]);
 
@@ -45,6 +46,7 @@ export async function getEffectivePeriodLock(
       .eq('tenant_id', tenantId)
       .eq('employee_id', employeeId)
       .eq('period_month', month)
+      .limit(1)
       .maybeSingle(),
     groupIds.length
       ? supabase

@@ -230,6 +230,11 @@ export async function getUserFromToken(token: string): Promise<User | null> {
     const decoded = fromBase64(token);
     const [userId] = decoded.split(':');
 
+    if (!userId) {
+      console.error('getUserFromToken: Invalid token format - no userId found');
+      return null;
+    }
+
     // Query the users_unified table
     const { data: user, error } = await supabase
       .from('users_unified')
@@ -238,7 +243,13 @@ export async function getUserFromToken(token: string): Promise<User | null> {
       .eq('active', true)
       .single();
 
-    if (error || !user) {
+    if (error) {
+      console.error('getUserFromToken: Database error:', error);
+      return null;
+    }
+
+    if (!user) {
+      console.error('getUserFromToken: User not found or inactive:', userId);
       return null;
     }
 

@@ -30,11 +30,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: checkError } = await supabase
       .from('users_unified')
       .select('id')
       .eq('email', email)
-      .single();
+      .limit(1)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking existing user:', checkError);
+      return NextResponse.json(
+        { error: 'Erro ao verificar e-mail' },
+        { status: 500 }
+      );
+    }
 
     if (existingUser) {
       return NextResponse.json(

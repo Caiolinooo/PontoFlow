@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 
 /**
@@ -17,7 +17,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string; entryId: string }> }
 ) {
   const { id, entryId } = await context.params;
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const { data: auth } = await supabase.auth.getUser();
 
   if (!auth?.user) {

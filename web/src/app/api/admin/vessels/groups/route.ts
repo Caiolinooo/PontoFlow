@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     if (!vessel || !group) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if (vessel.tenant_id !== user.tenant_id || group.tenant_id !== user.tenant_id) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-    const svc = getServiceSupabase();
+    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
     const { error } = await svc
       .from('vessel_group_links')
       .insert({ vessel_id, group_id });
@@ -92,7 +92,7 @@ export async function DELETE(req: NextRequest) {
     const group_id = (body?.group_id as string | undefined)?.trim();
     if (!vessel_id || !group_id) return NextResponse.json({ error: 'vessel_id_and_group_id_required' }, { status: 400 });
 
-    const svc = getServiceSupabase();
+    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
     const { error } = await svc
       .from('vessel_group_links')
       .delete()

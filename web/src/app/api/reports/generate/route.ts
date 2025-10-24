@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { generateSummaryReport, generateDetailedReport, ReportFilters, TimesheetBasic } from '@/lib/reports/generator';
 
 export async function GET(req: NextRequest) {
   const user = await requireApiAuth();
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getServiceSupabase();
 
   // Get query parameters
   const searchParams = req.nextUrl.searchParams;
@@ -26,7 +23,18 @@ export async function GET(req: NextRequest) {
   };
 
   try {
-    // Build query
+    // First, get all employees in the tenant
+    const { data: allEmployees, error: empError } = await supabase
+      .from('employees')
+      .select('id, display_name, cargo')
+      .eq('tenant_id', (user.tenant_id as string))
+      .order('display_name');
+
+    if (empError) {
+      return NextResponse.json({ error: empError.message }, { status: 500 });
+    }
+
+    // Build query for timesheets
     let query = supabase
       .from('timesheets')
       .select(`
@@ -58,7 +66,6 @@ export async function GET(req: NextRequest) {
       query = query.eq('employee_id', employeeId);
     }
 
-    // RLS will automatically filter by tenant
     const { data: timesheets, error } = await query.order('periodo_ini', { ascending: false });
 
     if (error) {
@@ -74,10 +81,38 @@ export async function GET(req: NextRequest) {
         return { ...ts, employee: emp } as TimesheetBasic;
       }) ?? [];
 
+    // Create timesheets for employees without any (for the report period)
+    const employeesWithTimesheets = new Set(normalizedTimesheets.map(ts => ts.employee_id));
+
+    // Filter employees based on employeeId filter if provided
+    let filteredEmployees = allEmployees || [];
+    if (employeeId) {
+      filteredEmployees = filteredEmployees.filter(emp => emp.id === employeeId);
+    }
+
+    const employeesWithoutTimesheets = filteredEmployees.filter(emp => !employeesWithTimesheets.has(emp.id));
+
+    // Add empty timesheets for employees without data
+    const emptyTimesheets: TimesheetBasic[] = employeesWithoutTimesheets.map(emp => ({
+      id: `empty-${emp.id}`,
+      employee_id: emp.id,
+      periodo_ini: startDate || new Date().toISOString().split('T')[0],
+      periodo_fim: endDate || new Date().toISOString().split('T')[0],
+      status: 'rascunho',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      employee: { display_name: emp.display_name },
+      entries: [],
+      annotations: [],
+      approvals: []
+    }));
+
+    const allTimesheetsData = [...normalizedTimesheets, ...emptyTimesheets];
+
     // Generate report
     const report = type === 'detailed'
-      ? generateDetailedReport(normalizedTimesheets, filters)
-      : generateSummaryReport(normalizedTimesheets, filters);
+      ? generateDetailedReport(allTimesheetsData, filters)
+      : generateSummaryReport(allTimesheetsData, filters);
 
     return NextResponse.json(report, { status: 200 });
   } catch (err) {

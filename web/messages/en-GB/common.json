@@ -31,6 +31,28 @@
     "signOut": "Sign Out",
     "myProfile": "My Profile"
   },
+  "adminNav": {
+    "people": "People",
+    "operations": "Operations",
+    "infrastructure": "Infrastructure",
+    "system": "System",
+    "users": "Users",
+    "delegations": "Delegations",
+    "employees": "Employees",
+    "vessels": "Vessels",
+    "environments": "Environments",
+    "tenants": "Tenants",
+    "workSchedules": "Work Schedules",
+    "periods": "Periods",
+    "timesheets": "Timesheets",
+    "audit": "Audit",
+    "importExport": "Import/Export",
+    "settings": "Settings",
+    "groups": "Groups",
+    "associations": "Associations",
+    "access": "Access"
+  },
+
   "theme": {
     "light": "Light",
     "dark": "Dark",

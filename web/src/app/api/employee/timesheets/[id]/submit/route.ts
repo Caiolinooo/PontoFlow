@@ -1,7 +1,7 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {requireApiAuth} from '@/lib/auth/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 
 export async function POST(_req: NextRequest, context: {params: Promise<{id: string}>}) {
@@ -9,7 +9,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
     const user = await requireApiAuth();
     const {id} = await context.params;
 
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
     // Fetch timesheet first and check period lock
     const { data: ts0, error: e0 } = await supabase
       .from('timesheets')
@@ -26,12 +26,19 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
 
     // Ownership: allow only owner or ADMIN to submit
     if (user.role !== 'ADMIN') {
-      const { data: emp } = await supabase
+      const { data: emp, error: empError } = await supabase
         .from('employees')
         .select('id')
         .eq('tenant_id', ts0.tenant_id)
         .eq('profile_id', user.id)
+        .limit(1)
         .maybeSingle();
+
+      if (empError) {
+        console.error('Error fetching employee:', empError);
+        return NextResponse.json({ error: 'database_error' }, { status: 500 });
+      }
+
       if (!emp || ts0.employee_id !== emp.id) {
         return NextResponse.json({ error: 'forbidden' }, { status: 403 });
       }

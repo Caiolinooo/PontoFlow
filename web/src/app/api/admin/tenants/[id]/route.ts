@@ -28,6 +28,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       update.slug = slug;
     }
     if (typeof json.description === 'string' || json.description === null) update.description = json.description;
+    if (typeof json.work_schedule === 'string' && ['7x7', '14x14', '21x21', '28x28', 'custom'].includes(json.work_schedule)) {
+      update.work_schedule = json.work_schedule;
+    }
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'no_fields' }, { status: 400 });

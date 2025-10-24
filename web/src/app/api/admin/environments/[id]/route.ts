@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const { id } = await context.params;
   const body = await req.json().catch(() => ({}));
   const update: any = {};

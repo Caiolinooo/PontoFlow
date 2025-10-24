@@ -12,11 +12,18 @@ export async function GET(req: NextRequest) {
     const user = await requireApiAuth();
 
     // Employee for this user
-    const { data: emp } = await supabase
+    const { data: emp, error: empError } = await supabase
       .from('employees')
       .select('id, tenant_id, display_name')
       .eq('profile_id', user.id)
+      .limit(1)
       .maybeSingle();
+
+    if (empError) {
+      console.error('Error fetching employee:', empError);
+      return NextResponse.json({ error: 'database_error' }, { status: 500 });
+    }
+
     if (!emp) return NextResponse.json({ items: [], count: 0 });
 
     // All timesheets of this employee (open range OK)

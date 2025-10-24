@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     if (!emp) return NextResponse.json({ error: 'employee_not_found' }, { status: 404 });
     if (grp.tenant_id !== tenantId || emp.tenant_id !== tenantId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-    const svcWrite = getServiceSupabase();
+    const svcWrite = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
     const { error } = await svcWrite
       .from('employee_group_members')
       .insert({ employee_id: parsed.data.employee_id, group_id: parsed.data.group_id });
@@ -92,7 +92,7 @@ export async function DELETE(req: NextRequest) {
     if (!grp) return NextResponse.json({ error: 'group_not_found' }, { status: 404 });
     if (grp.tenant_id !== tenantId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-    const svcWrite = getServiceSupabase();
+    const svcWrite = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
     const { error } = await svcWrite
       .from('employee_group_members')
       .delete()

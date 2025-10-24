@@ -1,12 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/service';
 
 export default async function EmployeeBootstrapPage({
   params,
@@ -18,6 +14,8 @@ export default async function EmployeeBootstrapPage({
   const { locale } = await params;
   const { tenant: tenantParam } = await searchParams;
   const user = await requireAuth(locale);
+  // Use service client if available, otherwise server client
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
 
   // Resolve tenant: if user has no tenant, assign the only available one
   // or ask the user to pick if multiple exist.
@@ -87,11 +85,11 @@ export default async function EmployeeBootstrapPage({
     .maybeSingle();
 
   if (existingEmp?.id) {
-    redirect(`/${locale}/employee/timesheets/current`);
+    redirect(`/${locale}/employee/timesheets`);
   }
 
   // 2) Ensure a profiles row exists
-  const { data: prof } = await supabase
+  const { data: prof, error: profErr } = await supabase
     .from('profiles')
     .select('user_id')
     .eq('user_id', user.id)
@@ -99,26 +97,33 @@ export default async function EmployeeBootstrapPage({
 
   if (!prof) {
     const display_name = user.name || `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || user.email;
-    await supabase.from('profiles').insert({
+    const { error: insertProfErr } = await supabase.from('profiles').insert({
       user_id: user.id,
       display_name,
       email: user.email,
       locale: (user as any).locale ?? 'pt-BR',
     });
+    if (insertProfErr) {
+      console.error('Failed to create profile:', insertProfErr);
+    }
   }
 
   // 3) Create employee linked to this profile
-  const { data: inserted } = await supabase
+  const { data: inserted, error: insertErr } = await supabase
     .from('employees')
     .insert({ tenant_id: tenantId as string, profile_id: user.id })
     .select('id')
     .single();
 
+  if (insertErr) {
+    console.error('Failed to create employee:', insertErr);
+  }
+
   if (!inserted?.id) {
     redirect(`/${locale}/employee/timesheets`);
   }
 
-  // 4) Go to current month
-  redirect(`/${locale}/employee/timesheets/current`);
+  // 4) Go to timesheets
+  redirect(`/${locale}/employee/timesheets`);
 }
 

@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { generateSummaryReport, reportToCSV, ReportFilters, TimesheetBasic } from '@/lib/reports/generator';
 
 export async function GET(req: NextRequest) {
   const user = await requireApiAuth();
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getServiceSupabase();
 
   // Get query parameters
   const searchParams = req.nextUrl.searchParams;

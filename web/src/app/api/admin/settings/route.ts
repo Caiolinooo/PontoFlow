@@ -10,6 +10,7 @@ export async function GET(_req: NextRequest) {
       .from('tenant_settings')
       .select('*')
       .eq('tenant_id', user.tenant_id)
+      .limit(1)
       .maybeSingle();
     return NextResponse.json({ settings: data || null });
   } catch (e) {

@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
     const q = (searchParams.get('q') || '').trim();
     const limitRaw = parseInt(searchParams.get('limit') || '20', 10);
     const limit = Math.max(1, Math.min(isNaN(limitRaw) ? 20 : limitRaw, 100));
+    const offsetRaw = parseInt(searchParams.get('offset') || '0', 10);
+    const offset = Math.max(0, isNaN(offsetRaw) ? 0 : offsetRaw);
 
     const supabase = await getServerSupabase();
 
@@ -51,8 +53,8 @@ export async function GET(req: NextRequest) {
       .from('employees')
       .select('id, profile_id, name')
       .eq('tenant_id', user.tenant_id as string)
-      .limit(limit)
-      .order('id');
+      .order('id')
+      .range(offset, offset + limit - 1);
 
     if (q) {
       if (baseIds.length > 0) {

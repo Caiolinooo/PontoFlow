@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ userId: string }> }) {
   const user = await requireApiRole(['ADMIN']);
   const { userId } = await context.params;
 
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const { data } = await supabase
     .from('user_permissions')
     .select('id,module,permission,resource')
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ userId
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const { error } = await supabase
     .from('user_permissions')
     .insert({ tenant_id: user.tenant_id, user_id: userId, module, permission, resource });
@@ -49,7 +49,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ user
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const query = supabase
     .from('user_permissions')
     .delete()

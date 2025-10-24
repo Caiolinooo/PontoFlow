@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
-import { getServiceSupabase } from '@/lib/supabase/service';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 // GET /api/admin/periods/groups?group_id=... -> list locks for a group
 export async function GET(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const url = new URL(req.url);
   const groupId = (url.searchParams.get('group_id') || '').trim();
   if (!groupId) return NextResponse.json({ error: 'group_id_required' }, { status: 400 });
@@ -37,7 +36,7 @@ export async function GET(req: NextRequest) {
 // POST { group_id, period_month, locked, reason? }
 export async function POST(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const body = await req.json().catch(() => ({}));
   const group_id = (body?.group_id as string | undefined)?.trim();
   const period_month = (body?.period_month as string | undefined)?.trim();

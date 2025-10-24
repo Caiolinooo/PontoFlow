@@ -60,11 +60,13 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
             <span className="text-xl font-semibold text-[var(--surface-foreground)]">{siteTitle}</span>
           </a>
 
-          {/* Quick Home (Meta-like) - shown when not already on Dashboard */}
-          {pathname && !new RegExp(`^/${locale}/dashboard(?:/.*)?$`).test(pathname) && (
+          {/* Quick Home (Meta-like) - show only on non-admin routes and hide on desktop to avoid duplication */}
+          {pathname &&
+           !new RegExp(`^/${locale}/dashboard(?:/.*)?$`).test(pathname) &&
+           !new RegExp(`^/${locale}/admin(?:/.*)?$`).test(pathname) && (
             <a
               href={`/${locale}/dashboard`}
-              className="ml-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-[var(--muted)]/40 text-[var(--surface-foreground)] hover:bg-[var(--muted)]/60 transition-colors"
+              className="ml-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-[var(--muted)]/40 text-[var(--surface-foreground)] hover:bg-[var(--muted)]/60 transition-colors md:hidden"
               aria-label="Dashboard"
               title="Dashboard"
             >

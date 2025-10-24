@@ -11,12 +11,57 @@ interface Props {
 export default function ReportFiltersComponent({ onFilter, labels }: Props) {
   const [filters, setFilters] = React.useState<ReportFilters>({});
   const [loading, setLoading] = React.useState(false);
+  const [employeeQuery, setEmployeeQuery] = React.useState('');
+  const [employeeResults, setEmployeeResults] = React.useState<Array<{ id: string; label: string }>>([]);
+  const [employeeSearching, setEmployeeSearching] = React.useState(false);
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = React.useState(false);
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleChange = (key: keyof ReportFilters, value: string) => {
     setFilters(prev => ({
       ...prev,
       [key]: value || undefined,
     }));
+  };
+
+  const searchEmployees = async (query: string) => {
+    if (!query.trim()) {
+      setEmployeeResults([]);
+      return;
+    }
+
+    setEmployeeSearching(true);
+    try {
+      const res = await fetch(`/api/admin/search/employees?q=${encodeURIComponent(query)}&limit=10`);
+      const data = await res.json();
+      setEmployeeResults(data.items || []);
+      setShowEmployeeDropdown(true);
+    } catch (error) {
+      console.error('Error searching employees:', error);
+      setEmployeeResults([]);
+    } finally {
+      setEmployeeSearching(false);
+    }
+  };
+
+  const handleEmployeeQueryChange = (value: string) => {
+    setEmployeeQuery(value);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchEmployees(value);
+    }, 300);
+  };
+
+  const selectEmployee = (employee: { id: string; label: string }) => {
+    setEmployeeQuery(employee.label);
+    setFilters(prev => ({ ...prev, employeeId: employee.id }));
+    setShowEmployeeDropdown(false);
   };
 
   const handleApply = async () => {
@@ -30,6 +75,9 @@ export default function ReportFiltersComponent({ onFilter, labels }: Props) {
 
   const handleReset = () => {
     setFilters({});
+    setEmployeeQuery('');
+    setEmployeeResults([]);
+    setShowEmployeeDropdown(false);
     onFilter({});
   };
 
@@ -83,18 +131,41 @@ export default function ReportFiltersComponent({ onFilter, labels }: Props) {
           </select>
         </div>
 
-        {/* Employee ID */}
-        <div>
+        {/* Employee Search */}
+        <div className="relative">
           <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
             {labels.employee || 'Employee'}
           </label>
           <input
             type="text"
-            placeholder={labels.employeeId || 'Employee ID'}
-            value={filters.employeeId || ''}
-            onChange={(e) => handleChange('employeeId', e.target.value)}
+            placeholder={labels.employeeName || 'Search by name...'}
+            value={employeeQuery}
+            onChange={(e) => handleEmployeeQueryChange(e.target.value)}
+            onFocus={() => employeeResults.length > 0 && setShowEmployeeDropdown(true)}
             className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
           />
+          {employeeSearching && (
+            <div className="absolute right-3 top-9 text-[var(--muted-foreground)]">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          )}
+          {showEmployeeDropdown && employeeResults.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-xl max-h-60 overflow-auto">
+              {employeeResults.map((emp) => (
+                <button
+                  key={emp.id}
+                  type="button"
+                  onClick={() => selectEmployee(emp)}
+                  className="w-full text-left px-4 py-2 hover:bg-[var(--muted)] text-sm transition-colors"
+                >
+                  {emp.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

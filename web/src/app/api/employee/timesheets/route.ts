@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 import { z } from 'zod';
 
@@ -30,15 +30,21 @@ export async function POST(req: NextRequest) {
     }
 
 
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
 
     // Find employee for current user
-    const { data: employee } = await supabase
+    const { data: employee, error: empError } = await supabase
       .from('employees')
       .select('id')
       .eq('tenant_id', user.tenant_id)
       .eq('profile_id', user.id)
-      .single();
+      .limit(1)
+      .maybeSingle();
+
+    if (empError) {
+      console.error('Error fetching employee:', empError);
+      return NextResponse.json({ error: 'database_error' }, { status: 500 });
+    }
 
     if (!employee) {
       return NextResponse.json({ error: 'employee_not_configured' }, { status: 400 });

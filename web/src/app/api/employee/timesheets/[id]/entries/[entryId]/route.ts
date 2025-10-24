@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {requireApiAuth} from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 import { logAudit } from '@/lib/audit/logger';
 import {z} from 'zod';
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, context: {params: Promise<{id: str
     if (!parsed.success) return NextResponse.json({error: 'invalid_body', issues: parsed.error.issues}, {status: 400});
 
     // Check ownership + period lock via timesheet
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
     const { data: ts } = await supabase
       .from('timesheets')
       .select('tenant_id, periodo_ini, employee_id')
@@ -69,7 +69,7 @@ export async function DELETE(_req: NextRequest, context: {params: Promise<{id: s
     const user = await requireApiAuth();
     const {id, entryId} = await context.params;
 
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
     // Ownership + lock via timesheet before delete
     const { data: ts2 } = await supabase
       .from('timesheets')

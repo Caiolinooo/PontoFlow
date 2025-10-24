@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
-import { getServiceSupabase } from '@/lib/supabase/service';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 // GET: retorna tenant atual do usuário e lista de tenants (id, name)
 export async function GET() {
-  const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
-  const [{ data: tenants }, { data: me }] = await Promise.all([
-    supabase.from('tenants').select('id, name').order('name'),
-    supabase.from('users_unified').select('tenant_id').eq('id', user.id).maybeSingle(),
-  ]);
-  return NextResponse.json({ current_tenant_id: me?.tenant_id ?? null, tenants: tenants ?? [] });
+  try {
+    const user = await requireApiRole(['ADMIN']);
+    const supabase = getServiceSupabase();
+    const [{ data: tenants }, { data: me }] = await Promise.all([
+      supabase.from('tenants').select('id, name').order('name'),
+      supabase.from('users_unified').select('tenant_id').eq('id', user.id).maybeSingle(),
+    ]);
+    return NextResponse.json({ current_tenant_id: me?.tenant_id ?? null, tenants: tenants ?? [] });
+  } catch (e) {
+    if (e instanceof Error && e.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    if (e instanceof Error && e.message === 'Forbidden') {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+  }
 }
 
 // PATCH: define o tenant atual do usuário

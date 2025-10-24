@@ -58,10 +58,16 @@ export async function getApiUser(): Promise<User | null> {
   const token = cookieStore.get('timesheet_session')?.value;
 
   if (!token) {
+    console.error('getApiUser: No session token found in cookies');
     return null;
   }
 
-  return getUserFromToken(token);
+  const user = await getUserFromToken(token);
+  if (!user) {
+    console.error('getApiUser: getUserFromToken returned null');
+  }
+
+  return user;
 }
 
 /**

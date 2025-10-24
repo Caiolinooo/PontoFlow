@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSelectorModal';
 import { MetaPageHeader } from '@/components/ui/meta/PageHeader';
+import { isMetaUI } from '@/lib/flags';
 
 export default function EmployeesListPage() {
   const t = useTranslations('admin.employees');
@@ -72,16 +73,38 @@ export default function EmployeesListPage() {
 
   return (
     <div className="space-y-6">
-      <MetaPageHeader
-        title={safe('listTitle', 'Employees')}
-        subtitle={safe('listSubtitle', 'Manage employees linked to the tenant.')}
-        breadcrumbs={[
-          { href: `/${locale}/dashboard`, label: 'Dashboard' },
-          { label: 'Admin' },
-          { label: safe('listTitle', 'Employees') },
-        ]}
-        actions={(
-          <>
+      {isMetaUI() ? (
+        <MetaPageHeader
+          title={safe('listTitle', 'Employees')}
+          subtitle={safe('listSubtitle', 'Manage employees linked to the tenant.')}
+          breadcrumbs={[
+            { href: `/${locale}/dashboard`, label: 'Dashboard' },
+            { label: 'Admin' },
+            { label: safe('listTitle', 'Employees') },
+          ]}
+          actions={(
+            <>
+              <button type="button" className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)]" onClick={async () => {
+                try {
+                  setError(null);
+                  const r = await fetch('/api/admin/me/tenant', { method: 'GET', cache: 'no-store' });
+                  const j = await r.json().catch(() => ({}));
+                  if (!r.ok) throw new Error(j?.error || t('errors.loadTenantsFailed'));
+                  setTenantOptions(j?.tenants || []);
+                  setTenantModalOpen(true);
+                } catch (e: any) { setError(e?.message || t('errors.loadTenantsFailed')); }
+              }}>{t('selectTenant')}</button>
+              <Link href="./new" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">{t('create')}</Link>
+            </>
+          )}
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-[var(--foreground)]">{safe('listTitle', 'Employees')}</h1>
+            <p className="text-sm text-[var(--muted-foreground)] mt-1">{safe('listSubtitle', 'Manage employees linked to the tenant.')}</p>
+          </div>
+          <div className="flex gap-2">
             <button type="button" className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)]" onClick={async () => {
               try {
                 setError(null);
@@ -93,9 +116,9 @@ export default function EmployeesListPage() {
               } catch (e: any) { setError(e?.message || t('errors.loadTenantsFailed')); }
             }}>{t('selectTenant')}</button>
             <Link href="./new" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">{t('create')}</Link>
-          </>
-        )}
-      />
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-[var(--muted-foreground)]">Carregando...</div>

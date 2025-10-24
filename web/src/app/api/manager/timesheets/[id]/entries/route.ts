@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit/logger';
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const parsed = Schema.safeParse(json);
     if (!parsed.success) return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
 
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
     const { ts, error } = await ensureManagerAccess(supabase, user, id);
     if (error === 'not_found') return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if (error === 'forbidden') return NextResponse.json({ error: 'forbidden' }, { status: 403 });

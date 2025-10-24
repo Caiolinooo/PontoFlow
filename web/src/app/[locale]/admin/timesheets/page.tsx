@@ -1,62 +1,292 @@
 import { requireRole } from '@/lib/auth/server';
 import Link from 'next/link';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/service';
 
-export default async function AdminTimesheetsPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ q?: string }> }) {
+export default async function AdminTimesheetsPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    tenant?: string;
+    period?: string;
+  }>
+}) {
   const { locale } = await params;
-  const { q } = await searchParams;
+  const { q, status, tenant, period } = await searchParams;
   await requireRole(locale, ['ADMIN']);
 
   const query = (q ?? '').trim();
-  const supabase = await getServerSupabase();
-  let list: any[] = [];
+  const supabase = getServiceSupabase();
+
+  // Fetch tenants for filter
+  const { data: tenants } = await supabase
+    .from('tenants')
+    .select('id, name')
+    .order('name');
+
+  // First, get employee IDs if searching by name
+  let employeeIds: string[] | null = null;
   if (query) {
-    const { data } = await supabase
+    const { data: employees } = await supabase
       .from('employees')
-      .select('id, display_name, profile_id, vessel_id, cargo')
-      .ilike('display_name', `%${query}%`)
-      .limit(50);
-    list = data ?? [];
+      .select('id')
+      .ilike('display_name', `%${query}%`);
+
+    if (employees && employees.length > 0) {
+      employeeIds = employees.map(e => e.id);
+    } else {
+      // No employees found, return empty result
+      employeeIds = [];
+    }
   }
+
+  // Build timesheet query with filters - simple query without complex joins
+  let timesheetQuery = supabase
+    .from('timesheets')
+    .select('id, employee_id, periodo_ini, periodo_fim, status, created_at, tenant_id')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  // Apply filters
+  if (tenant) {
+    timesheetQuery = timesheetQuery.eq('tenant_id', tenant);
+  }
+
+  if (status) {
+    timesheetQuery = timesheetQuery.eq('status', status);
+  }
+
+  if (period) {
+    timesheetQuery = timesheetQuery.gte('periodo_ini', `${period}-01`);
+    timesheetQuery = timesheetQuery.lt('periodo_ini', `${period}-32`);
+  }
+
+  if (employeeIds !== null) {
+    if (employeeIds.length === 0) {
+      // No employees found, return empty
+      timesheetQuery = timesheetQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+    } else {
+      timesheetQuery = timesheetQuery.in('employee_id', employeeIds);
+    }
+  }
+
+  const { data: rawTimesheets, error: timesheetError } = await timesheetQuery;
+
+  if (timesheetError) {
+    console.error('Error fetching timesheets:', JSON.stringify(timesheetError, null, 2));
+  }
+
+  // Fetch related data for each timesheet
+  const timesheets = await Promise.all((rawTimesheets || []).map(async (ts: any) => {
+    // Fetch employee data with profile join (using explicit FK name)
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select('id, cargo, profile_id, profiles!employees_profile_id_fkey(display_name)')
+      .eq('id', ts.employee_id)
+      .maybeSingle();
+
+    if (empError) {
+      console.error('Error fetching employee:', ts.employee_id, empError);
+    }
+
+    if (!employee) {
+      console.warn('Employee not found for timesheet:', ts.id, 'employee_id:', ts.employee_id);
+    }
+
+    // Fetch tenant data
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('id, name')
+      .eq('id', ts.tenant_id)
+      .maybeSingle();
+
+    // Transform employee data to include display_name at root level
+    const employeeData = employee ? {
+      id: employee.id,
+      cargo: employee.cargo,
+      display_name: (employee.profiles as any)?.display_name || null
+    } : null;
+
+    return {
+      ...ts,
+      employee: employeeData,
+      tenant
+    };
+  }));
+
+  const statusLabels: Record<string, string> = {
+    rascunho: 'Rascunho',
+    enviado: 'Enviado',
+    aprovado: 'Aprovado',
+    recusado: 'Recusado',
+    bloqueado: 'Bloqueado'
+  };
+
+  const statusColors: Record<string, string> = {
+    rascunho: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+    enviado: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    aprovado: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    recusado: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    bloqueado: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--foreground)]">Timesheets (Admin)</h1>
-          <p className="text-sm text-[var(--muted-foreground)]">Busque um colaborador e visualize/edite seus timesheets por mês.</p>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Visualize e gerencie todos os timesheets do sistema
+          </p>
         </div>
       </div>
 
-      <form className="flex gap-2" method="get">
-        <input name="q" placeholder="Pesquisar colaborador" defaultValue={query} className="border rounded px-3 py-2 w-full max-w-lg bg-[var(--card)] text-[var(--foreground)] border-[var(--border)]" />
-        <button className="px-3 py-2 rounded bg-[var(--primary)] text-[var(--primary-foreground)]">Pesquisar</button>
+      {/* Filters */}
+      <form method="get" className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Employee Search */}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
+              Colaborador
+            </label>
+            <input
+              name="q"
+              placeholder="Buscar por nome..."
+              defaultValue={query}
+              className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
+            />
+          </div>
+
+          {/* Tenant Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
+              Tenant
+            </label>
+            <select
+              name="tenant"
+              defaultValue={tenant || ''}
+              className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
+            >
+              <option value="">Todos os tenants</option>
+              {tenants?.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
+              Status
+            </label>
+            <select
+              name="status"
+              defaultValue={status || ''}
+              className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
+            >
+              <option value="">Todos os status</option>
+              <option value="rascunho">Rascunho</option>
+              <option value="enviado">Enviado</option>
+              <option value="aprovado">Aprovado</option>
+              <option value="recusado">Recusado</option>
+              <option value="bloqueado">Bloqueado</option>
+            </select>
+          </div>
+
+          {/* Period Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
+              Período (YYYY-MM)
+            </label>
+            <input
+              name="period"
+              type="month"
+              defaultValue={period || ''}
+              className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-4">
+          <button
+            type="submit"
+            className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded text-sm font-medium hover:opacity-90"
+          >
+            Pesquisar
+          </button>
+          <Link
+            href={`/${locale}/admin/timesheets`}
+            className="px-4 py-2 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded text-sm font-medium hover:opacity-90"
+          >
+            Limpar
+          </Link>
+        </div>
       </form>
 
-      {query && (
-        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
-              <tr>
-                <th className="text-left px-6 py-3">Colaborador</th>
-                <th className="text-left px-6 py-3">Cargo</th>
-                <th className="text-right px-6 py-3">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((e) => (
-                <tr key={e.id} className="border-t border-[var(--border)]">
-                  <td className="px-6 py-3 text-[var(--foreground)]">{e.display_name ?? e.id}</td>
-                  <td className="px-6 py-3 text-[var(--foreground)]">{e.cargo ?? '-'}</td>
-                  <td className="px-6 py-3 text-right">
-                    <Link href={`/${locale}/admin/timesheets/employee/${e.id}`} className="px-2 py-1 rounded bg-[var(--muted)] text-[var(--foreground)]">Ver meses</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Results */}
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-[var(--border)]">
+          <h2 className="font-semibold text-[var(--foreground)]">
+            Resultados ({timesheets?.length || 0})
+          </h2>
         </div>
-      )}
+
+        {timesheets && timesheets.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
+                <tr>
+                  <th className="text-left px-6 py-3">Colaborador</th>
+                  <th className="text-left px-6 py-3">Cargo</th>
+                  <th className="text-left px-6 py-3">Tenant</th>
+                  <th className="text-left px-6 py-3">Período</th>
+                  <th className="text-left px-6 py-3">Status</th>
+                  <th className="text-right px-6 py-3">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timesheets.map((ts: any) => (
+                  <tr key={ts.id} className="border-t border-[var(--border)] hover:bg-[var(--muted)]/20">
+                    <td className="px-6 py-3 text-[var(--foreground)]">
+                      {ts.employee?.display_name || 'N/A'}
+                    </td>
+                    <td className="px-6 py-3 text-[var(--muted-foreground)]">
+                      {ts.employee?.cargo || '-'}
+                    </td>
+                    <td className="px-6 py-3 text-[var(--muted-foreground)]">
+                      {ts.tenant?.name || 'N/A'}
+                    </td>
+                    <td className="px-6 py-3 text-[var(--foreground)]">
+                      {new Date(ts.periodo_ini).toLocaleDateString('pt-BR')} - {new Date(ts.periodo_fim).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusColors[ts.status] || 'bg-gray-100 text-gray-800'}`}>
+                        {statusLabels[ts.status] || ts.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      <Link
+                        href={`/${locale}/admin/timesheets/view/${ts.id}`}
+                        className="inline-flex px-3 py-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-medium hover:opacity-90"
+                      >
+                        Ver detalhes
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="px-6 py-12 text-center text-[var(--muted-foreground)]">
+            <p>Nenhum timesheet encontrado.</p>
+            <p className="text-sm mt-1">Tente ajustar os filtros de busca.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

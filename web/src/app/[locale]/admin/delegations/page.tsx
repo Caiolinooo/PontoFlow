@@ -5,9 +5,10 @@ import React, { useEffect, useState } from 'react';
 import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSelectorModal';
 import { useTranslations } from 'next-intl';
 import { MetaPageHeader } from '@/components/ui/meta/PageHeader';
+import { isMetaUI } from '@/lib/flags';
 
-export default function AdminDelegationsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = React.use(params);
+export default function AdminDelegationsPage({ params }: { params: { locale: string } }) {
+  const { locale } = params;
   const t = useTranslations('admin.delegations');
   const [rows, setRows] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -39,16 +40,43 @@ export default function AdminDelegationsPage({ params }: { params: Promise<{ loc
 
   return (
     <div className="space-y-6">
-      <MetaPageHeader
-        title={t('title')}
-        subtitle={t('subtitle')}
-        breadcrumbs={[
-          { href: `/${locale}/dashboard`, label: 'Dashboard' },
-          { label: 'Admin' },
-          { label: t('title') },
-        ]}
-        actions={(
-          <>
+      {isMetaUI() ? (
+        <MetaPageHeader
+          title={t('title')}
+          subtitle={t('subtitle')}
+          breadcrumbs={[
+            { href: `/${locale}/dashboard`, label: 'Dashboard' },
+            { label: 'Admin' },
+            { label: t('title') },
+          ]}
+          actions={(
+            <>
+              <button type="button" className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)]" onClick={async () => {
+                try {
+                  setError(null);
+                  const r = await fetch('/api/admin/me/tenant', { method: 'GET', cache: 'no-store' });
+                  const j = await r.json().catch(() => ({}));
+                  if (!r.ok) throw new Error(j?.error || 'Falha ao carregar tenants');
+                  setTenantOptions(j?.tenants || []);
+                  setTenantModalOpen(true);
+                } catch (e: any) { setError(e?.message || 'Falha ao carregar tenants'); }
+              }}>Selecionar tenant</button>
+              <Link
+                href={`/${locale}/admin/delegations/groups/new`}
+                className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors"
+              >
+                + {t('newGroup')}
+              </Link>
+            </>
+          )}
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-[var(--foreground)]">{t('title')}</h1>
+            <p className="text-sm text-[var(--muted-foreground)] mt-1">{t('subtitle')}</p>
+          </div>
+          <div className="flex gap-2">
             <button type="button" className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)]" onClick={async () => {
               try {
                 setError(null);
@@ -65,9 +93,10 @@ export default function AdminDelegationsPage({ params }: { params: Promise<{ loc
             >
               + {t('newGroup')}
             </Link>
-          </>
-        )}
-      />
+          </div>
+        </div>
+      )
+      }
 
       {loading ? (
         <div className="text-[var(--muted-foreground)]">Carregando...</div>

@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireApiAuth } from '@/lib/auth/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit/logger';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = getServiceSupabase();
 
 const Body = z.object({
   accepted: z.boolean().optional().default(true),

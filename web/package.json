@@ -1,9 +1,10 @@
 {
   "name": "web",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:webpack": "next dev",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",

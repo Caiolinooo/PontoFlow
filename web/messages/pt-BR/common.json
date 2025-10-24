@@ -31,6 +31,28 @@
     "signOut": "Sair",
     "myProfile": "Meu Perfil"
   },
+  "adminNav": {
+    "people": "Pessoas",
+    "operations": "Operações",
+    "infrastructure": "Infraestrutura",
+    "system": "Sistema",
+    "users": "Usuários",
+    "delegations": "Delegações",
+    "employees": "Funcionários",
+    "vessels": "Embarcações",
+    "environments": "Ambientes",
+    "tenants": "Tenants",
+    "workSchedules": "Escalas",
+    "periods": "Períodos",
+    "timesheets": "Timesheets",
+    "audit": "Auditoria",
+    "importExport": "Import/Export",
+    "settings": "Configurações",
+    "groups": "Grupos",
+    "associations": "Associações",
+    "access": "Acessos"
+  },
+
   "theme": {
     "light": "Claro",
     "dark": "Escuro",

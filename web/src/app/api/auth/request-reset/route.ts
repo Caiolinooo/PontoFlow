@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-      await supabase.from('users_unified').select('id').eq('email', email).single();
+      await supabase.from('users_unified').select('id').eq('email', email).limit(1).maybeSingle();
       // In a full implementation we would generate a token, persist, and send an email here.
     } catch {}
 

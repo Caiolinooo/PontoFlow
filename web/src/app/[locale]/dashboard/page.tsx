@@ -14,11 +14,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <a 
-          href={`/${locale}/employee/timesheets/current`}
-          className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
+        <a
+          href={`/${locale}/employee/timesheets`}
+          className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-500 ease-out hover:translate-y-0.5 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-300"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700 ease-out"></div>
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center ring-8 ring-[var(--primary)]/10 bg-[var(--primary)]/10">
@@ -35,9 +35,9 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         {(user.role === 'MANAGER' || user.role === 'MANAGER_TIMESHEET' || user.role === 'ADMIN') && (
           <a 
             href={`/${locale}/manager/pending`} 
-            className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
+            className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-500 ease-out hover:translate-y-0.5 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-300"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700 ease-out"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center ring-8 ring-[var(--primary)]/10 bg-[var(--primary)]/10">
@@ -54,9 +54,9 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
         <a 
           href={`/${locale}/reports`} 
-          className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
+          className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-500 ease-out hover:translate-y-0.5 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-300"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700 ease-out"></div>
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center ring-8 ring-[var(--primary)]/10 bg-[var(--primary)]/10">
@@ -73,12 +73,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         {user.role === 'ADMIN' && (
           <a
             href={`/${locale}/admin/users`}
-            className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
+            className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-500 ease-out hover:translate-y-0.5 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-300"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700 ease-out"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center ring-8 ring-[var(--primary)]/10 bg-abz-orange/10">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center ring-8 ring-[var(--primary)]/10 bg-[var(--primary)]/10">
                   <svg className="w-6 h-6 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
                   </svg>
@@ -92,12 +92,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
         <a
           href={`/${locale}/settings/notifications`}
-          className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
+          className="group relative bg-[var(--card)] rounded-xl shadow-md hover:shadow-xl transition-all duration-500 ease-out hover:translate-y-0.5 p-6 border border-[var(--border)] hover:border-transparent ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-300"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)] opacity-5 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700 ease-out"></div>
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center ring-8 ring-[var(--primary)]/10 bg-abz-orange/10">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center ring-8 ring-[var(--primary)]/10 bg-[var(--primary)]/10">
                 <svg className="w-6 h-6 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
