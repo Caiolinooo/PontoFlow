@@ -101,6 +101,15 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
+### 0.2.4 (2025-10-27)
+- **fix(notifications)**: API agora retorna preferências padrão quando tabela não existe (erro 500 corrigido)
+- **fix(i18n)**: Traduções completas da página de notificações em pt-BR
+- **fix(layout)**: Correção completa do layout responsivo
+  - Removido DeveloperFooter duplicado de todos os layouts
+  - Ajustado padding inferior em todos os módulos (dashboard: 160px, outros: 96px)
+  - Todo conteúdo agora visível sem cortes pelo footer fixo
+  - Cards Admin e Settings totalmente visíveis no dashboard
+- **chore(architecture)**: Simplificação da estrutura de footer (DeveloperFooter integrado no UnifiedBottomNav)
 
 ### 0.1.6 (2025-10-24)
 - chore(brand): limpeza final de quaisquer ocorrências "ABZ" (UI, e‑mails, invoice)

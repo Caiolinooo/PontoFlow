@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.2.4] - 2025-10-27
+
+### Fixed
+- **Notifications API**: Fixed 500 error when `notification_preferences` table doesn't exist
+  - Added graceful error handling with fallback to default preferences
+  - Added error code `42P01` detection (table not found)
+  - Added debug logging for troubleshooting
+  - API now returns default preferences instead of crashing
+- **Notifications Page**: Added missing Portuguese translations
+  - Added `actions.saving` translation
+  - All notification preference labels now properly translated
+  - Removed English fallbacks
+- **Responsive Layout**: Major fix for content being cut off by fixed footer
+  - Removed duplicate `DeveloperFooter` component from all layouts
+  - `DeveloperFooter` now integrated only in `UnifiedBottomNav` (dashboard only)
+  - Adjusted bottom padding across all modules:
+    - Dashboard: `pb-40` (160px) - accommodates developer footer + nav
+    - Other modules: `pb-24` (96px) - accommodates nav only
+  - Dashboard grid now has `pb-16` extra padding for better spacing
+  - All content (including Admin and Settings cards) now fully visible
+  - No more content overlap with fixed bottom navigation
+
+### Changed
+- **Layout Architecture**: Simplified footer structure
+  - All layouts now use consistent padding pattern
+  - Developer footer only shows on dashboard route
+  - Cleaner component hierarchy
+
+### Technical Details
+- Modified files:
+  - `web/src/app/api/notifications/preferences/route.ts`
+  - `web/messages/pt-BR/common.json`
+  - `web/src/app/[locale]/dashboard/layout.tsx`
+  - `web/src/app/[locale]/dashboard/page.tsx`
+  - `web/src/app/[locale]/employee/layout.tsx`
+  - `web/src/app/[locale]/manager/layout.tsx`
+  - `web/src/app/[locale]/admin/layout.tsx`
+  - `web/src/app/[locale]/reports/layout.tsx`
+  - `web/src/app/[locale]/settings/layout.tsx`
+
 ## [1.0.0] - 2025-10-16
 
 ### Added

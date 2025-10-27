@@ -4,21 +4,21 @@ import { requireAuth } from '@/lib/auth/server';
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const user = await requireAuth(locale);
-  const t = await getTranslations('dashboard');
+  const t = await getTranslations({ locale, namespace: 'dashboard' });
   
   return (
-    <div className="space-y-8">
+    <div className="w-full space-y-8">
       {/* Header with gradient */}
       <div className="relative">
         <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary)]/10 via-transparent to-[var(--primary)]/5 rounded-2xl blur-3xl -z-10"></div>
         <div className="relative">
-          <h1 className="text-4xl font-bold text-[var(--foreground)] bg-clip-text">{t('title')}</h1>
-          <p className="mt-3 text-lg text-[var(--muted-foreground)]">{t('subtitle')}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-[var(--foreground)] bg-clip-text">{t('title')}</h1>
+          <p className="mt-2 sm:mt-3 text-base sm:text-lg text-[var(--muted-foreground)]">{t('subtitle')}</p>
         </div>
       </div>
 
       {/* Quick Stats - Different for Admin/Manager vs Employee */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-5xl mx-auto">
         <div className="bg-gradient-to-br from-[var(--card)] to-[var(--card)]/50 rounded-xl p-4 border border-[var(--border)] backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -27,7 +27,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
               </svg>
             </div>
             <div>
-              <p className="text-xs text-[var(--muted-foreground)]">Horas este mês</p>
+              <p className="text-xs text-[var(--muted-foreground)]">{t('stats.hoursThisMonth')}</p>
               <p className="text-xl font-bold text-[var(--foreground)]">--</p>
             </div>
           </div>
@@ -43,7 +43,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--muted-foreground)]">Aprovados</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">{t('stats.approved')}</p>
                   <p className="text-xl font-bold text-[var(--foreground)]">--</p>
                 </div>
               </div>
@@ -57,7 +57,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--muted-foreground)]">Pendentes</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">{t('stats.pending')}</p>
                   <p className="text-xl font-bold text-[var(--foreground)]">--</p>
                 </div>
               </div>
@@ -74,7 +74,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--muted-foreground)]">Horas Extras (50%)</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">{t('stats.overtime50')}</p>
                   <p className="text-xl font-bold text-[var(--foreground)]">--</p>
                 </div>
               </div>
@@ -88,7 +88,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--muted-foreground)]">Dobra (100%)</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">{t('stats.overtime100')}</p>
                   <p className="text-xl font-bold text-[var(--foreground)]">--</p>
                 </div>
               </div>
@@ -98,7 +98,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       </div>
 
       {/* Main Modules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full max-w-6xl mx-auto pb-16">
         <a
           href={`/${locale}/employee/timesheets`}
           className="group relative bg-gradient-to-br from-[var(--card)] to-[var(--card)]/80 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 p-6 border border-[var(--border)] hover:border-[var(--primary)]/50 ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden backdrop-blur"
@@ -185,8 +185,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-[var(--card-foreground)] mb-2 group-hover:text-[var(--primary)] transition-colors duration-300">Admin</h3>
-              <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">Configurações e gestão do sistema</p>
+              <h3 className="text-xl font-bold text-[var(--card-foreground)] mb-2 group-hover:text-[var(--primary)] transition-colors duration-300">{t('modules.admin.title')}</h3>
+              <p className="text-sm text-[var(--muted-foreground)] leading-relaxed">{t('modules.admin.description')}</p>
             </div>
           </a>
         )}
