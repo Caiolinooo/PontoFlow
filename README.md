@@ -111,6 +111,107 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
   - Cards Admin e Settings totalmente visíveis no dashboard
 - **chore(architecture)**: Simplificação da estrutura de footer (DeveloperFooter integrado no UnifiedBottomNav)
 
+### 0.2.3 (2025-10-27)
+- **fix(developer-info)**: Correção de todas as informações de contato do desenvolvedor
+  - Instagram: @tal_do_goulart
+  - LinkedIn: https://www.linkedin.com/in/caio-goulart/
+  - Email: Caiovaleriogoulartcorreia@gmail.com
+- **feat(dashboard)**: Estatísticas baseadas em role do usuário
+  - Admin/Manager: Horas este mês, Aprovados, Pendentes
+  - Employee (Offshore): Horas este mês, Horas Extras (50%), Dobra (100%)
+  - Conformidade com regulamentações offshore (CLT Art. 74, Portaria MTP 671/2021)
+- **feat(footer)**: Footer do desenvolvedor integrado na barra de navegação inferior
+  - Visível apenas no dashboard
+  - Design compacto com todas as informações
+- **feat(cards)**: Estilo premium aplicado a todos os cards do dashboard
+  - Backgrounds com gradiente
+  - Múltiplos efeitos de hover (elevação, sombras, rotação de ícones)
+  - Transições suaves (300-700ms)
+
+### 0.2.2 (2025-10-27)
+- **feat(footer)**: Footer profissional com informações do desenvolvedor
+  - Copyright com ano atual
+  - Nome, email e links sociais (GitHub, LinkedIn, Instagram)
+  - Design responsivo e elegante
+  - Integrado em todos os layouts
+- **feat(navigation)**: Botão "Voltar ao Dashboard"
+  - Ícone de seta com animação suave
+  - Design inspirado no Meta UI
+  - Oculto automaticamente na página do dashboard
+  - Adicionado a todos os layouts não-admin
+- **feat(branding)**: Upload de imagens para branding
+  - Upload de logo e watermark
+  - Codificação Base64 para armazenamento
+  - Preview ao vivo das imagens
+  - Suporte para URL ou arquivo
+  - Integrado em AdminTenantSettings
+- **feat(dashboard)**: Dashboard aprimorado com header gradiente
+  - Cards de estatísticas rápidas
+  - Múltiplos efeitos de hover
+  - Backdrop blur e sombras aprimoradas
+- **fix(layout)**: Posicionamento da navegação inferior corrigido
+  - Layout flex-col para posicionamento correto do footer
+  - Padding consistente (pb-20) para espaço da navegação
+  - Footer do desenvolvedor acima da navegação inferior
+
+### 0.2.1 (2025-10-27)
+- **feat(navigation)**: Barra de navegação inferior unificada
+  - Consolidação de toda navegação em uma única barra inferior
+  - Logo + título do site à esquerda
+  - Menus admin (quando em rotas /admin) com dropdowns
+  - Toggle de tema, seletor de idioma, info do usuário à direita
+  - Seletor de tenant (apenas admin)
+  - Design responsivo para mobile e desktop
+- **feat(context-aware)**: Navegação consciente do contexto
+  - Menus admin aparecem apenas em rotas `/admin`
+  - Barra limpa para rotas employee, manager, dashboard
+  - Dropdowns abrem para cima a partir da barra inferior
+  - Destaque de categoria ativa
+- **refactor(ui)**: Remoção de componentes de navegação duplicados
+  - Removido Header e AdminNav dos layouts
+  - Interface mais limpa com fonte única de navegação
+  - Melhor uso do espaço da tela
+  - Experiência consistente em todos os módulos
+- **chore(layouts)**: Todos os layouts agora usam UnifiedBottomNav
+  - Adicionado padding `pb-16` para evitar sobreposição de conteúdo
+  - TenantSwitcher integrado na barra inferior
+
+### 0.2.0 (2025-10-27)
+- **BREAKING**: Reestruturação completa da página de configurações com interface em abas
+- **BREAKING**: Remoção de todos os emojis para aparência comercial profissional
+- **BREAKING**: Configuração de sincronização genérica (removidas referências específicas ao EmployeeHub)
+  - `EMPLOYEEHUB_SYNC_URL` → `SOURCE_SYSTEM_SYNC_URL`
+  - `TIMESHEET_SYNC_URL` → `TARGET_SYSTEM_SYNC_URL`
+- **feat(settings)**: Interface de configurações em abas com 3 seções principais
+  - Status do Sistema: Health check com badges visuais de status
+  - Configurações do Sistema: Config do sistema com ferramentas de migração
+  - Configurações da Empresa: Configurações do tenant
+- **feat(health)**: Sistema de health check aprimorado
+  - Badges visuais de status para cada componente
+  - Indicador de saúde geral do sistema
+  - Verificações adicionais de variáveis de ambiente (SMTP, Sync, API)
+  - Mensagens de erro e avisos melhoradas
+  - Melhor organização visual com cards
+- **feat(migration)**: Funcionalidade de migração integrada
+  - Exportar usuários do sistema atual
+  - Importar usuários de sistemas externos
+  - Testar conexões antes da migração
+  - Autenticação HMAC SHA-256
+  - Download JSON para exportações
+  - Feedback detalhado de operações
+- **refactor(ui)**: Melhorias profissionais de UI
+  - Removidos todos os ícones emoji
+  - Design corporativo limpo
+  - Melhor hierarquia visual
+  - Espaçamento e tipografia consistentes
+  - Badges de status e feedback com código de cores
+- **refactor(components)**: Separação de responsabilidades em componentes dedicados
+  - AdminSettingsTabs: Interface principal em abas
+  - AdminTenantSettings: Configuração da empresa
+  - AdminSystemConfig: Variáveis do sistema e integrações
+  - AdminHealth: Monitoramento de saúde aprimorado
+- **chore**: Removido componente AdminDataSync (integrado no AdminSystemConfig)
+
 ### 0.1.6 (2025-10-24)
 - chore(brand): limpeza final de quaisquer ocorrências "ABZ" (UI, e‑mails, invoice)
 - fix(dashboard): texto corrompido corrigido; cores via `[var(--primary)]`

@@ -44,6 +44,193 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - `web/src/app/[locale]/reports/layout.tsx`
   - `web/src/app/[locale]/settings/layout.tsx`
 
+## [0.2.3] - 2025-10-27
+
+### Fixed
+- **Developer Information**: Corrected all developer contact details
+  - Instagram: @tal_do_goulart
+  - LinkedIn: https://www.linkedin.com/in/caio-goulart/
+  - Email: Caiovaleriogoulartcorreia@gmail.com
+  - Updated in both `DeveloperFooter` and `UnifiedBottomNav`
+
+### Added
+- **Role-Based Statistics**: Dashboard now shows different stats based on user role
+  - **Admin/Manager**: Horas este mês, Aprovados, Pendentes
+  - **Employee (Offshore)**: Horas este mês, Horas Extras (50%), Dobra (100%)
+  - Compliant with offshore work regulations (CLT Article 74, Portaria MTP 671/2021)
+- **Integrated Footer**: Developer footer now integrated into bottom navigation bar
+  - Only visible on dashboard route
+  - Compact design with all information
+  - Better space utilization
+
+### Changed
+- **Enhanced Dashboard Cards**: Premium styling applied to all module cards
+  - Gradient backgrounds (from-card to-card/80)
+  - Multiple hover effects:
+    - Elevation animation (-translate-y-1)
+    - Enhanced shadows (shadow-2xl)
+    - Animated gradient overlays
+    - Icon rotation (rotate-6) and scaling (scale-110)
+    - Arrow indicator movement
+    - Title color transition to primary
+    - Border color change
+  - Larger icons (w-14 h-14)
+  - Rounded corners (rounded-2xl)
+  - Backdrop blur effects
+  - Smooth transitions (300-700ms)
+
+### Technical Details
+- Modified files:
+  - `web/src/components/DeveloperFooter.tsx`
+  - `web/src/components/UnifiedBottomNav.tsx`
+  - `web/src/app/[locale]/dashboard/page.tsx`
+  - `web/src/app/[locale]/dashboard/layout.tsx`
+
+## [0.2.2] - 2025-10-27
+
+### Added
+- **Developer Footer**: Professional footer with developer information
+  - Copyright notice with current year
+  - Developer name: Caio Valério Goulart Correia
+  - Email: caiovaleriogoulartcorreia@gmail.com
+  - Social links: GitHub, LinkedIn, Instagram
+  - Elegant icons and hover effects
+  - Responsive design for mobile and desktop
+  - Integrated in all layouts
+- **Back to Dashboard Button**: New navigation component
+  - Arrow icon with smooth hover animation
+  - Meta UI inspired design
+  - Automatically hidden on dashboard page
+  - Added to all non-admin layouts
+  - Consistent navigation experience
+- **Image Upload for Branding**: Logo and watermark upload functionality
+  - Logo upload with file picker
+  - Watermark image upload
+  - Base64 encoding for easy storage
+  - Live preview of uploaded images
+  - Support for URL or file upload
+  - Professional file input styling
+  - Integrated in `AdminTenantSettings`
+
+### Changed
+- **Enhanced Dashboard**: Beautiful gradient header and improved cards
+  - Quick stats cards (hours, approved, pending)
+  - Gradient backgrounds
+  - Multiple hover effects (scale, translate, rotate)
+  - Arrow indicators
+  - Backdrop blur effects
+  - Enhanced shadows and borders
+  - Smooth color transitions
+- **Layout Improvements**: Fixed bottom navigation positioning
+  - Added flex-col layout for proper footer placement
+  - Consistent padding (pb-20) for bottom nav clearance
+  - Developer footer above bottom nav
+  - Better content flow and spacing
+
+### Technical Details
+- Created files:
+  - `web/src/components/DeveloperFooter.tsx`
+  - `web/src/components/BackToDashboard.tsx`
+- Modified files:
+  - `web/src/components/admin/AdminTenantSettings.tsx`
+  - `web/src/app/[locale]/dashboard/page.tsx`
+  - All layout files (admin, dashboard, employee, manager, reports, settings)
+
+## [0.2.1] - 2025-10-27
+
+### Added
+- **Unified Bottom Navigation Bar**: Complete UI redesign
+  - Consolidated all navigation into a single bottom bar
+  - Fixed bottom navigation bar with backdrop blur
+  - Logo + site title on the left
+  - Admin menus (when in admin routes) with dropdowns
+  - Theme toggle, language switcher, user info on the right
+  - Tenant switcher (admin only)
+  - Responsive design for mobile and desktop
+- **Context-Aware Navigation**: Smart menu display
+  - Shows admin menus only when in `/admin` routes
+  - Clean bar for employee, manager, dashboard routes
+  - Dropdowns open upward from bottom bar
+  - Active category highlighting
+
+### Removed
+- **Duplicate Navigation Components**: Removed Header and AdminNav from layouts
+  - Cleaner interface with single navigation source
+  - Better use of screen real estate
+  - Consistent experience across all modules
+
+### Changed
+- **Layout Updates**: All layouts now use `UnifiedBottomNav`
+  - Added `pb-16` padding to prevent content overlap
+  - Integrated `TenantSwitcher` into bottom bar
+  - Removed separate Header and AdminNav components
+
+### Technical Details
+- Created files:
+  - `web/src/components/UnifiedBottomNav.tsx`
+- Modified files:
+  - All layout files (admin, dashboard, employee, manager, reports, settings)
+
+## [0.2.0] - 2025-10-27
+
+### Breaking Changes
+- **Settings Page Restructure**: Complete reorganization with tabbed interface
+- **Removed Emojis**: Professional commercial appearance throughout
+- **Generic Sync Configuration**: Removed EmployeeHub-specific references
+  - `EMPLOYEEHUB_SYNC_URL` → `SOURCE_SYSTEM_SYNC_URL`
+  - `TIMESHEET_SYNC_URL` → `TARGET_SYSTEM_SYNC_URL`
+
+### Added
+- **Tabbed Settings Interface**: 3 main sections
+  - **Status do Sistema**: Health check with visual status badges
+  - **Configurações do Sistema**: System config with migration tools
+  - **Configurações da Empresa**: Tenant settings
+- **Enhanced Health Check System**:
+  - Visual status badges for each component
+  - Overall system health indicator
+  - Additional environment variable checks (SMTP, Sync, API)
+  - Improved error messaging and warnings
+  - Better visual organization with cards
+- **Integrated Migration Functionality**:
+  - Export users from current system
+  - Import users from external systems
+  - Test connections before migration
+  - HMAC SHA-256 authentication
+  - JSON download for exports
+  - Detailed operation feedback
+
+### Changed
+- **Professional UI Improvements**:
+  - Removed all emoji icons
+  - Clean, corporate design
+  - Better visual hierarchy
+  - Consistent spacing and typography
+  - Status badges and color-coded feedback
+- **Separated Concerns**: Dedicated components
+  - `AdminSettingsTabs` - Main tabbed interface
+  - `AdminTenantSettings` - Company configuration
+  - `AdminSystemConfig` - System variables and integrations
+  - `AdminHealth` - Enhanced health monitoring
+
+### Removed
+- **AdminDataSync Component**: Integrated into `AdminSystemConfig`
+
+### Technical Details
+- Created files:
+  - `web/src/components/admin/AdminSettingsTabs.tsx`
+  - `web/src/components/admin/AdminTenantSettings.tsx`
+- Modified files:
+  - `web/src/components/admin/AdminHealth.tsx`
+  - `web/src/components/admin/AdminSystemConfig.tsx`
+  - `web/src/app/[locale]/admin/settings/page.tsx`
+- Removed files:
+  - `web/src/components/admin/AdminDataSync.tsx`
+
+### Migration Notes
+- No database changes required
+- Environment variables remain backward compatible
+- Consider updating `.env` files to use new generic variable names
+
 ## [1.0.0] - 2025-10-16
 
 ### Added
