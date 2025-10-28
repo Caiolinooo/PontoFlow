@@ -169,7 +169,7 @@ export default function GroupDetailPanel({
               {(mgrResults.length ? mgrResults : managersOptions).map((o: any) => (
                 <li key={o.id} className="flex items-center justify-between px-3 py-2">
                   <span className="text-sm">{o.label}</span>
-                  <button disabled={loadingMgr} onClick={async () => { setManagerToAdd(o.id); await addManager(); }} className="text-[var(--primary)]">{t('add')}</button>
+                  <button disabled={loadingMgr} onClick={async () => { setManagerToAdd(o.id); await addManager(); }} className="text-[var(--primary)] text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">{t('add')}</button>
                 </li>
               ))}
               {((mgrResults.length ? mgrResults : managersOptions).length === 0) && (

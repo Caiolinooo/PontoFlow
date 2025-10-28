@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     // Resolve tenant: if user has none and there is exactly one tenant, adopt it and persist for the user
     let tenantId = user.tenant_id as string | undefined;
     if (!tenantId) {
-      const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+      const svc = getServiceSupabase();
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
         tenantId = tenants[0].id;
@@ -56,7 +56,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireApiRole(['ADMIN']);
-    const supabase = await getServerSupabase();
+    // Use service client to bypass RLS (we handle authorization manually)
+    const supabase = getServiceSupabase();
 
     // Resolve tenant as in GET
     let tenantId = user.tenant_id as string | undefined;
@@ -84,16 +85,15 @@ export async function POST(req: NextRequest) {
     } as const;
 
     // Defensive: verify tenant exists to avoid FK errors with clearer message
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
-    let { data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle();
+    let { data: tenantRow } = await supabase.from('tenants').select('id').eq('id', tenantId).maybeSingle();
     if (!tenantRow) {
-      const { data: tenants } = await svc.from('tenants').select('id').limit(2);
+      const { data: tenants } = await supabase.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
         tenantId = tenants[0].id as string;
-        await svc.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
-        ({ data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle());
+        await supabase.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
+        ({ data: tenantRow } = await supabase.from('tenants').select('id').eq('id', tenantId).maybeSingle());
       } else {
-        const { data: all } = await svc.from('tenants').select('id, name').order('name');
+        const { data: all } = await supabase.from('tenants').select('id, name').order('name');
         return NextResponse.json({ error: 'tenant_required', tenants: all ?? [] }, { status: 409 });
       }
     }
@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error || !data) {
+      console.error('Failed to create group:', error);
       return NextResponse.json({ error: error?.message ?? 'insert_failed' }, { status: 400 });
     }
 
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
     if (e instanceof Error && (e.message === 'Unauthorized' || e.message === 'Forbidden')) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
+    console.error('POST /api/admin/delegations/groups error:', e);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }

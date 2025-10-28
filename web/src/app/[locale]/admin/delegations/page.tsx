@@ -6,9 +6,11 @@ import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSele
 import { useTranslations } from 'next-intl';
 import { MetaPageHeader } from '@/components/ui/meta/PageHeader';
 import { isMetaUI } from '@/lib/flags';
+import { useParams } from 'next/navigation';
 
-export default function AdminDelegationsPage({ params }: { params: { locale: string } }) {
-  const { locale } = params;
+export default function AdminDelegationsPage() {
+  const params = useParams();
+  const locale = params.locale as string;
   const t = useTranslations('admin.delegations');
   const [rows, setRows] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -27,10 +29,10 @@ export default function AdminDelegationsPage({ params }: { params: { locale: str
         setTenantModalOpen(true);
         return;
       }
-      if (!r.ok) throw new Error(j?.error || 'Falha ao carregar grupos');
+      if (!r.ok) throw new Error(j?.error || t('loadFailed'));
       setRows((j.items || []).map((g: any) => ({ id: g.id, name: g.name })));
     } catch (e: any) {
-      setError(e?.message || 'Erro inesperado');
+      setError(e?.message || t('unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -56,11 +58,11 @@ export default function AdminDelegationsPage({ params }: { params: { locale: str
                   setError(null);
                   const r = await fetch('/api/admin/me/tenant', { method: 'GET', cache: 'no-store' });
                   const j = await r.json().catch(() => ({}));
-                  if (!r.ok) throw new Error(j?.error || 'Falha ao carregar tenants');
+                  if (!r.ok) throw new Error(j?.error || t('loadTenantsFailed'));
                   setTenantOptions(j?.tenants || []);
                   setTenantModalOpen(true);
-                } catch (e: any) { setError(e?.message || 'Falha ao carregar tenants'); }
-              }}>Selecionar tenant</button>
+                } catch (e: any) { setError(e?.message || t('loadTenantsFailed')); }
+              }}>{t('selectTenant')}</button>
               <Link
                 href={`/${locale}/admin/delegations/groups/new`}
                 className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors"
@@ -82,11 +84,11 @@ export default function AdminDelegationsPage({ params }: { params: { locale: str
                 setError(null);
                 const r = await fetch('/api/admin/me/tenant', { method: 'GET', cache: 'no-store' });
                 const j = await r.json().catch(() => ({}));
-                if (!r.ok) throw new Error(j?.error || 'Falha ao carregar tenants');
+                if (!r.ok) throw new Error(j?.error || t('loadTenantsFailed'));
                 setTenantOptions(j?.tenants || []);
                 setTenantModalOpen(true);
-              } catch (e: any) { setError(e?.message || 'Falha ao carregar tenants'); }
-            }}>Selecionar tenant</button>
+              } catch (e: any) { setError(e?.message || t('loadTenantsFailed')); }
+            }}>{t('selectTenant')}</button>
             <Link
               href={`/${locale}/admin/delegations/groups/new`}
               className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors"

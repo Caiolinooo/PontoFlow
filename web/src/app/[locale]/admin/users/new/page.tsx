@@ -7,7 +7,7 @@ export default async function NewUserPage({ params }: { params: Promise<{ locale
   const { locale } = await params;
   await requireRole(locale, ['ADMIN']);
 
-  const t = await getTranslations('admin.users');
+  const t = await getTranslations({ locale, namespace: 'admin.users' });
 
   return (
     <div className="space-y-6">

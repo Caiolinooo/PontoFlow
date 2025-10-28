@@ -61,10 +61,10 @@ export default function ReviewActions({timesheetId, entries, labels}: Props) {
 
   return (
     <div className="flex gap-2">
-      <button disabled={loading} onClick={onApprove} className="px-3 py-2 rounded bg-green-600 text-white text-sm">
+      <button disabled={loading} onClick={onApprove} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
         {labels.approve}
       </button>
-      <button disabled={loading} onClick={() => setOpen(true)} className="px-3 py-2 rounded bg-red-600 text-white text-sm">
+      <button disabled={loading} onClick={() => setOpen(true)} className="px-4 py-2 rounded-lg bg-[var(--destructive)] text-[var(--destructive-foreground)] text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
         {labels.reject}
       </button>
 

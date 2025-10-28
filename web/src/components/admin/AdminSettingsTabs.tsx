@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import AdminHealth from './AdminHealth';
 import AdminSystemConfig from './AdminSystemConfig';
 import AdminTenantSettings from './AdminTenantSettings';
@@ -14,11 +15,13 @@ interface AdminSettingsTabsProps {
 
 export default function AdminSettingsTabs({ locale, tenant, settings }: AdminSettingsTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('health');
+  const t = useTranslations('adminSettings.tabs');
+  const tHealth = useTranslations('adminSettings.health');
 
   const tabs = [
-    { id: 'health' as const, label: 'Status do Sistema' },
-    { id: 'system' as const, label: 'Configurações do Sistema' },
-    { id: 'tenant' as const, label: 'Configurações da Empresa' },
+    { id: 'health' as const, label: t('health') },
+    { id: 'system' as const, label: t('system') },
+    { id: 'tenant' as const, label: t('tenant') },
   ];
 
   return (
@@ -47,9 +50,9 @@ export default function AdminSettingsTabs({ locale, tenant, settings }: AdminSet
         {activeTab === 'health' && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-semibold mb-2">Status do Sistema</h2>
+              <h2 className="text-xl font-semibold mb-2">{tHealth('title')}</h2>
               <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                Verifique a saúde e conectividade dos serviços
+                {tHealth('subtitle')}
               </p>
             </div>
             <AdminHealth />

@@ -1,15 +1,11 @@
 import {NextResponse} from 'next/server';
-import {createClient} from '@supabase/supabase-js';
 import {requireApiRole} from '@/lib/auth/server';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import {getServerSupabase} from '@/lib/supabase/server';
 
 export async function GET() {
   try {
     const user = await requireApiRole(['ADMIN', 'MANAGER', 'MANAGER_TIMESHEET']);
+    const supabase = await getServerSupabase();
 
     // ADMIN: vê tudo do tenant; Manager: apenas grupos delegados
     let data: any[] | null = null;
@@ -25,11 +21,14 @@ export async function GET() {
       data = resp.data; error = resp.error;
     } else {
       // grupos do gerente
+      // Nota: após migração phase-22, tenant_id estará disponível diretamente
+      // Por enquanto, suportamos ambas as abordagens (com e sem tenant_id)
       const { data: mgrGroups } = await supabase
         .from('manager_group_assignments')
         .select('group_id')
-        .eq('tenant_id', user.tenant_id as string)
-        .eq('manager_id', user.id);
+        .eq('manager_id', user.id)
+        .eq('tenant_id', user.tenant_id as string);
+
       const groupIds = [...new Set((mgrGroups ?? []).map(g => g.group_id))];
 
       if (groupIds.length === 0) {
@@ -37,11 +36,13 @@ export async function GET() {
       }
 
       // employees nesses grupos
+      // Nota: após migração phase-22, tenant_id estará disponível diretamente
       const { data: memberships } = await supabase
         .from('employee_group_members')
         .select('employee_id')
-        .eq('tenant_id', user.tenant_id as string)
-        .in('group_id', groupIds);
+        .in('group_id', groupIds)
+        .eq('tenant_id', user.tenant_id as string);
+
       const employeeIds = [...new Set((memberships ?? []).map(m => m.employee_id))];
 
       if (employeeIds.length === 0) {

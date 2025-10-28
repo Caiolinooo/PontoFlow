@@ -27,6 +27,13 @@ export default async function AdminTimesheetView({ params }: { params: Promise<{
     .eq('timesheet_id', id)
     .order('data', { ascending: true });
 
+  // Get tenant info (including work_mode)
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('work_schedule, work_mode, settings')
+    .eq('id', timesheet.employees.tenant_id)
+    .single();
+
   // Get work schedule
   const { data: workScheduleData } = await supabase
     .from('employee_work_schedules')
@@ -39,21 +46,13 @@ export default async function AdminTimesheetView({ params }: { params: Promise<{
     .maybeSingle();
 
   let workSchedule = workScheduleData;
-  if (!workSchedule) {
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('work_schedule')
-      .eq('id', timesheet.employees.tenant_id)
-      .single();
-
-    if (tenant?.work_schedule) {
-      workSchedule = {
-        work_schedule: tenant.work_schedule,
-        days_on: null,
-        days_off: null,
-        start_date: timesheet.periodo_ini,
-      };
-    }
+  if (!workSchedule && tenant?.work_schedule) {
+    workSchedule = {
+      work_schedule: tenant.work_schedule,
+      days_on: null,
+      days_off: null,
+      start_date: timesheet.periodo_ini,
+    };
   }
 
   return (
@@ -72,6 +71,7 @@ export default async function AdminTimesheetView({ params }: { params: Promise<{
         initialEntries={entries ?? []}
         locale={locale}
         workSchedule={workSchedule}
+        tenantWorkMode={tenant?.work_mode || 'standard'}
       />
     </div>
   );

@@ -1,20 +1,29 @@
 import { requireAuth } from '@/lib/auth/server';
 import { getServerSupabase, getServiceSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import TimesheetCalendar from '@/components/employee/TimesheetCalendar';
+import TenantSelector from '@/components/employee/TenantSelector';
+import { getTranslations } from 'next-intl/server';
 
 export default async function TimesheetsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.myTimesheet' });
   const user = await requireAuth(locale);
 
   // Use service client if available, otherwise server client
   const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
 
+  // Check if user has selected a specific tenant (for multi-tenant support)
+  const cookieStore = await cookies();
+  const selectedTenantId = cookieStore.get('selected_tenant_id')?.value || user.tenant_id as string;
+
   // Resolve employee record for current user
+  // If user has multiple tenants, use the selected one
   const { data: emp, error: empErr } = await supabase
     .from('employees')
     .select('id, tenant_id')
-    .eq('tenant_id', user.tenant_id as string)
+    .eq('tenant_id', selectedTenantId)
     .eq('profile_id', user.id)
     .maybeSingle();
 
@@ -61,7 +70,7 @@ export default async function TimesheetsPage({ params }: { params: Promise<{ loc
       return (
         <div className="p-6">
           <div className="bg-red-100 text-red-800 p-4 rounded">
-            Erro ao criar timesheet. Por favor, contate o administrador.
+            {t('errorCreateTimesheet')}
           </div>
         </div>
       );
@@ -88,36 +97,41 @@ export default async function TimesheetsPage({ params }: { params: Promise<{ loc
     .limit(1)
     .maybeSingle();
 
+  // Get tenant info (including work_mode)
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('work_schedule, work_mode, settings')
+    .eq('id', emp.tenant_id)
+    .single();
+
   // If no employee-specific schedule, get tenant default
   let workSchedule = workScheduleData;
-  if (!workSchedule) {
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('work_schedule')
-      .eq('id', emp.tenant_id)
-      .single();
-
-    if (tenant?.work_schedule) {
-      workSchedule = {
-        work_schedule: tenant.work_schedule,
-        days_on: null,
-        days_off: null,
-        start_date: periodo_ini,
-      };
-    }
+  if (!workSchedule && tenant?.work_schedule) {
+    workSchedule = {
+      work_schedule: tenant.work_schedule,
+      days_on: null,
+      days_off: null,
+      start_date: periodo_ini,
+    };
   }
 
   return (
-    <TimesheetCalendar
-      timesheetId={timesheet.id}
-      employeeId={emp.id}
-      periodo_ini={timesheet.periodo_ini}
-      periodo_fim={timesheet.periodo_fim}
-      status={timesheet.status}
-      initialEntries={entries ?? []}
-      locale={locale}
-      workSchedule={workSchedule}
-    />
+    <div className="max-w-[1600px] mx-auto px-2 sm:px-4">
+      {/* Tenant Selector - only shows if user has multiple tenants */}
+      <TenantSelector currentTenantId={emp.tenant_id} locale={locale} />
+
+      <TimesheetCalendar
+        timesheetId={timesheet.id}
+        employeeId={emp.id}
+        periodo_ini={timesheet.periodo_ini}
+        periodo_fim={timesheet.periodo_fim}
+        status={timesheet.status}
+        initialEntries={entries ?? []}
+        locale={locale}
+        workSchedule={workSchedule}
+        tenantWorkMode={tenant?.work_mode || 'standard'}
+      />
+    </div>
   );
 }
 

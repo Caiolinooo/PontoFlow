@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth/server';
 import Link from 'next/link';
 import { getServiceSupabase } from '@/lib/supabase/service';
+import { getTranslations } from 'next-intl/server';
 
 export default async function AdminTimesheetsPage({
   params,
@@ -15,6 +16,7 @@ export default async function AdminTimesheetsPage({
   }>
 }) {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.timesheets' });
   const { q, status, tenant, period } = await searchParams;
   await requireRole(locale, ['ADMIN']);
 
@@ -118,10 +120,10 @@ export default async function AdminTimesheetsPage({
   }));
 
   const statusLabels: Record<string, string> = {
-    rascunho: 'Rascunho',
-    enviado: 'Enviado',
-    aprovado: 'Aprovado',
-    recusado: 'Recusado',
+    rascunho: t('statusDraft'),
+    enviado: t('statusSubmitted'),
+    aprovado: t('statusApproved'),
+    recusado: t('statusRejected'),
     bloqueado: 'Bloqueado'
   };
 
@@ -137,9 +139,9 @@ export default async function AdminTimesheetsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Timesheets (Admin)</h1>
+          <h1 className="text-2xl font-semibold text-[var(--foreground)]">{t('title')}</h1>
           <p className="text-sm text-[var(--muted-foreground)]">
-            Visualize e gerencie todos os timesheets do sistema
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -150,11 +152,11 @@ export default async function AdminTimesheetsPage({
           {/* Employee Search */}
           <div>
             <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
-              Colaborador
+              {t('employee')}
             </label>
             <input
               name="q"
-              placeholder="Buscar por nome..."
+              placeholder={t('searchPlaceholder')}
               defaultValue={query}
               className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
             />
@@ -163,14 +165,14 @@ export default async function AdminTimesheetsPage({
           {/* Tenant Filter */}
           <div>
             <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
-              Tenant
+              {t('tenant')}
             </label>
             <select
               name="tenant"
               defaultValue={tenant || ''}
               className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
             >
-              <option value="">Todos os tenants</option>
+              <option value="">{t('allTenants')}</option>
               {tenants?.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
@@ -180,18 +182,18 @@ export default async function AdminTimesheetsPage({
           {/* Status Filter */}
           <div>
             <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
-              Status
+              {t('status')}
             </label>
             <select
               name="status"
               defaultValue={status || ''}
               className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
             >
-              <option value="">Todos os status</option>
-              <option value="rascunho">Rascunho</option>
-              <option value="enviado">Enviado</option>
-              <option value="aprovado">Aprovado</option>
-              <option value="recusado">Recusado</option>
+              <option value="">{t('allStatuses')}</option>
+              <option value="rascunho">{t('statusDraft')}</option>
+              <option value="enviado">{t('statusSubmitted')}</option>
+              <option value="aprovado">{t('statusApproved')}</option>
+              <option value="recusado">{t('statusRejected')}</option>
               <option value="bloqueado">Bloqueado</option>
             </select>
           </div>
@@ -199,7 +201,7 @@ export default async function AdminTimesheetsPage({
           {/* Period Filter */}
           <div>
             <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
-              Período (YYYY-MM)
+              {t('period')}
             </label>
             <input
               name="period"
@@ -215,13 +217,13 @@ export default async function AdminTimesheetsPage({
             type="submit"
             className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded text-sm font-medium hover:opacity-90"
           >
-            Pesquisar
+            {t('filter')}
           </button>
           <Link
             href={`/${locale}/admin/timesheets`}
             className="px-4 py-2 bg-[var(--secondary)] text-[var(--secondary-foreground)] rounded text-sm font-medium hover:opacity-90"
           >
-            Limpar
+            {t('clear')}
           </Link>
         </div>
       </form>
@@ -230,7 +232,7 @@ export default async function AdminTimesheetsPage({
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-[var(--border)]">
           <h2 className="font-semibold text-[var(--foreground)]">
-            Resultados ({timesheets?.length || 0})
+            {t('results')} ({timesheets?.length || 0})
           </h2>
         </div>
 
@@ -239,12 +241,12 @@ export default async function AdminTimesheetsPage({
             <table className="w-full text-sm">
               <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
                 <tr>
-                  <th className="text-left px-6 py-3">Colaborador</th>
-                  <th className="text-left px-6 py-3">Cargo</th>
-                  <th className="text-left px-6 py-3">Tenant</th>
-                  <th className="text-left px-6 py-3">Período</th>
-                  <th className="text-left px-6 py-3">Status</th>
-                  <th className="text-right px-6 py-3">Ações</th>
+                  <th className="text-left px-6 py-3">{t('employee')}</th>
+                  <th className="text-left px-6 py-3">{t('role')}</th>
+                  <th className="text-left px-6 py-3">{t('tenant')}</th>
+                  <th className="text-left px-6 py-3">{t('periodColumn')}</th>
+                  <th className="text-left px-6 py-3">{t('status')}</th>
+                  <th className="text-right px-6 py-3">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -260,7 +262,7 @@ export default async function AdminTimesheetsPage({
                       {ts.tenant?.name || 'N/A'}
                     </td>
                     <td className="px-6 py-3 text-[var(--foreground)]">
-                      {new Date(ts.periodo_ini).toLocaleDateString('pt-BR')} - {new Date(ts.periodo_fim).toLocaleDateString('pt-BR')}
+                      {new Date(ts.periodo_ini).toLocaleDateString(locale)} - {new Date(ts.periodo_fim).toLocaleDateString(locale)}
                     </td>
                     <td className="px-6 py-3">
                       <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusColors[ts.status] || 'bg-gray-100 text-gray-800'}`}>
@@ -272,7 +274,7 @@ export default async function AdminTimesheetsPage({
                         href={`/${locale}/admin/timesheets/view/${ts.id}`}
                         className="inline-flex px-3 py-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-medium hover:opacity-90"
                       >
-                        Ver detalhes
+                        {t('viewDetails')}
                       </Link>
                     </td>
                   </tr>
@@ -282,8 +284,8 @@ export default async function AdminTimesheetsPage({
           </div>
         ) : (
           <div className="px-6 py-12 text-center text-[var(--muted-foreground)]">
-            <p>Nenhum timesheet encontrado.</p>
-            <p className="text-sm mt-1">Tente ajustar os filtros de busca.</p>
+            <p>{t('noTimesheetsFound')}</p>
+            <p className="text-sm mt-1">{t('adjustFilters')}</p>
           </div>
         )}
       </div>

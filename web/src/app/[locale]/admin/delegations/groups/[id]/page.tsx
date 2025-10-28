@@ -11,7 +11,7 @@ import { isMetaUI } from '@/lib/flags';
 export default async function EditGroupPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   await requireRole(locale, ['ADMIN']);
-  const t = await getTranslations('admin.delegations');
+  const t = await getTranslations({ locale, namespace: 'admin.delegations' });
 
   // Load group details from our API (managers/members)
   const h = await headers();

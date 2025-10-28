@@ -5,13 +5,21 @@ import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 import { logAudit } from '@/lib/audit/logger';
 import {z} from 'zod';
 
-const Schema = z.object({
+const EntrySchema = z.object({
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  tipo: z.enum(['embarque', 'desembarque', 'translado', 'onshore', 'offshore', 'folga']),
+  environment_id: z.string().uuid(),
   hora_ini: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
   hora_fim: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
   observacao: z.string().max(1000).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v)
 });
+
+// Support both single entry and batch insert
+const Schema = z.union([
+  EntrySchema,
+  z.object({
+    entries: z.array(EntrySchema).min(1).max(100) // Max 100 entries per batch
+  })
+]);
 
 export async function POST(req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
@@ -32,17 +40,13 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     }
 
     const supabase = getServiceSupabase();
-    console.log('🔵 Supabase service client created (bypassing RLS)');
 
     // Get timesheet and check ownership + lock
-    console.log('🔵 Fetching timesheet...');
     const {data: ts, error: eTs} = await supabase
       .from('timesheets')
       .select('id, tenant_id, periodo_ini, employee_id')
       .eq('id', id)
       .single();
-
-    console.log('🔵 Timesheet query result:', { ts, error: eTs });
 
     if (eTs || !ts) {
       console.error('❌ Timesheet not found or error:', eTs?.message);
@@ -50,7 +54,6 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     }
 
     // Resolve current user's employee record
-    console.log('🔵 Fetching employee for user:', user.id, 'tenant:', ts.tenant_id);
     const { data: emp, error: empError } = await supabase
       .from('employees')
       .select('id')
@@ -59,14 +62,7 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       .limit(1)
       .maybeSingle();
 
-    console.log('🔵 Employee query result:', { emp, error: empError });
-
-    if (empError) {
-      console.error('❌ Error fetching employee:', empError);
-      return NextResponse.json({ error: 'database_error', details: empError.message }, { status: 500 });
-    }
-
-    if (!emp) {
+    if (empError || !emp) {
       console.error('❌ Employee not found for user:', user.id);
       return NextResponse.json({ error: 'employee_not_found' }, { status: 404 });
     }
@@ -78,47 +74,105 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
 
     console.log('✅ Employee verified:', emp.id);
 
+    // Check period lock
     const monthKey = `${new Date(ts.periodo_ini).getFullYear()}-${String(new Date(ts.periodo_ini).getMonth()+1).padStart(2,'0')}-01`;
     const eff = await getEffectivePeriodLock(supabase, ts.tenant_id, ts.employee_id, monthKey);
-    if (eff.locked && user.role !== 'ADMIN') return NextResponse.json({ error: 'period_locked', level: eff.level, reason: eff.reason ?? null }, { status: 400 });
-
-    const { data: insertedEntry, error: insertError } = await supabase
-      .from('timesheet_entries')
-      .insert({
-        tenant_id: ts.tenant_id,
-        timesheet_id: id,
-        data: parsed.data.data,
-        tipo: parsed.data.tipo,
-        hora_ini: parsed.data.hora_ini ?? null,
-        hora_fim: null,
-        observacao: parsed.data.observacao ?? null
-      })
-      .select('*')
-      .single();
-
-    if (insertError || !insertedEntry) {
-      return NextResponse.json({error: insertError?.message ?? 'Failed to create entry'}, {status: 400});
+    if (eff.locked && user.role !== 'ADMIN') {
+      console.error('❌ Period is locked:', eff);
+      return NextResponse.json({ error: 'period_locked', level: eff.level, reason: eff.reason ?? null }, { status: 400 });
     }
 
-    // Audit log (non-blocking)
-    await logAudit({
-      tenantId: ts.tenant_id,
-      userId: user.id,
-      action: 'create',
-      resourceType: 'timesheet_entry',
-      resourceId: insertedEntry.id,
-      oldValues: null,
-      newValues: {
-        timesheet_id: id,
-        data: parsed.data.data,
-        tipo: parsed.data.tipo,
-        hora_ini: parsed.data.hora_ini ?? null,
-        hora_fim: null,
-      }
-    });
+    // Determine if this is a batch insert or single entry
+    const isBatch = 'entries' in parsed.data;
+    const entriesToCreate = isBatch ? parsed.data.entries : [parsed.data];
 
-    console.log('✅ Entry created successfully:', insertedEntry.id);
-    return NextResponse.json({ok: true, entry: insertedEntry});
+    console.log(`🔵 ${isBatch ? 'BATCH' : 'SINGLE'} insert - ${entriesToCreate.length} entries`);
+
+    // Get all unique environment IDs
+    const uniqueEnvIds = [...new Set(entriesToCreate.map(e => e.environment_id))];
+
+    // Fetch all environments in one query
+    const { data: environments, error: envError } = await supabase
+      .from('environments')
+      .select('id, slug')
+      .in('id', uniqueEnvIds);
+
+    if (envError || !environments || environments.length === 0) {
+      console.error('❌ Environments not found:', envError);
+      return NextResponse.json({ error: 'environment_not_found' }, { status: 400 });
+    }
+
+    // Create a map for quick lookup
+    const envMap = new Map(environments.map(e => [e.id, e.slug]));
+
+    // Prepare all entries for batch insert
+    const insertData = entriesToCreate.map(entry => ({
+      tenant_id: ts.tenant_id,
+      timesheet_id: id,
+      data: entry.data,
+      tipo: envMap.get(entry.environment_id) || 'unknown', // For backward compatibility
+      environment_id: entry.environment_id,
+      hora_ini: entry.hora_ini ?? null,
+      hora_fim: entry.hora_fim ?? null,
+      observacao: entry.observacao ?? null
+    }));
+
+    console.log('🔵 Inserting entries into database...');
+    const startTime = Date.now();
+
+    const { data: insertedEntries, error: insertError } = await supabase
+      .from('timesheet_entries')
+      .insert(insertData)
+      .select('*');
+
+    const duration = Date.now() - startTime;
+    console.log(`🔵 Insert completed in ${duration}ms`);
+
+    if (insertError || !insertedEntries) {
+      console.error('❌ Failed to insert entries:', insertError);
+      return NextResponse.json({error: insertError?.message ?? 'Failed to create entries'}, {status: 400});
+    }
+
+    // Audit log for batch (non-blocking)
+    if (isBatch) {
+      await logAudit({
+        tenantId: ts.tenant_id,
+        userId: user.id,
+        action: 'batch_create',
+        resourceType: 'timesheet_entry',
+        resourceId: id,
+        oldValues: null,
+        newValues: {
+          timesheet_id: id,
+          count: insertedEntries.length,
+          entries: insertedEntries.map(e => ({ id: e.id, data: e.data, environment_id: e.environment_id }))
+        }
+      });
+    } else {
+      await logAudit({
+        tenantId: ts.tenant_id,
+        userId: user.id,
+        action: 'create',
+        resourceType: 'timesheet_entry',
+        resourceId: insertedEntries[0].id,
+        oldValues: null,
+        newValues: {
+          timesheet_id: id,
+          data: insertedEntries[0].data,
+          environment_id: insertedEntries[0].environment_id,
+          hora_ini: insertedEntries[0].hora_ini,
+          hora_fim: insertedEntries[0].hora_fim,
+        }
+      });
+    }
+
+    console.log(`✅ ${insertedEntries.length} entries created successfully in ${duration}ms`);
+    return NextResponse.json({
+      ok: true,
+      entries: insertedEntries,
+      count: insertedEntries.length,
+      duration_ms: duration
+    });
   } catch (error) {
     console.error('❌ Unexpected error in POST /api/employee/timesheets/[id]/entries:', error);
     if (error instanceof Error && error.message === 'Unauthorized') {

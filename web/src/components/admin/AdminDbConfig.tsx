@@ -39,7 +39,7 @@ export default function AdminDbConfig() {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <button onClick={save} disabled={saving} className="px-3 py-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)]">
+        <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
           {saving ? 'Salvando…' : 'Salvar (.env.local)'}
         </button>
         {msg && <span className="text-sm text-[var(--muted-foreground)]">{msg}</span>}

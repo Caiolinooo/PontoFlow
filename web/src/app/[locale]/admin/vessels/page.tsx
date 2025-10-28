@@ -1,9 +1,11 @@
 "use client";
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSelectorModal';
 
 export default function VesselsPage() {
+  const t = useTranslations('admin.vessels');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,22 +22,22 @@ export default function VesselsPage() {
           setTenantModalOpen(true);
           return;
         }
-        if (!resp.ok) throw new Error(j?.error || 'Falha ao carregar embarcações');
+        if (!resp.ok) throw new Error(j?.error || t('loadFailed'));
         setRows(j.vessels || []);
       } catch (e: any) {
-        setError(e?.message || 'Erro inesperado');
+        setError(e?.message || t('unexpectedError'));
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [t]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Embarcações</h1>
-          <p className="text-sm text-[var(--muted-foreground)]">Cadastro de embarcações da operação.</p>
+          <h1 className="text-2xl font-semibold text-[var(--foreground)]">{t('title')}</h1>
+          <p className="text-sm text-[var(--muted-foreground)]">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)]" onClick={async () => {
@@ -43,17 +45,17 @@ export default function VesselsPage() {
               setError(null);
               const r = await fetch('/api/admin/me/tenant', { method: 'GET', cache: 'no-store' });
               const j = await r.json().catch(() => ({}));
-              if (!r.ok) throw new Error(j?.error || 'Falha ao carregar tenants');
+              if (!r.ok) throw new Error(j?.error || t('loadTenantsFailed'));
               setTenantOptions(j?.tenants || []);
               setTenantModalOpen(true);
-            } catch (e: any) { setError(e?.message || 'Falha ao carregar tenants'); }
-          }}>Selecionar tenant</button>
-          <Link href="./vessels/new" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">Nova</Link>
+            } catch (e: any) { setError(e?.message || t('loadTenantsFailed')); }
+          }}>{t('selectTenant')}</button>
+          <Link href="./vessels/new" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">{t('new')}</Link>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-[var(--muted-foreground)]">Carregando...</div>
+        <div className="text-[var(--muted-foreground)]">{t('loading')}</div>
       ) : error ? (
         <div className="text-[var(--destructive)]">{error}</div>
       ) : (
@@ -61,9 +63,9 @@ export default function VesselsPage() {
           <table className="w-full text-sm">
             <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
               <tr>
-                <th className="text-left px-6 py-3 font-medium">Nome</th>
-                <th className="text-left px-6 py-3 font-medium">Código</th>
-                <th className="text-left px-6 py-3 font-medium">Ações</th>
+                <th className="text-left px-6 py-3 font-medium">{t('name')}</th>
+                <th className="text-left px-6 py-3 font-medium">{t('code')}</th>
+                <th className="text-left px-6 py-3 font-medium">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -76,9 +78,9 @@ export default function VesselsPage() {
                       <button
                         className="px-2 py-1 rounded-md bg-[var(--muted)] text-[var(--foreground)]"
                         onClick={async () => {
-                          const namePrompt = window.prompt('Nome:', r.name || '');
+                          const namePrompt = window.prompt(t('namePrompt'), r.name || '');
                           if (namePrompt === null) return;
-                          const codePrompt = window.prompt('Código (opcional):', r.code || '');
+                          const codePrompt = window.prompt(t('codePrompt'), r.code || '');
                           if (codePrompt === null) return;
                           const name = namePrompt.trim();
                           const code = codePrompt.trim();
@@ -87,23 +89,23 @@ export default function VesselsPage() {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ name: name || r.name, code: code ? code : null }),
                           });
-                          if (!resp.ok) { alert('Falha ao atualizar'); return; }
+                          if (!resp.ok) { alert(t('updateFailed')); return; }
                           setRows(rows.map((x) => (x.id === r.id ? { ...x, name: name || r.name, code: code ? code : null } : x)));
                         }}
                       >
-                        Editar
+                        {t('edit')}
                       </button>
                       <button
                         className="px-2 py-1 rounded-md bg-[var(--destructive)] text-[var(--destructive-foreground)]"
                         onClick={async () => {
-                          if (!confirm('Excluir embarcação?')) return;
+                          if (!confirm(t('deleteConfirm'))) return;
                           const resp = await fetch(`/api/admin/vessels/${r.id}`, { method: 'DELETE' });
 
-                          if (!resp.ok) { alert('Falha ao excluir'); return; }
+                          if (!resp.ok) { alert(t('deleteFailed')); return; }
                           setRows(rows.filter((x) => x.id !== r.id));
                         }}
                       >
-                        Excluir
+                        {t('delete')}
                       </button>
                     </div>
                   </td>
@@ -112,7 +114,7 @@ export default function VesselsPage() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-6 py-6 text-[var(--muted-foreground)] text-center">
-                    Nenhuma embarcação cadastrada.
+                    {t('noVessels')}
                   </td>
                 </tr>
               )}

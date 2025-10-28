@@ -1,11 +1,13 @@
 "use client";
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 type DatabaseProvider = 'supabase' | 'postgres' | 'mysql';
-type EmailProvider = 'gmail' | 'smtp' | 'sendgrid' | 'ses';
+type EmailProvider = 'gmail' | 'smtp' | 'sendgrid' | 'ses' | 'exchange-oauth2';
 type SyncOperation = 'export' | 'import' | 'test';
 
 export default function AdminSystemConfig() {
+  const t = useTranslations('adminSettings.systemConfig');
   const [activeTab, setActiveTab] = useState<'database' | 'email' | 'sync' | 'migration' | 'endpoints'>('database');
 
   // Database config
@@ -21,6 +23,11 @@ export default function AdminSystemConfig() {
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPass, setSmtpPass] = useState('');
   const [mailFrom, setMailFrom] = useState('');
+
+  // OAuth2 config (Exchange)
+  const [azureTenantId, setAzureTenantId] = useState('');
+  const [azureClientId, setAzureClientId] = useState('');
+  const [azureClientSecret, setAzureClientSecret] = useState('');
 
   // Sync config
   const [syncSecret, setSyncSecret] = useState('');
@@ -63,6 +70,12 @@ export default function AdminSystemConfig() {
         if (smtpUser) config.SMTP_USER = smtpUser;
         if (smtpPass) config.SMTP_PASS = smtpPass;
         if (mailFrom) config.MAIL_FROM = mailFrom;
+      } else if (emailProvider === 'exchange-oauth2') {
+        config.EMAIL_PROVIDER = 'oauth2';
+        if (azureTenantId) config.AZURE_TENANT_ID = azureTenantId;
+        if (azureClientId) config.AZURE_CLIENT_ID = azureClientId;
+        if (azureClientSecret) config.AZURE_CLIENT_SECRET = azureClientSecret;
+        if (mailFrom) config.MAIL_FROM = mailFrom;
       }
       
       // Sync config
@@ -83,12 +96,12 @@ export default function AdminSystemConfig() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Falha ao salvar configurações');
+        throw new Error(result.error || t('saveError'));
       }
 
-      setMessage({ type: 'success', text: 'Configurações salvas com sucesso. Reinicie o servidor para aplicar as mudanças.' });
+      setMessage({ type: 'success', text: t('saveSuccess') });
     } catch (error: any) {
-      setMessage({ type: 'error', text: `Erro: ${error.message}` });
+      setMessage({ type: 'error', text: `${t('saveError')}: ${error.message}` });
     } finally {
       setSaving(false);
     }
@@ -239,19 +252,19 @@ export default function AdminSystemConfig() {
   };
 
   const tabs = [
-    { id: 'database' as const, label: 'Banco de Dados' },
-    { id: 'email' as const, label: 'E-mail' },
-    { id: 'sync' as const, label: 'Sincronização' },
-    { id: 'migration' as const, label: 'Migração de Dados' },
-    { id: 'endpoints' as const, label: 'Endpoints' },
+    { id: 'database' as const, label: t('database.title') },
+    { id: 'email' as const, label: t('email.title') },
+    { id: 'sync' as const, label: t('sync.title') },
+    { id: 'migration' as const, label: t('migration.title') },
+    { id: 'endpoints' as const, label: t('endpoints.title') },
   ];
 
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
       <div className="p-6 border-b border-[var(--border)]">
-        <h2 className="text-xl font-semibold">Configurações do Sistema</h2>
+        <h2 className="text-xl font-semibold">{t('title')}</h2>
         <p className="text-sm text-[var(--muted-foreground)] mt-1">
-          Configure variáveis de ambiente, integrações e sincronização de dados
+          {t('subtitle')}
         </p>
       </div>
 
@@ -278,22 +291,22 @@ export default function AdminSystemConfig() {
         {activeTab === 'database' && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Configuração de Banco de Dados</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('database.title')}</h3>
               <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                Selecione o provedor de banco de dados e configure as credenciais de acesso
+                {t('database.subtitle')}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Provedor</label>
+              <label className="block text-sm font-medium mb-2">{t('database.provider')}</label>
               <select
                 value={dbProvider}
                 onChange={(e) => setDbProvider(e.target.value as DatabaseProvider)}
                 className="w-full rounded border p-2 bg-[var(--input)]"
               >
-                <option value="supabase">Supabase (PostgreSQL)</option>
-                <option value="postgres">PostgreSQL Direto</option>
-                <option value="mysql">MySQL</option>
+                <option value="supabase">{t('database.supabase')}</option>
+                <option value="postgres">{t('database.postgres')}</option>
+                <option value="mysql">{t('database.mysql')}</option>
               </select>
             </div>
 
@@ -329,7 +342,7 @@ export default function AdminSystemConfig() {
                     className="w-full rounded border p-2 bg-[var(--input)] font-mono text-xs"
                   />
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    Atenção: Nunca exponha a Service Role Key no cliente
+                    {t('database.warning')}
                   </p>
                 </div>
               </div>
@@ -341,23 +354,24 @@ export default function AdminSystemConfig() {
         {activeTab === 'email' && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Configuração de E-mail</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('email.title')}</h3>
               <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                Configure o serviço de envio de e-mails para notificações do sistema
+                {t('email.subtitle')}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Provedor</label>
+              <label className="block text-sm font-medium mb-2">{t('email.provider')}</label>
               <select
                 value={emailProvider}
                 onChange={(e) => setEmailProvider(e.target.value as EmailProvider)}
                 className="w-full rounded border p-2 bg-[var(--input)]"
               >
-                <option value="gmail">Gmail (SMTP)</option>
-                <option value="smtp">SMTP Genérico</option>
-                <option value="sendgrid">SendGrid</option>
-                <option value="ses">Amazon SES</option>
+                <option value="gmail">{t('email.gmail')}</option>
+                <option value="smtp">{t('email.smtp')}</option>
+                <option value="exchange-oauth2">{t('email.exchangeOAuth2')}</option>
+                <option value="sendgrid">{t('email.sendgrid')}</option>
+                <option value="ses">{t('email.ses')}</option>
               </select>
             </div>
 
@@ -406,7 +420,7 @@ export default function AdminSystemConfig() {
                   />
                   {emailProvider === 'gmail' && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      Nota: Use uma senha de app do Google (não sua senha normal)
+                      {t('email.gmailNote')}
                     </p>
                   )}
                 </div>
@@ -422,6 +436,89 @@ export default function AdminSystemConfig() {
                 </div>
               </div>
             )}
+
+            {emailProvider === 'exchange-oauth2' && (
+              <div className="space-y-3">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">{t('email.oauth2Title')}</h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                    {t('email.oauth2Description')}
+                  </p>
+                  <a
+                    href="/docs/EXCHANGE-OAUTH2-GUIDE.md"
+                    target="_blank"
+                    className="text-sm text-blue-600 dark:text-blue-400 underline hover:no-underline"
+                  >
+                    {t('email.oauth2Guide')}
+                  </a>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">AZURE_TENANT_ID</label>
+                  <input
+                    type="text"
+                    value={azureTenantId}
+                    onChange={(e) => setAzureTenantId(e.target.value)}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    className="w-full rounded border p-2 bg-[var(--input)] font-mono text-sm"
+                  />
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    {t('email.azureTenantId')}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">AZURE_CLIENT_ID</label>
+                  <input
+                    type="text"
+                    value={azureClientId}
+                    onChange={(e) => setAzureClientId(e.target.value)}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    className="w-full rounded border p-2 bg-[var(--input)] font-mono text-sm"
+                  />
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    {t('email.azureClientId')}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">AZURE_CLIENT_SECRET</label>
+                  <input
+                    type="password"
+                    value={azureClientSecret}
+                    onChange={(e) => setAzureClientSecret(e.target.value)}
+                    placeholder="Client Secret"
+                    className="w-full rounded border p-2 bg-[var(--input)] font-mono text-sm"
+                  />
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    {t('email.azureClientSecret')}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">MAIL_FROM</label>
+                  <input
+                    type="text"
+                    value={mailFrom}
+                    onChange={(e) => setMailFrom(e.target.value)}
+                    placeholder='"PontoFlow" <noreply@empresa.com>'
+                    className="w-full rounded border p-2 bg-[var(--input)]"
+                  />
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    {t('email.mailFrom')}
+                  </p>
+                </div>
+
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                  <h4 className="font-medium text-amber-900 dark:text-amber-100 mb-2">{t('email.oauth2Warning')}</h4>
+                  <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
+                    {t.raw('email.oauth2WarningItems').map((item: string, i: number) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -429,18 +526,16 @@ export default function AdminSystemConfig() {
         {activeTab === 'sync' && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Configuração de Sincronização</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('sync.title')}</h3>
               <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                Configure a sincronização bilateral de dados com sistemas externos
+                {t('sync.subtitle')}
               </p>
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Documentação</h4>
+              <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">{t('sync.documentation')}</h4>
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                A sincronização usa autenticação HMAC SHA-256. Consulte{' '}
-                <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">docs/SYNC-USERS-BILATERAL.md</code>{' '}
-                para detalhes completos sobre a implementação.
+                {t('sync.documentationText')}
               </p>
             </div>
 
@@ -459,11 +554,11 @@ export default function AdminSystemConfig() {
                   onClick={generateSyncSecret}
                   className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm font-medium whitespace-nowrap"
                 >
-                  Gerar Segredo
+                  {t('sync.generateSecret')}
                 </button>
               </div>
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                Segredo compartilhado usado para autenticação HMAC. Deve ser idêntico em ambos os sistemas.
+                {t('sync.secretHelp')}
               </p>
             </div>
 
@@ -477,7 +572,7 @@ export default function AdminSystemConfig() {
                 className="w-full rounded border p-2 bg-[var(--input)]"
               />
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                URL do endpoint de sincronização do sistema de origem (para enviar eventos)
+                {t('sync.sourceUrl')}
               </p>
             </div>
 
@@ -491,7 +586,7 @@ export default function AdminSystemConfig() {
                 className="w-full rounded border p-2 bg-[var(--input)]"
               />
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                URL do endpoint de sincronização do sistema de destino (para receber eventos)
+                {t('sync.targetUrl')}
               </p>
             </div>
           </div>
@@ -501,39 +596,38 @@ export default function AdminSystemConfig() {
         {activeTab === 'migration' && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Migração e Clonagem de Dados</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('migration.title')}</h3>
               <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                Exporte, importe ou teste a conexão com sistemas externos
+                {t('migration.subtitle')}
               </p>
             </div>
 
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <h4 className="font-medium text-amber-900 dark:text-amber-100 mb-2">Atenção</h4>
+              <h4 className="font-medium text-amber-900 dark:text-amber-100 mb-2">{t('migration.warning')}</h4>
               <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
-                <li>Execute operações de migração fora do horário de pico</li>
-                <li>Faça backup do banco de dados antes de importar</li>
-                <li>Teste a conexão antes de executar operações em massa</li>
-                <li>O segredo HMAC deve ser idêntico em ambos os sistemas</li>
+                {t.raw('migration.warningItems').map((item: string, i: number) => (
+                  <li key={i}>{item}</li>
+                ))}
               </ul>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Operação</label>
+              <label className="block text-sm font-medium mb-2">{t('migration.operation')}</label>
               <select
                 value={operation}
                 onChange={(e) => setOperation(e.target.value as SyncOperation)}
                 className="w-full rounded border p-2 bg-[var(--input)]"
               >
-                <option value="export">Exportar usuários deste sistema</option>
-                <option value="import">Importar usuários de outro sistema</option>
-                <option value="test">Testar conexão com outro sistema</option>
+                <option value="export">{t('migration.export')}</option>
+                <option value="import">{t('migration.import')}</option>
+                <option value="test">{t('migration.test')}</option>
               </select>
             </div>
 
             {(operation === 'import' || operation === 'test') && (
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  URL do Sistema {operation === 'import' ? 'de Origem' : 'Alvo'}
+                  {t('migration.urlLabel')}
                 </label>
                 <input
                   type="text"
@@ -543,15 +637,13 @@ export default function AdminSystemConfig() {
                   className="w-full rounded border p-2 bg-[var(--input)]"
                 />
                 <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                  {operation === 'import'
-                    ? 'URL do endpoint /api/admin/sync/users/export do sistema de origem'
-                    : 'URL do endpoint /api/admin/sync/user do sistema alvo'}
+                  {operation === 'import' ? t('migration.urlHelp') : t('migration.urlHelpTest')}
                 </p>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-1">Segredo HMAC</label>
+              <label className="block text-sm font-medium mb-1">{t('migration.secretLabel')}</label>
               <div className="flex gap-2">
                 <input
                   type="password"
@@ -565,11 +657,11 @@ export default function AdminSystemConfig() {
                   onClick={generateMigrationSecret}
                   className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm font-medium whitespace-nowrap"
                 >
-                  Gerar
+                  {t('sync.generateSecret')}
                 </button>
               </div>
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                Mesmo segredo configurado em ambos os sistemas (ADMIN_SYNC_SECRET)
+                {t('migration.secretHelp')}
               </p>
             </div>
 
@@ -578,7 +670,7 @@ export default function AdminSystemConfig() {
               disabled={migrationLoading || !migrationSecret}
               className="w-full px-6 py-3 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 disabled:opacity-50"
             >
-              {migrationLoading ? 'Processando...' : `Executar ${operation === 'export' ? 'Exportação' : operation === 'import' ? 'Importação' : 'Teste'}`}
+              {migrationLoading ? t('migration.executing') : t('migration.execute')}
             </button>
 
             {migrationError && (
@@ -591,14 +683,14 @@ export default function AdminSystemConfig() {
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-green-900 dark:text-green-100">
-                    {migrationResult.type === 'export' ? 'Exportação' : migrationResult.type === 'import' ? 'Importação' : 'Teste'} Concluída
+                    {t('migration.completed')}
                   </h4>
                   {migrationResult.type === 'export' && migrationResult.users && (
                     <button
                       onClick={downloadExport}
                       className="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700 text-sm font-medium"
                     >
-                      Baixar JSON
+                      {t('migration.downloadJson')}
                     </button>
                   )}
                 </div>
@@ -606,20 +698,20 @@ export default function AdminSystemConfig() {
                 <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
                   {migrationResult.type === 'export' && (
                     <>
-                      <p>Total de usuários exportados: <strong>{migrationResult.count}</strong></p>
-                      <p className="text-xs">Os dados estão prontos para importação em outro sistema</p>
+                      <p>{t('migration.totalExported')} <strong>{migrationResult.count}</strong></p>
+                      <p className="text-xs">{t('migration.exportReady')}</p>
                     </>
                   )}
                   {migrationResult.type === 'import' && (
                     <>
-                      <p>Total de usuários importados: <strong>{migrationResult.count}</strong></p>
+                      <p>{t('migration.totalImported')} <strong>{migrationResult.count}</strong></p>
                       <p className="text-xs">{migrationResult.message}</p>
                     </>
                   )}
                   {migrationResult.type === 'test' && (
                     <>
-                      <p>Status: <strong>{migrationResult.status}</strong></p>
-                      <p>Código HTTP: <strong>{migrationResult.statusCode}</strong></p>
+                      <p>{t('migration.status')} <strong>{migrationResult.status}</strong></p>
+                      <p>{t('migration.httpCode')} <strong>{migrationResult.statusCode}</strong></p>
                       <p className="text-xs">{migrationResult.message}</p>
                     </>
                   )}
@@ -628,14 +720,14 @@ export default function AdminSystemConfig() {
             )}
 
             <div className="pt-4 border-t border-[var(--border)]">
-              <h4 className="font-medium mb-2">Endpoints Disponíveis</h4>
+              <h4 className="font-medium mb-2">{t('migration.endpoints')}</h4>
               <div className="space-y-2 text-sm font-mono bg-[var(--muted)]/30 p-3 rounded">
                 <div><span className="text-green-600">POST</span> /api/admin/sync/users/export</div>
                 <div><span className="text-blue-600">POST</span> /api/admin/sync/users/import</div>
                 <div><span className="text-purple-600">POST</span> /api/admin/sync/user</div>
               </div>
               <p className="text-xs text-[var(--muted-foreground)] mt-2">
-                Consulte <code>docs/SYNC-USERS-BILATERAL.md</code> para documentação completa
+                {t('migration.endpointsHelp')}
               </p>
             </div>
           </div>
@@ -645,9 +737,9 @@ export default function AdminSystemConfig() {
         {activeTab === 'endpoints' && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Configuração de Endpoints</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('endpoints.title')}</h3>
               <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                Configure URLs base e webhooks para integrações externas
+                {t('endpoints.subtitle')}
               </p>
             </div>
 
@@ -661,7 +753,7 @@ export default function AdminSystemConfig() {
                 className="w-full rounded border p-2 bg-[var(--input)]"
               />
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                URL base da API (opcional, padrão: mesma origem)
+                {t('endpoints.apiBaseUrl')}
               </p>
             </div>
 
@@ -675,7 +767,7 @@ export default function AdminSystemConfig() {
                 className="w-full rounded border p-2 bg-[var(--input)]"
               />
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                URL para receber webhooks de eventos do sistema
+                {t('endpoints.webhookUrl')}
               </p>
             </div>
           </div>
@@ -688,9 +780,9 @@ export default function AdminSystemConfig() {
               <button
                 onClick={saveConfig}
                 disabled={saving}
-                className="px-6 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 disabled:opacity-50"
+                className="px-6 py-2.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Salvando...' : 'Salvar Configurações'}
+                {saving ? t('save') + '...' : t('save')}
               </button>
 
               {message && (
@@ -701,7 +793,7 @@ export default function AdminSystemConfig() {
             </div>
 
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
-              Atenção: Em produção, edite as variáveis de ambiente diretamente no provedor (Vercel, Render, etc.)
+              {t('productionWarning')}
             </p>
           </div>
         )}

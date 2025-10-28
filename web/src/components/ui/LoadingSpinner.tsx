@@ -3,26 +3,50 @@
 import React from 'react';
 
 interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   label?: string;
+  className?: string;
+  fullScreen?: boolean;
 }
 
-export default function LoadingSpinner({ size = 'md', label }: LoadingSpinnerProps) {
+export default function LoadingSpinner({
+  size = 'md',
+  label,
+  className = '',
+  fullScreen = false
+}: LoadingSpinnerProps) {
   const sizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12',
+    xs: 'w-3 h-3 border-2',
+    sm: 'w-4 h-4 border-2',
+    md: 'w-8 h-8 border-4',
+    lg: 'w-12 h-12 border-4',
+    xl: 'w-16 h-16 border-4',
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center gap-2">
+  const spinner = (
+    <div className={`flex flex-col items-center justify-center gap-2 ${className}`}>
       <div
-        className={`${sizeClasses[size]} border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin`}
+        className={`${sizeClasses[size]} border-[var(--muted)] border-t-[var(--primary)] rounded-full animate-spin`}
         role="status"
         aria-label={label || 'Loading'}
+        aria-busy="true"
       />
-      {label && <p className="text-sm text-gray-600">{label}</p>}
+      {label && (
+        <p className="text-sm text-[var(--muted-foreground)] animate-pulse">
+          {label}
+        </p>
+      )}
     </div>
   );
+
+  if (fullScreen) {
+    return (
+      <div className="fixed inset-0 bg-[var(--background)]/80 backdrop-blur-sm flex items-center justify-center z-50">
+        {spinner}
+      </div>
+    );
+  }
+
+  return spinner;
 }
 

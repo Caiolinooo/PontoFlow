@@ -1,6 +1,7 @@
 "use client";
 // Enhanced calendar with modern UI - v2.0
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 
 type Entry = {
   id: string;
@@ -9,6 +10,15 @@ type Entry = {
   hora_ini?: string | null;
   hora_fim?: string | null;
   observacao?: string | null;
+  environment_id?: string | null;
+};
+
+type Environment = {
+  id: string;
+  name: string;
+  slug: string;
+  color?: string;
+  auto_fill_enabled?: boolean;
 };
 
 type WorkSchedule = {
@@ -27,7 +37,13 @@ type Props = {
   initialEntries: Entry[];
   locale: string;
   workSchedule?: WorkSchedule | null;
+  tenantWorkMode?: 'offshore' | 'standard' | 'flexible';
 };
+
+// Batch operation types
+type PendingOperation =
+  | { type: 'create'; tempId: string; entry: Omit<Entry, 'id'> }
+  | { type: 'delete'; entryId: string };
 
 export default function TimesheetCalendar({
   timesheetId,
@@ -38,18 +54,45 @@ export default function TimesheetCalendar({
   initialEntries,
   locale,
   workSchedule,
+  tenantWorkMode = 'standard',
 }: Props) {
+  const t = useTranslations('admin.myTimesheet');
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showAutoFillModal, setShowAutoFillModal] = useState(false);
+  const [suggestedEntries, setSuggestedEntries] = useState<Array<{date: string; tipo: string; environment_id: string; selected: boolean}>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<string>('');
+
+  // Batch operations queue
+  const [pendingOperations, setPendingOperations] = useState<PendingOperation[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [form, setForm] = useState({
-    tipo: 'embarque',
+    environment_id: '',
     hora_ini: '',
     observacao: '',
   });
+
+  // Load environments on mount
+  useEffect(() => {
+    async function loadEnvironments() {
+      try {
+        const res = await fetch('/api/employee/environments');
+        if (res.ok) {
+          const data = await res.json();
+          setEnvironments(data.environments || []);
+        }
+      } catch (err) {
+        console.error('Error loading environments:', err);
+      }
+    }
+    loadEnvironments();
+  }, []);
 
   // Calculate worker status based on work schedule
   const getWorkerStatus = (date: string): 'embarcado' | 'desembarcado' | 'unknown' => {
@@ -85,6 +128,176 @@ export default function TimesheetCalendar({
     return positionInCycle < onDays ? 'embarcado' : 'desembarcado';
   };
 
+  /**
+   * Calculate suggested entries based on work schedule
+   *
+   * LÓGICA CORRETA:
+   * - EMBARQUE (dia X): Dia da viagem para o trabalho
+   *   → Dias X+1 até X+N: Regime Offshore (trabalhando)
+   *   → Dia X+N+1: Desembarque (volta para casa)
+   *   → Dias X+N+2 até X+N+M+1: Folga (em casa)
+   *   → Dia X+N+M+2: Próximo embarque (se não houver dobra)
+   *
+   * - DESEMBARQUE (dia Y): Dia da volta para casa
+   *   → Dias Y+1 até Y+M: Folga (em casa)
+   *   → Dia Y+M+1: Próximo embarque (sugestão)
+   *
+   * Onde N = days_on (ex: 28) e M = days_off (ex: 28)
+   */
+  const calculateSuggestedEntries = (startDate: string, startTipo: 'embarque' | 'desembarque'): Array<{date: string; tipo: string; environment_id: string; selected: boolean}> => {
+    if (!workSchedule) return [];
+
+    const { work_schedule, days_on, days_off } = workSchedule;
+
+    let onDays = days_on;
+    let offDays = days_off;
+
+    if (!onDays || !offDays) {
+      if (work_schedule !== 'custom') {
+        const [on, off] = work_schedule.split('x').map(Number);
+        onDays = on;
+        offDays = off;
+      } else {
+        return [];
+      }
+    }
+
+    // Find environment IDs for each type
+    const embarqueEnv = environments.find(e => e.slug === 'embarque');
+    const desembarqueEnv = environments.find(e => e.slug === 'desembarque');
+    const offshoreEnv = environments.find(e => e.slug === 'offshore' || e.slug === 'regime-offshore');
+    const folgaEnv = environments.find(e => e.slug === 'folga');
+
+    if (!offshoreEnv || !folgaEnv) {
+      console.warn('Missing required environments (offshore or folga)');
+      return [];
+    }
+
+    const suggestions: Array<{date: string; tipo: string; environment_id: string; selected: boolean}> = [];
+    const start = new Date(startDate);
+
+    // Extend period to next 6 months to allow cross-month suggestions
+    const periodEnd = new Date(periodo_fim);
+    periodEnd.setMonth(periodEnd.getMonth() + 6);
+
+    let currentDate = new Date(start);
+    currentDate.setDate(currentDate.getDate() + 1); // Start from next day
+
+    if (startTipo === 'embarque') {
+      // EMBARQUE: User is boarding, so they will work offshore
+      // Days 1 to N: Offshore (working)
+      for (let i = 0; i < onDays; i++) {
+        if (currentDate > periodEnd) break;
+
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const existingEntry = entries.find(e => e.data === dateStr);
+
+        if (!existingEntry) {
+          suggestions.push({
+            date: dateStr,
+            tipo: 'offshore',
+            environment_id: offshoreEnv.id,
+            selected: true // Pre-selected by default
+          });
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Day N+1: Desembarque (return home)
+      if (currentDate <= periodEnd && desembarqueEnv) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const existingEntry = entries.find(e => e.data === dateStr);
+
+        if (!existingEntry) {
+          suggestions.push({
+            date: dateStr,
+            tipo: 'desembarque',
+            environment_id: desembarqueEnv.id,
+            selected: true
+          });
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Days N+2 to N+M+1: Folga (days off at home)
+      for (let i = 0; i < offDays; i++) {
+        if (currentDate > periodEnd) break;
+
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const existingEntry = entries.find(e => e.data === dateStr);
+
+        if (!existingEntry) {
+          suggestions.push({
+            date: dateStr,
+            tipo: 'folga',
+            environment_id: folgaEnv.id,
+            selected: false // Not pre-selected - user might have changes
+          });
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Day N+M+2: Next embarque (suggestion only)
+      if (currentDate <= periodEnd && embarqueEnv) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const existingEntry = entries.find(e => e.data === dateStr);
+
+        if (!existingEntry) {
+          suggestions.push({
+            date: dateStr,
+            tipo: 'embarque',
+            environment_id: embarqueEnv.id,
+            selected: false // Not pre-selected - might be a "dobra" or cancelled
+          });
+        }
+      }
+
+    } else {
+      // DESEMBARQUE: User is returning home, so they will be on days off
+      // Days 1 to M: Folga (days off at home)
+      for (let i = 0; i < offDays; i++) {
+        if (currentDate > periodEnd) break;
+
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const existingEntry = entries.find(e => e.data === dateStr);
+
+        if (!existingEntry) {
+          suggestions.push({
+            date: dateStr,
+            tipo: 'folga',
+            environment_id: folgaEnv.id,
+            selected: true // Pre-selected by default
+          });
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Day M+1: Next embarque (suggestion only)
+      if (currentDate <= periodEnd && embarqueEnv) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const existingEntry = entries.find(e => e.data === dateStr);
+
+        if (!existingEntry) {
+          suggestions.push({
+            date: dateStr,
+            tipo: 'embarque',
+            environment_id: embarqueEnv.id,
+            selected: false // Not pre-selected - might be cancelled or delayed
+          });
+        }
+      }
+    }
+
+    // Sort suggestions by date
+    suggestions.sort((a, b) => a.date.localeCompare(b.date));
+
+    return suggestions;
+  };
+
   // Generate calendar days
   const days = useMemo(() => {
     const start = new Date(periodo_ini);
@@ -107,87 +320,208 @@ export default function TimesheetCalendar({
     return d.getDay();
   }, [periodo_ini]);
 
-  // Color mapping for entry types
-  const tipoColors: Record<string, string> = {
-    embarque: 'bg-blue-600 text-white',
-    desembarque: 'bg-indigo-600 text-white',
-    translado: 'bg-amber-500 text-white',
-    onshore: 'bg-emerald-600 text-white',
-    offshore: 'bg-cyan-600 text-white',
-    folga: 'bg-zinc-400 text-white',
+  // Get environment by ID
+  const getEnvironment = (envId: string | null | undefined): Environment | null => {
+    if (!envId) return null;
+    return environments.find(e => e.id === envId) || null;
   };
 
-  const tipoLabels: Record<string, string> = {
-    embarque: 'Embarque',
-    desembarque: 'Desembarque',
-    translado: 'Translado',
-    onshore: 'Onshore',
-    offshore: 'Offshore',
-    folga: 'Folga',
+  // Get color for environment
+  const getEnvironmentColor = (envId: string | null | undefined): string => {
+    const env = getEnvironment(envId);
+    return env?.color || '#3B82F6';
+  };
+
+  // Get name for environment
+  const getEnvironmentName = (envId: string | null | undefined): string => {
+    const env = getEnvironment(envId);
+    return env?.name || 'N/A';
   };
 
   const handleDayClick = (date: string) => {
     setSelectedDate(date);
     setShowModal(true);
     setError(null);
-    // Reset form
+    // Reset form - leave environment_id empty to force user selection
     setForm({
-      tipo: 'embarque',
+      environment_id: '',
       hora_ini: '',
       observacao: '',
     });
+    setSelectedEnvironment('');
   };
 
   const handleCreateEntry = async () => {
-    if (!selectedDate) return;
+    if (!selectedDate || !form.environment_id) {
+      setError(t('batchOperations.selectEnvironment'));
+      return;
+    }
 
-    setLoading(true);
-    setError(null);
+    // Get selected environment
+    const selectedEnv = getEnvironment(form.environment_id);
 
-    try {
-      const res = await fetch(`/api/employee/timesheets/${timesheetId}/entries`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: selectedDate,
-          tipo: form.tipo,
-          hora_ini: form.hora_ini || null,
-          hora_fim: null,
-          observacao: form.observacao || null,
-        }),
-      });
+    // Check if environment has auto-fill enabled and if it's embarque/desembarque
+    const isTransitionEnvironment = selectedEnv?.slug === 'embarque' || selectedEnv?.slug === 'desembarque';
 
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ error: 'create_failed' }));
-        throw new Error(j.error || 'create_failed');
-      }
+    // Only show auto-fill for offshore work mode
+    const shouldShowAutoFill =
+      tenantWorkMode === 'offshore' &&
+      selectedEnv?.auto_fill_enabled &&
+      isTransitionEnvironment &&
+      workSchedule;
 
-      // Reload entries
-      await reloadEntries();
-      setShowModal(false);
-    } catch (e: any) {
-      setError(e.message || 'Erro ao criar lançamento');
-    } finally {
-      setLoading(false);
+    if (shouldShowAutoFill) {
+      // Show auto-fill modal for embarque/desembarque (offshore mode only)
+      const suggestions = calculateSuggestedEntries(selectedDate, selectedEnv.slug as 'embarque' | 'desembarque');
+      setSuggestedEntries(suggestions);
+      setShowAutoFillModal(true);
+    } else {
+      // Create single entry without auto-fill
+      // This is used for:
+      // - Standard work mode (daily clock-in/out)
+      // - Flexible work mode
+      // - Offshore mode but not embarque/desembarque
+      await createSingleEntry();
     }
   };
 
-  const handleDeleteEntry = async (entryId: string) => {
-    if (!confirm('Deseja realmente excluir este lançamento?')) return;
+  const createSingleEntry = () => {
+    if (!selectedDate) return;
 
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/employee/timesheets/${timesheetId}/entries/${entryId}`, {
-        method: 'DELETE',
-      });
+    setError(null);
 
-      if (!res.ok) throw new Error('delete_failed');
+    // Generate temporary ID
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
 
-      await reloadEntries();
-    } catch (e) {
-      alert('Erro ao excluir lançamento');
-    } finally {
-      setLoading(false);
+    // Get environment info for tipo (backward compatibility)
+    const selectedEnv = getEnvironment(form.environment_id);
+    const tipo = selectedEnv?.slug || 'offshore';
+
+    // Create entry object
+    const newEntry: Entry = {
+      id: tempId,
+      data: selectedDate,
+      tipo,
+      environment_id: form.environment_id,
+      hora_ini: form.hora_ini || null,
+      hora_fim: null,
+      observacao: form.observacao || null,
+    };
+
+    // Add to pending operations
+    setPendingOperations(ops => [...ops, {
+      type: 'create',
+      tempId,
+      entry: newEntry
+    }]);
+
+    // Add to UI immediately (optimistic update)
+    setEntries([...entries, newEntry]);
+
+    // Reset form
+    setForm({
+      environment_id: '',
+      hora_ini: '',
+      observacao: '',
+    });
+
+    // Don't close modal - user can add more entries
+  };
+
+  const handleConfirmAutoFill = () => {
+    if (!selectedDate) return;
+
+    setError(null);
+
+    // Prepare all entries for batch insert
+    const selectedSuggestions = suggestedEntries.filter(s => s.selected);
+
+    // Include the initial entry + all selected suggestions
+    const allEntriesToCreate = [
+      {
+        data: selectedDate,
+        environment_id: form.environment_id,
+        hora_ini: form.hora_ini || null,
+        hora_fim: null,
+        observacao: form.observacao || null,
+      },
+      ...selectedSuggestions.map(suggestion => ({
+        data: suggestion.date,
+        environment_id: suggestion.environment_id,
+        hora_ini: form.hora_ini || null,
+        hora_fim: null,
+        observacao: `Auto-gerado pela escala ${workSchedule?.work_schedule}`,
+      }))
+    ];
+
+    console.log(`📦 Adding ${allEntriesToCreate.length} entries to batch queue...`);
+
+    // Add all entries to pending operations and UI
+    const newOperations: PendingOperation[] = [];
+    const newEntries: Entry[] = [];
+
+    allEntriesToCreate.forEach(entryData => {
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      const selectedEnv = getEnvironment(entryData.environment_id);
+      const tipo = selectedEnv?.slug || 'offshore';
+
+      const newEntry: Entry = {
+        id: tempId,
+        tipo,
+        ...entryData,
+      };
+
+      newOperations.push({ type: 'create', tempId, entry: newEntry });
+      newEntries.push(newEntry);
+    });
+
+    // Add to pending operations
+    setPendingOperations(ops => [...ops, ...newOperations]);
+
+    // Add to UI immediately (optimistic update)
+    setEntries([...entries, ...newEntries]);
+
+    // Close modals
+    setShowModal(false);
+    setShowAutoFillModal(false);
+    setSuggestedEntries([]);
+
+    // Reset form
+    setForm({
+      environment_id: '',
+      hora_ini: '',
+      observacao: '',
+    });
+
+    console.log(`✅ ${allEntriesToCreate.length} entries added to queue. Will sync when modal closes.`);
+  };
+
+  const handleDeleteEntry = (entryId: string) => {
+    // No confirmation needed - user will confirm when closing modal
+
+    // Check if this is a temporary entry (not yet saved to server)
+    const isTempEntry = entryId.startsWith('temp-');
+
+    if (isTempEntry) {
+      // Remove from pending operations (cancel the create)
+      setPendingOperations(ops => ops.filter(op =>
+        !(op.type === 'create' && op.tempId === entryId)
+      ));
+      // Remove from UI immediately
+      setEntries(entries.filter(e => e.id !== entryId));
+    } else {
+      // Check if already in delete queue (prevent duplicates)
+      const alreadyQueued = pendingOperations.some(
+        op => op.type === 'delete' && op.entryId === entryId
+      );
+
+      if (!alreadyQueued) {
+        // Add delete operation to queue
+        setPendingOperations(ops => [...ops, { type: 'delete', entryId }]);
+      }
+
+      // Remove from UI immediately (optimistic update)
+      setEntries(entries.filter(e => e.id !== entryId));
     }
   };
 
@@ -199,38 +533,202 @@ export default function TimesheetCalendar({
     }
   };
 
+  // Sync all pending operations to server (fully async, non-blocking)
+  const syncPendingOperations = async () => {
+    if (pendingOperations.length === 0) return;
+
+    // Capture current operations to sync (snapshot)
+    // This allows new operations to be queued while syncing
+    const operationsToSync = [...pendingOperations];
+
+    setIsSyncing(true);
+    console.log(`🔄 Syncing ${operationsToSync.length} pending operations in background...`);
+    const startTime = Date.now();
+
+    // Remove operations from queue immediately (optimistic)
+    setPendingOperations(ops =>
+      ops.filter(op => !operationsToSync.some(syncOp =>
+        (syncOp.type === 'create' && op.type === 'create' && syncOp.tempId === op.tempId) ||
+        (syncOp.type === 'delete' && op.type === 'delete' && syncOp.entryId === op.entryId)
+      ))
+    );
+
+    try {
+      // Separate creates and deletes
+      const creates = operationsToSync.filter(op => op.type === 'create') as Extract<PendingOperation, { type: 'create' }>[];
+      const deletes = operationsToSync.filter(op => op.type === 'delete') as Extract<PendingOperation, { type: 'delete' }>[];
+
+      // Execute deletes and creates in parallel for maximum speed
+      const promises: Promise<any>[] = [];
+      const results = {
+        deletedCount: 0,
+        createdCount: 0,
+        errors: [] as string[],
+      };
+
+      // Execute deletes in parallel (each is a separate HTTP request)
+      if (deletes.length > 0) {
+        console.log(`🗑️ Batch deleting ${deletes.length} entries in parallel...`);
+        const deletePromises = deletes.map(op =>
+          fetch(`/api/employee/timesheets/${timesheetId}/entries/${op.entryId}`, {
+            method: 'DELETE',
+          }).then(res => {
+            if (res.ok) {
+              results.deletedCount++;
+            } else {
+              results.errors.push(`Failed to delete ${op.entryId}`);
+            }
+            return res;
+          }).catch(err => {
+            results.errors.push(`Error deleting ${op.entryId}: ${err.message}`);
+          })
+        );
+        promises.push(...deletePromises);
+      }
+
+      // Execute creates (single batch request)
+      if (creates.length > 0) {
+        console.log(`➕ Batch creating ${creates.length} entries...`);
+        const entriesToCreate = creates.map(op => ({
+          data: op.entry.data,
+          environment_id: op.entry.environment_id,
+          hora_ini: op.entry.hora_ini,
+          hora_fim: op.entry.hora_fim,
+          observacao: op.entry.observacao,
+        }));
+
+        const createPromise = fetch(`/api/employee/timesheets/${timesheetId}/entries`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entries: entriesToCreate }),
+        }).then(async res => {
+          if (res.ok) {
+            const result = await res.json();
+            results.createdCount = result.count || creates.length;
+            console.log(`✅ Created ${results.createdCount} entries`);
+            return result;
+          } else {
+            results.errors.push('Batch create failed');
+            throw new Error('Batch create failed');
+          }
+        }).catch(err => {
+          results.errors.push(`Error creating entries: ${err.message}`);
+        });
+
+        promises.push(createPromise);
+      }
+
+      // Wait for all operations to complete
+      await Promise.all(promises);
+
+      const duration = Date.now() - startTime;
+      console.log(`✅ Sync completed in ${duration}ms`);
+      console.log(`   - ${results.deletedCount}/${deletes.length} deletions successful`);
+      console.log(`   - ${results.createdCount}/${creates.length} creations successful`);
+
+      if (results.errors.length > 0) {
+        console.warn(`⚠️ ${results.errors.length} errors occurred:`, results.errors);
+      }
+
+      // Reload entries from server to get real IDs (silent, in background)
+      await reloadEntries();
+
+      // Show errors if any (non-blocking)
+      if (results.errors.length > 0) {
+        console.error('Sync errors:', results.errors);
+        // Don't show alert - just log to console
+      }
+    } catch (error) {
+      console.error('❌ Sync failed:', error);
+      // Re-add failed operations back to queue
+      setPendingOperations(ops => [...ops, ...operationsToSync]);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Auto-sync with debounce (2 seconds after last change)
+  useEffect(() => {
+    // Clear existing timeout
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    // If there are pending operations and not currently syncing
+    if (pendingOperations.length > 0 && !isSyncing) {
+      // Schedule sync after 2 seconds of inactivity
+      syncTimeoutRef.current = setTimeout(() => {
+        console.log('🔄 Auto-syncing after 2s of inactivity...');
+        syncPendingOperations();
+      }, 2000);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [pendingOperations.length, isSyncing]);
+
+  // Sync when modal closes
+  const handleCloseModal = () => {
+    setShowModal(false);
+
+    // Clear auto-sync timeout
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    // Sync immediately if there are pending operations
+    if (pendingOperations.length > 0) {
+      syncPendingOperations();
+    }
+  };
+
   const blocked = status !== 'draft';
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-3 sm:space-y-4 animate-fade-in">
+      {/* Syncing indicator (outside modal, top of page) */}
+      {isSyncing && (
+        <div className="fixed top-4 right-4 z-50 p-3 bg-green-500 text-white rounded-lg shadow-lg flex items-center gap-2 animate-slide-in-right">
+          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">{t('batchOperations.saving')}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="animate-slide-in-left">
-        <h1 className="text-3xl md:text-4xl font-bold text-[var(--foreground)] mb-2">
-          Meu Timesheet
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[var(--foreground)] mb-1">
+          {t('title')}
         </h1>
-        <p className="text-[var(--muted-foreground)]">
+        <p className="text-sm text-[var(--muted-foreground)]">
           {new Date(periodo_ini).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
         </p>
         {blocked && (
-          <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 rounded-lg text-sm animate-scale-in">
-            ⚠️ Este timesheet está bloqueado para edição
+          <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 rounded-lg text-xs sm:text-sm animate-scale-in">
+            {t('blocked')}
           </div>
         )}
       </div>
 
       {/* Calendar */}
-      <div className="bg-gradient-to-br from-[var(--card)] to-[var(--muted)]/20 rounded-3xl shadow-2xl border-2 border-[var(--border)] p-8 md:p-10 animate-scale-in">
+      <div className="bg-gradient-to-br from-[var(--card)] to-[var(--muted)]/20 rounded-lg shadow-lg border border-[var(--border)] p-2 sm:p-3 animate-scale-in">
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 gap-3 mb-6">
-          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, i) => (
-            <div key={i} className="text-center text-sm font-bold text-[var(--foreground)] uppercase tracking-wider py-3 bg-[var(--muted)]/50 rounded-lg">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
+          {[t('weekdays.sun'), t('weekdays.mon'), t('weekdays.tue'), t('weekdays.wed'), t('weekdays.thu'), t('weekdays.fri'), t('weekdays.sat')].map((day, i) => (
+            <div key={i} className="text-center text-[10px] sm:text-xs font-bold text-[var(--foreground)] uppercase tracking-wide py-1 sm:py-1.5 bg-[var(--muted)]/50 rounded">
               {day}
             </div>
           ))}
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-3">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
           {/* Empty cells for offset */}
           {Array.from({ length: firstDayOfWeek }).map((_, i) => (
             <div key={`empty-${i}`} />
@@ -248,43 +746,49 @@ export default function TimesheetCalendar({
                 onClick={() => !blocked && handleDayClick(date)}
                 disabled={blocked}
                 className={`
-                  relative min-h-[130px] md:min-h-[150px] p-3 rounded-2xl border-2 transition-smooth group
+                  relative aspect-square w-full p-1 sm:p-1.5 rounded border transition-all group flex flex-col
                   ${isToday
-                    ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 shadow-lg ring-2 ring-blue-300 dark:ring-blue-700'
+                    ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 shadow-sm ring-1 ring-blue-300 dark:ring-blue-700'
                     : 'border-[var(--border)] bg-[var(--card)]'}
                   ${!blocked
-                    ? 'hover:border-blue-400 hover:shadow-2xl hover:scale-[1.02] hover:z-10 cursor-pointer hover:bg-gradient-to-br hover:from-blue-50/50 hover:to-transparent dark:hover:from-blue-900/20'
+                    ? 'hover:border-blue-400 hover:shadow-md hover:scale-[1.02] hover:z-10 cursor-pointer hover:bg-gradient-to-br hover:from-blue-50/50 hover:to-transparent dark:hover:from-blue-900/20'
                     : 'opacity-60 cursor-not-allowed'}
                   ${dayEntries.length > 0 ? 'bg-gradient-to-br from-[var(--card)] to-[var(--muted)]/40' : ''}
                 `}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xl font-bold ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-[var(--foreground)]'} group-hover:scale-110 transition-transform`}>
+                <div className="flex items-start justify-between mb-0.5 sm:mb-1">
+                  <span className={`text-xs sm:text-sm font-bold ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-[var(--foreground)]'}`}>
                     {dayNum}
                   </span>
                   {dayEntries.length > 0 && (
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-500 text-white">
+                    <span className="text-[8px] sm:text-[10px] font-semibold px-1 py-0.5 rounded-full bg-blue-500 text-white leading-none">
                       {dayEntries.length}
                     </span>
                   )}
                 </div>
 
                 {/* Entries */}
-                <div className="space-y-1.5">
-                  {dayEntries.slice(0, 3).map((entry) => (
-                    <div
-                      key={entry.id}
-                      className={`text-xs px-2.5 py-1.5 rounded-lg ${tipoColors[entry.tipo] || 'bg-gray-400 text-white'} truncate font-medium shadow-sm`}
-                    >
-                      {tipoLabels[entry.tipo] || entry.tipo}
-                      {entry.hora_ini && (
-                        <span className="ml-1 opacity-90">• {entry.hora_ini}</span>
-                      )}
-                    </div>
-                  ))}
-                  {dayEntries.length > 3 && (
-                    <div className="text-xs text-[var(--muted-foreground)] font-semibold text-center pt-1">
-                      +{dayEntries.length - 3} mais
+                <div className="space-y-0.5 flex-1 overflow-hidden">
+                  {dayEntries.slice(0, 2).map((entry) => {
+                    const envColor = getEnvironmentColor(entry.environment_id);
+                    const envName = getEnvironmentName(entry.environment_id);
+                    return (
+                      <div
+                        key={entry.id}
+                        className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded truncate font-medium text-white"
+                        style={{ backgroundColor: envColor }}
+                      >
+                        <span className="hidden md:inline">{envName}</span>
+                        <span className="md:hidden">{envName.substring(0, 3)}</span>
+                        {entry.hora_ini && (
+                          <span className="ml-0.5 opacity-90 hidden lg:inline text-[8px]">• {entry.hora_ini}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {dayEntries.length > 2 && (
+                    <div className="text-[8px] sm:text-[10px] text-[var(--muted-foreground)] font-semibold text-center">
+                      +{dayEntries.length - 2}
                     </div>
                   )}
                 </div>
@@ -293,14 +797,17 @@ export default function TimesheetCalendar({
           })}
         </div>
 
-        {/* Legend */}
-        <div className="mt-8 pt-6 border-t border-[var(--border)]">
-          <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">Legenda:</h3>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(tipoLabels).map(([key, label]) => (
-              <div key={key} className="flex items-center gap-2">
-                <div className={`w-4 h-4 rounded ${tipoColors[key]}`} />
-                <span className="text-sm text-[var(--muted-foreground)]">{label}</span>
+        {/* Legend - Environments */}
+        <div className="mt-3 pt-3 border-t border-[var(--border)]">
+          <h3 className="text-xs sm:text-sm font-semibold text-[var(--foreground)] mb-2">{t('legend')}</h3>
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            {environments.map((env) => (
+              <div key={env.id} className="flex items-center gap-1 sm:gap-1.5">
+                <div
+                  className="w-3 h-3 rounded"
+                  style={{ backgroundColor: env.color || '#3B82F6' }}
+                />
+                <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">{env.name}</span>
               </div>
             ))}
           </div>
@@ -318,7 +825,7 @@ export default function TimesheetCalendar({
                   {new Date(selectedDate).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
                 </h2>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={handleCloseModal}
                   className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,23 +834,64 @@ export default function TimesheetCalendar({
                 </button>
               </div>
 
-              {/* Worker Status Badge */}
+              {/* Worker Status Badge - Only show if there are entries for this day */}
               {(() => {
-                const workerStatus = getWorkerStatus(selectedDate);
-                if (workerStatus === 'unknown') return null;
+                // Get entries for selected date
+                const dayEntries = entries.filter(e => e.data === selectedDate);
 
-                const isEmbarcado = workerStatus === 'embarcado';
+                // Only show status if there are entries
+                if (dayEntries.length === 0) return null;
+
+                // Determine status based on actual entries
+                const hasOffshoreEntry = dayEntries.some(e => {
+                  const env = environments.find(env => env.id === e.environment_id);
+                  return env?.slug === 'offshore';
+                });
+
+                const hasEmbarqueEntry = dayEntries.some(e => {
+                  const env = environments.find(env => env.id === e.environment_id);
+                  return env?.slug === 'embarque';
+                });
+
+                const hasDesembarqueEntry = dayEntries.some(e => {
+                  const env = environments.find(env => env.id === e.environment_id);
+                  return env?.slug === 'desembarque';
+                });
+
+                const hasFolgaEntry = dayEntries.some(e => {
+                  const env = environments.find(env => env.id === e.environment_id);
+                  return env?.slug === 'folga';
+                });
+
+                // Determine badge based on entries
+                let badgeText = '';
+                let badgeColor = '';
+                let badgeIcon = null;
+
+                if (hasOffshoreEntry || hasEmbarqueEntry) {
+                  badgeText = t('workerStatus.embarcado');
+                  badgeColor = 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200';
+                  badgeIcon = (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  );
+                } else if (hasDesembarqueEntry || hasFolgaEntry) {
+                  badgeText = t('workerStatus.desembarcado');
+                  badgeColor = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200';
+                  badgeIcon = (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  );
+                } else {
+                  // Has entries but not offshore-related, don't show badge
+                  return null;
+                }
+
                 return (
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${isEmbarcado ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'}`}>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${badgeColor}`}>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {isEmbarcado ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                      )}
+                      {badgeIcon}
                     </svg>
                     <span className="font-semibold text-sm">
-                      {isEmbarcado ? '🚢 Embarcado' : '🏠 Desembarcado'}
+                      {badgeText}
                     </span>
                   </div>
                 );
@@ -352,6 +900,25 @@ export default function TimesheetCalendar({
 
             {/* Modal Body */}
             <div className="p-6 space-y-6">
+              {/* Pending operations indicator */}
+              {pendingOperations.length > 0 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm flex items-center gap-2 border border-blue-200 dark:border-blue-800">
+                  <svg className="w-4 h-4 flex-shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium">
+                      {t('batchOperations.pendingChanges', { count: pendingOperations.length })} •
+                      {' '}{t('batchOperations.creates', { count: pendingOperations.filter(op => op.type === 'create').length })} •
+                      {' '}{t('batchOperations.deletes', { count: pendingOperations.filter(op => op.type === 'delete').length })}
+                    </p>
+                    <p className="text-xs opacity-75 mt-0.5">
+                      {t('batchOperations.autoSaveIn')}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {error && (
                 <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-lg text-sm">
                   {error}
@@ -361,87 +928,119 @@ export default function TimesheetCalendar({
               {/* Existing entries for this day */}
               {entries.filter((e) => e.data === selectedDate).length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">Lançamentos existentes:</h3>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">{t('existingEntries')}</h3>
                   <div className="space-y-2">
                     {entries
                       .filter((e) => e.data === selectedDate)
-                      .map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="flex items-center justify-between p-3 bg-[var(--muted)]/50 rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <div className={`inline-block px-3 py-1 rounded-md text-sm ${tipoColors[entry.tipo]}`}>
-                              {tipoLabels[entry.tipo]}
-                            </div>
-                            {entry.hora_ini && (
-                              <span className="ml-2 text-sm text-[var(--muted-foreground)]">
-                                {entry.hora_ini}
-                              </span>
-                            )}
-                            {entry.observacao && (
-                              <p className="text-xs text-[var(--muted-foreground)] mt-1">{entry.observacao}</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleDeleteEntry(entry.id)}
-                            disabled={loading}
-                            className="ml-4 text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                      .map((entry) => {
+                        const envColor = getEnvironmentColor(entry.environment_id);
+                        const envName = getEnvironmentName(entry.environment_id);
+                        const isTempEntry = entry.id.startsWith('temp-');
+                        return (
+                          <div
+                            key={entry.id}
+                            className={`flex items-center justify-between p-3 rounded-lg ${
+                              isTempEntry
+                                ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800'
+                                : 'bg-[var(--muted)]/50'
+                            }`}
                           >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="inline-block px-3 py-1 rounded-md text-sm text-white font-medium"
+                                  style={{ backgroundColor: envColor }}
+                                >
+                                  {envName}
+                                </div>
+                                {isTempEntry && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 font-medium">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Pendente
+                                  </span>
+                                )}
+                              </div>
+                              {entry.hora_ini && (
+                                <span className="ml-2 text-sm text-[var(--muted-foreground)]">
+                                  {entry.hora_ini}
+                                </span>
+                              )}
+                              {entry.observacao && (
+                                <p className="text-xs text-[var(--muted-foreground)] mt-1">{entry.observacao}</p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDeleteEntry(entry.id)}
+                              className="ml-4 p-2 rounded-lg text-[var(--destructive)] hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+                              aria-label="Excluir entrada"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
 
               {/* Add new entry form */}
               <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">Adicionar novo lançamento:</h3>
+                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">{t('addNewEntry')}</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-                      Tipo de Lançamento
+                      {t('batchOperations.environmentLabel')}
                     </label>
                     <select
-                      value={form.tipo}
-                      onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+                      value={form.environment_id}
+                      onChange={(e) => {
+                        setForm({ ...form, environment_id: e.target.value });
+                        setSelectedEnvironment(e.target.value);
+                      }}
                       className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      required
                     >
-                      {Object.entries(tipoLabels).map(([key, label]) => (
-                        <option key={key} value={key}>
-                          {label}
+                      <option value="">{t('batchOperations.environmentPlaceholder')}</option>
+                      {environments.map((env) => (
+                        <option key={env.id} value={env.id}>
+                          {env.name}
                         </option>
                       ))}
                     </select>
+                    {environments.length === 0 && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        Nenhum ambiente cadastrado. Entre em contato com o administrador.
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-                      Hora da Marcação
+                      {t('time')}
                     </label>
                     <input
                       type="time"
                       value={form.hora_ini}
                       onChange={(e) => setForm({ ...form, hora_ini: e.target.value })}
                       className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="00:00"
+                      placeholder={t('timePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-                      Observações (opcional)
+                      {t('notes')}
                     </label>
                     <textarea
                       value={form.observacao}
                       onChange={(e) => setForm({ ...form, observacao: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                      placeholder="Adicione observações sobre este lançamento..."
+                      placeholder={t('notesPlaceholder')}
                     />
                   </div>
                 </div>
@@ -449,19 +1048,292 @@ export default function TimesheetCalendar({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-[var(--border)] flex items-center justify-end gap-3">
+            <div className="p-6 border-t border-[var(--border)] flex items-center justify-between gap-3">
               <button
-                onClick={() => setShowModal(false)}
-                className="px-6 py-3 rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors font-medium"
+                onClick={handleCloseModal}
+                className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors"
               >
-                Cancelar
+                {t('batchOperations.close')}
               </button>
               <button
                 onClick={handleCreateEntry}
-                disabled={loading}
-                className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !form.environment_id}
+                className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Salvando...' : 'Adicionar Lançamento'}
+                {loading ? t('saving') : t('batchOperations.add')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-fill Confirmation Modal */}
+      {showAutoFillModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-[var(--card)] rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col border border-[var(--border)] animate-scale-in">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-[var(--border)] flex-shrink-0">
+              <h2 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+                {t('autoFill.title')}
+              </h2>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                {t('autoFill.subtitle', { schedule: workSchedule?.work_schedule || '' })}
+              </p>
+              <div className="mt-3 p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 rounded-lg text-sm">
+                {t('autoFill.warning')}
+              </div>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">
+                  {t('autoFill.suggestedEntries')}
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSuggestedEntries(suggestedEntries.map(s => ({ ...s, selected: true })))}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-[var(--muted)] hover:bg-[var(--muted)]/80 text-[var(--foreground)] font-medium transition-colors"
+                  >
+                    {t('autoFill.selectAll')}
+                  </button>
+                  <button
+                    onClick={() => setSuggestedEntries(suggestedEntries.map(s => ({ ...s, selected: false })))}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-[var(--muted)] hover:bg-[var(--muted)]/80 text-[var(--foreground)] font-medium transition-colors"
+                  >
+                    {t('autoFill.deselectAll')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Info banner based on type */}
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+                <p className="text-sm text-blue-900 dark:text-blue-200">
+                  {form.environment_id && getEnvironment(form.environment_id)?.slug === 'embarque'
+                    ? t('autoFill.embarqueInfo')
+                    : t('autoFill.desembarqueInfo')
+                  }
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {/* Working Days (Offshore) - Pre-selected */}
+                {suggestedEntries.filter(s => s.tipo === 'offshore').length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-block w-3 h-3 bg-cyan-500 rounded-full"></span>
+                      <h4 className="text-sm font-semibold text-[var(--foreground)]">
+                        {t('autoFill.workingDays')}
+                      </h4>
+                      <span className="text-xs text-[var(--muted-foreground)] ml-auto">
+                        {suggestedEntries.filter(s => s.tipo === 'offshore' && s.selected).length} selecionados
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                      {t('autoFill.workingDaysHelp')}
+                    </p>
+                    <div className="space-y-2">
+                      {suggestedEntries
+                        .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
+                        .filter(s => s.tipo === 'offshore')
+                        .map((suggestion) => (
+                          <div
+                            key={suggestion.originalIndex}
+                            className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors border border-cyan-200 dark:border-cyan-800"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={suggestion.selected}
+                              onChange={(e) => {
+                                const newSuggestions = [...suggestedEntries];
+                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                setSuggestedEntries(newSuggestions);
+                              }}
+                              className="w-5 h-5 rounded border-[var(--border)] text-blue-600 focus:ring-2 focus:ring-blue-500"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-[var(--foreground)]">
+                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
+                                  {suggestion.tipo}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Desembarque - Pre-selected */}
+                {suggestedEntries.filter(s => s.tipo === 'desembarque').length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-block w-3 h-3 bg-purple-500 rounded-full"></span>
+                      <h4 className="text-sm font-semibold text-[var(--foreground)]">
+                        Desembarque (Volta para Casa)
+                      </h4>
+                    </div>
+                    <div className="space-y-2">
+                      {suggestedEntries
+                        .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
+                        .filter(s => s.tipo === 'desembarque')
+                        .map((suggestion) => (
+                          <div
+                            key={suggestion.originalIndex}
+                            className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors border border-purple-200 dark:border-purple-800"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={suggestion.selected}
+                              onChange={(e) => {
+                                const newSuggestions = [...suggestedEntries];
+                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                setSuggestedEntries(newSuggestions);
+                              }}
+                              className="w-5 h-5 rounded border-[var(--border)] text-purple-600 focus:ring-2 focus:ring-purple-500"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-[var(--foreground)]">
+                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-purple-100 text-purple-800">
+                                  {suggestion.tipo}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Days Off (Folga) - Pre-selected */}
+                {suggestedEntries.filter(s => s.tipo === 'folga').length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
+                      <h4 className="text-sm font-semibold text-[var(--foreground)]">
+                        {t('autoFill.daysOff')}
+                      </h4>
+                      <span className="text-xs text-[var(--muted-foreground)] ml-auto">
+                        {suggestedEntries.filter(s => s.tipo === 'folga' && s.selected).length} selecionados
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                      {t('autoFill.daysOffHelp')}
+                    </p>
+                    <div className="space-y-2">
+                      {suggestedEntries
+                        .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
+                        .filter(s => s.tipo === 'folga')
+                        .map((suggestion) => (
+                          <div
+                            key={suggestion.originalIndex}
+                            className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900/30 transition-colors border border-gray-200 dark:border-gray-800"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={suggestion.selected}
+                              onChange={(e) => {
+                                const newSuggestions = [...suggestedEntries];
+                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                setSuggestedEntries(newSuggestions);
+                              }}
+                              className="w-5 h-5 rounded border-[var(--border)] text-gray-600 focus:ring-2 focus:ring-gray-500"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-[var(--foreground)]">
+                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-gray-100 text-gray-800">
+                                  {suggestion.tipo}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Next Embarque (Suggestion only - not pre-selected) */}
+                {suggestedEntries.filter(s => s.tipo === 'embarque').length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-block w-3 h-3 bg-blue-500 rounded-full"></span>
+                      <h4 className="text-sm font-semibold text-[var(--foreground)]">
+                        {t('autoFill.nextTransition')}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                      {t('autoFill.nextTransitionHelp')}
+                    </p>
+                    <div className="space-y-2">
+                      {suggestedEntries
+                        .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
+                        .filter(s => s.tipo === 'embarque')
+                        .map((suggestion) => (
+                          <div
+                            key={suggestion.originalIndex}
+                            className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors border border-blue-200 dark:border-blue-800 opacity-75"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={suggestion.selected}
+                              onChange={(e) => {
+                                const newSuggestions = [...suggestedEntries];
+                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                setSuggestedEntries(newSuggestions);
+                              }}
+                              className="w-5 h-5 rounded border-[var(--border)] text-blue-600 focus:ring-2 focus:ring-blue-500"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-[var(--foreground)]">
+                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
+                                  {suggestion.tipo}
+                                </div>
+                                <span className="text-xs text-amber-600 dark:text-amber-400 ml-auto">
+                                  ⚠️ Opcional
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-sm text-[var(--muted-foreground)] text-center pt-2 border-t border-[var(--border)]">
+                {t('autoFill.selectedCount', { count: suggestedEntries.filter(s => s.selected).length, total: suggestedEntries.length })}
+              </div>
+            </div>
+
+            {/* Modal Footer - Fixed at bottom */}
+            <div className="p-6 border-t border-[var(--border)] flex items-center justify-end gap-3 flex-shrink-0 bg-[var(--card)]">
+              <button
+                onClick={() => {
+                  setShowAutoFillModal(false);
+                  setSuggestedEntries([]);
+                }}
+                className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors"
+              >
+                {t('autoFill.cancelAll')}
+              </button>
+              <button
+                onClick={handleConfirmAutoFill}
+                disabled={loading || suggestedEntries.filter(s => s.selected).length === 0}
+                className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? t('saving') : t('autoFill.confirmSelected')}
               </button>
             </div>
           </div>

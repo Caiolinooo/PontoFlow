@@ -1,21 +1,65 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth/server';
-import { headers } from 'next/headers';
+import { getServerSupabase } from '@/lib/supabase/server';
 
 export default async function ManagerPendingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  await requireRole(locale, ['ADMIN', 'MANAGER', 'MANAGER_TIMESHEET']);
+  const user = await requireRole(locale, ['ADMIN', 'MANAGER', 'MANAGER_TIMESHEET']);
+  const supabase = await getServerSupabase();
 
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host')!;
-  const proto = h.get('x-forwarded-proto') ?? 'http';
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${proto}://${host}`;
-  const resp = await fetch(`${baseUrl}/api/manager/pending-timesheets`, { cache: 'no-store' });
-  const payload = resp.ok ? await resp.json() : { items: [] };
-  const items: Array<{ id: string; periodo_ini: string; periodo_fim: string; employee?: { id: string; display_name?: string | null } }> = payload.items ?? [];
+  // Fetch pending timesheets directly from Supabase
+  let items: Array<{ id: string; periodo_ini: string; periodo_fim: string; employee?: { id: string; display_name?: string | null } }> = [];
 
-  const t = await getTranslations('manager.pending');
+  if (user.role === 'ADMIN') {
+    // Admin sees all pending timesheets in their tenant
+    const { data } = await supabase
+      .from('timesheets')
+      .select('id,status,periodo_ini,periodo_fim,employee:employees!timesheets_employee_id_fkey(id,display_name)')
+      .eq('tenant_id', user.tenant_id as string)
+      .eq('status', 'enviado')
+      .order('periodo_ini', { ascending: false });
+    items = (data ?? []).map(item => ({
+      ...item,
+      employee: Array.isArray(item.employee) ? item.employee[0] : item.employee
+    }));
+  } else {
+    // Manager sees only timesheets from their delegated groups
+    // Nota: após migração phase-22, tenant_id estará disponível diretamente
+    const { data: mgrGroups } = await supabase
+      .from('manager_group_assignments')
+      .select('group_id')
+      .eq('manager_id', user.id)
+      .eq('tenant_id', user.tenant_id as string);
+    const groupIds = [...new Set((mgrGroups ?? []).map(g => g.group_id))];
+
+    if (groupIds.length > 0) {
+      // Get employees in those groups
+      // Nota: após migração phase-22, tenant_id estará disponível diretamente
+      const { data: memberships } = await supabase
+        .from('employee_group_members')
+        .select('employee_id')
+        .in('group_id', groupIds)
+        .eq('tenant_id', user.tenant_id as string);
+      const employeeIds = [...new Set((memberships ?? []).map(m => m.employee_id))];
+
+      if (employeeIds.length > 0) {
+        const { data } = await supabase
+          .from('timesheets')
+          .select('id,status,periodo_ini,periodo_fim,employee:employees!timesheets_employee_id_fkey(id,display_name)')
+          .eq('tenant_id', user.tenant_id as string)
+          .eq('status', 'enviado')
+          .in('employee_id', employeeIds)
+          .order('periodo_ini', { ascending: false });
+        items = (data ?? []).map(item => ({
+          ...item,
+          employee: Array.isArray(item.employee) ? item.employee[0] : item.employee
+        }));
+      }
+    }
+  }
+
+  const t = await getTranslations({ locale, namespace: 'manager.pending' });
 
   return (
     <div className="space-y-6">

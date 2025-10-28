@@ -31,9 +31,9 @@ export default function EntryRowActions({ timesheetId, entry, onChanged }: { tim
   return (
     <div className="flex gap-2 justify-end">
       <button disabled={busy} onClick={() => setOpen(true)} title="Editar"
-        className="px-2 py-1 text-xs rounded bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-60">Editar</button>
+        className="px-3 py-1.5 text-xs rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">Editar</button>
       <button disabled={busy} onClick={del} title="Excluir"
-        className="px-2 py-1 text-xs rounded bg-red-600 text-white disabled:opacity-60">Excluir</button>
+        className="px-3 py-1.5 text-xs rounded-lg bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">Excluir</button>
       <EntryEditModal open={open} onClose={() => setOpen(false)} entry={entry} timesheetId={timesheetId} onSaved={() => onChanged?.()} />
     </div>
   );

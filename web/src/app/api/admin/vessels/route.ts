@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   // Resolve tenant automatically if there is exactly one
   let tenantId = user.tenant_id as string | undefined;
   if (!tenantId) {
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
       tenantId = tenants[0].id;
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Optional defensive: verify tenant exists (helps surface FK errors clearly)
-  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const svc = getServiceSupabase();
   let { data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle();
   if (!tenantRow) {
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);

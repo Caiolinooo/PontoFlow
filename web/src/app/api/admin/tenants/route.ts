@@ -46,7 +46,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await requireApiRole(['ADMIN']);
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const supabase = getServiceSupabase();
 
     const body = await req.json().catch(() => ({}));
     const name = String(body.name ?? '').trim();

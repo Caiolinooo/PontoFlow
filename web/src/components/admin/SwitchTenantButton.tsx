@@ -31,7 +31,7 @@ export default function SwitchTenantButton({ tenantId, locale }: { tenantId?: st
       type="button"
       onClick={onClick}
       disabled={loading}
-      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-60"
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? labelLoading : label}
     </button>

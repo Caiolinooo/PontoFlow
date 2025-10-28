@@ -27,8 +27,8 @@ export default async function SignInPage({
   }
 
   const redirectTo = redirectParam || `/${locale}/dashboard`;
-  const t = await getTranslations('auth');
-  const tApp = await getTranslations('app');
+  const t = await getTranslations({ locale, namespace: 'auth' });
+  const tApp = await getTranslations({ locale, namespace: 'app' });
   const siteTitle = branding.siteTitle || tApp('title');
 
   return (

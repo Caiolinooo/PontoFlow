@@ -53,7 +53,7 @@ export default async function EmployeeBootstrapPage({
                     <div className="text-[var(--muted-foreground)] text-xs">{t.slug}</div>
                   </div>
                   <Link
-                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
+                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all"
                     href={`/${locale}/employee/bootstrap?tenant=${t.id}`}
                   >
                     Usar este cliente
@@ -88,15 +88,16 @@ export default async function EmployeeBootstrapPage({
     redirect(`/${locale}/employee/timesheets`);
   }
 
-  // 2) Ensure a profiles row exists
+  // 2) Ensure a profiles row exists and get display_name
+  let display_name: string;
   const { data: prof, error: profErr } = await supabase
     .from('profiles')
-    .select('user_id')
+    .select('user_id, display_name')
     .eq('user_id', user.id)
     .maybeSingle();
 
   if (!prof) {
-    const display_name = user.name || `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || user.email;
+    display_name = user.name || `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || user.email;
     const { error: insertProfErr } = await supabase.from('profiles').insert({
       user_id: user.id,
       display_name,
@@ -106,21 +107,52 @@ export default async function EmployeeBootstrapPage({
     if (insertProfErr) {
       console.error('Failed to create profile:', insertProfErr);
     }
+  } else {
+    display_name = prof.display_name || user.name || `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || user.email;
   }
 
-  // 3) Create employee linked to this profile
+  // 3) Create employee linked to this profile with name field
   const { data: inserted, error: insertErr } = await supabase
     .from('employees')
-    .insert({ tenant_id: tenantId as string, profile_id: user.id })
+    .insert({
+      tenant_id: tenantId as string,
+      profile_id: user.id,
+      name: display_name  // Required field
+    })
     .select('id')
     .single();
 
   if (insertErr) {
     console.error('Failed to create employee:', insertErr);
+    // Show error page instead of redirecting to avoid infinite loop
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h1 className="text-xl font-semibold text-red-900 mb-2">Erro ao criar registro de colaborador</h1>
+          <p className="text-red-700 mb-4">
+            Não foi possível criar seu registro de colaborador. Por favor, entre em contato com o administrador do sistema.
+          </p>
+          <details className="text-sm text-red-600">
+            <summary className="cursor-pointer font-medium">Detalhes técnicos</summary>
+            <pre className="mt-2 p-2 bg-red-100 rounded overflow-auto">{JSON.stringify(insertErr, null, 2)}</pre>
+          </details>
+        </div>
+      </div>
+    );
   }
 
   if (!inserted?.id) {
-    redirect(`/${locale}/employee/timesheets`);
+    // Show error page instead of redirecting to avoid infinite loop
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h1 className="text-xl font-semibold text-yellow-900 mb-2">Erro ao criar registro</h1>
+          <p className="text-yellow-700">
+            O registro foi criado mas não foi possível recuperar o ID. Por favor, tente novamente ou entre em contato com o administrador.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // 4) Go to timesheets

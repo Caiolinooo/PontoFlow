@@ -1,10 +1,12 @@
 import { requireRole } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/service';
 import { getServerSupabase } from '@/lib/supabase/server';
+import { getTranslations } from 'next-intl/server';
 import WorkScheduleManager from '@/components/admin/WorkScheduleManager';
 
 export default async function WorkSchedulesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.workSchedules' });
   const user = await requireRole(locale, ['ADMIN']);
 
   const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
@@ -20,7 +22,7 @@ export default async function WorkSchedulesPage({ params }: { params: Promise<{ 
     return (
       <div className="p-6">
         <div className="bg-red-100 text-red-800 p-4 rounded">
-          Tenant não encontrado. Configure seu tenant primeiro.
+          {t('tenantNotFound')}
         </div>
       </div>
     );
@@ -67,9 +69,9 @@ export default async function WorkSchedulesPage({ params }: { params: Promise<{ 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Escalas de Trabalho</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Configure as escalas de trabalho offshore (14x14, 7x7, 21x21, 28x28) para o tenant e exceções por colaborador.
+          {t('subtitle')}
         </p>
       </div>
 

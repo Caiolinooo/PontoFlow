@@ -7,6 +7,8 @@ export default function NewEnvironmentPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [color, setColor] = useState("#3B82F6");
+  const [autoFillEnabled, setAutoFillEnabled] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [tenantModalOpen, setTenantModalOpen] = useState(false);
@@ -18,7 +20,11 @@ export default function NewEnvironmentPage() {
     setError(null);
     try {
       const makeReq = async () => {
-        const resp = await fetch('/api/admin/environments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, slug }) });
+        const resp = await fetch('/api/admin/environments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, slug, color, auto_fill_enabled: autoFillEnabled })
+        });
         const j = await resp.json().catch(() => ({}));
         return { resp, j } as const;
       };
@@ -43,11 +49,58 @@ export default function NewEnvironmentPage() {
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="block text-sm text-[var(--muted-foreground)] mb-1">Nome</label>
-          <input value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)]" />
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)]"
+            required
+          />
         </div>
         <div>
           <label className="block text-sm text-[var(--muted-foreground)] mb-1">Slug</label>
-          <input value={slug} onChange={e => setSlug(e.target.value)} className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)]" placeholder="ex.: offshore" />
+          <input
+            value={slug}
+            onChange={e => setSlug(e.target.value)}
+            className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)]"
+            placeholder="ex.: offshore"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-[var(--muted-foreground)] mb-1">Cor no Calendário</label>
+          <div className="flex gap-2 items-center">
+            <input
+              type="color"
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              className="h-10 w-20 rounded-md border border-[var(--border)] cursor-pointer"
+            />
+            <input
+              type="text"
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)] font-mono text-sm"
+              placeholder="#3B82F6"
+              pattern="^#[0-9A-Fa-f]{6}$"
+            />
+          </div>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">
+            Cor que será exibida nos lançamentos deste ambiente no calendário
+          </p>
+        </div>
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoFillEnabled}
+              onChange={e => setAutoFillEnabled(e.target.checked)}
+              className="w-4 h-4 rounded border-[var(--border)]"
+            />
+            <span className="text-sm text-[var(--foreground)]">Habilitar preenchimento automático</span>
+          </label>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1 ml-6">
+            Permite que este ambiente seja usado no preenchimento automático de lançamentos
+          </p>
         </div>
         {error && <div className="text-[var(--destructive)] text-sm">{error}</div>}
         <button disabled={saving} className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-60">
@@ -63,7 +116,11 @@ export default function NewEnvironmentPage() {
             setSaving(true);
             setError(null);
             const { resp: r2, j: j2 } = await (async () => {
-              const resp2 = await fetch('/api/admin/environments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, slug }) });
+              const resp2 = await fetch('/api/admin/environments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, slug, color, auto_fill_enabled: autoFillEnabled })
+              });
               const j2 = await resp2.json().catch(() => ({}));
               return { resp: resp2, j: j2 } as const;
             })();

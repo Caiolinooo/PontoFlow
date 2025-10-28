@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const employee_id = searchParams.get('employee_id');
 
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
 
     if (employee_id) {
       // Get schedules for specific employee
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
     }
 
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
 
     // Parse days from schedule if not custom
     let days_on = parsed.data.days_on;

@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function ImportExportPage() {
+  const t = useTranslations('admin.importExport');
   const [period, setPeriod] = useState("");
   const [format, setFormat] = useState<'json'|'csv'>('json');
   const [importText, setImportText] = useState("");
@@ -38,10 +40,10 @@ export default function ImportExportPage() {
         body: importText
       });
       const j = await resp.json();
-      if (!resp.ok || !j.ok) throw new Error(j?.error || 'Falha ao importar');
+      if (!resp.ok || !j.ok) throw new Error(j?.error || t('importFailed'));
       setImportResult(`OK: timesheets=${j.counts.timesheets}, entries=${j.counts.entries}, approvals=${j.counts.approvals}`);
     } catch (e: any) {
-      setImportResult(`Erro: ${e?.message || 'desconhecido'}`);
+      setImportResult(`${t('importError')}: ${e?.message || t('unknown')}`);
     } finally {
       setImporting(false);
     }
@@ -54,33 +56,33 @@ export default function ImportExportPage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)]">Import/Export</h1>
-        <p className="text-sm text-[var(--muted-foreground)]">Exporte dados para integrações e valide arquivos para importações (dry-run).</p>
+        <h1 className="text-2xl font-semibold text-[var(--foreground)]">{t('title')}</h1>
+        <p className="text-sm text-[var(--muted-foreground)]">{t('subtitle')}</p>
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-medium text-[var(--foreground)]">Export</h2>
+        <h2 className="font-medium text-[var(--foreground)]">{t('export')}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="block text-sm text-[var(--muted-foreground)] mb-1">Período (YYYY-MM)</label>
-            <input value={period} onChange={e => setPeriod(e.target.value)} className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)]" placeholder="ex.: 2025-10" />
+            <label className="block text-sm text-[var(--muted-foreground)] mb-1">{t('period')}</label>
+            <input value={period} onChange={e => setPeriod(e.target.value)} className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)]" placeholder={t('periodPlaceholder')} />
           </div>
           <div>
-            <label className="block text-sm text-[var(--muted-foreground)] mb-1">Formato</label>
+            <label className="block text-sm text-[var(--muted-foreground)] mb-1">{t('format')}</label>
             <select value={format} onChange={e => setFormat(e.target.value as any)} className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)]">
-              <option value="json">JSON</option>
-              <option value="csv">CSV</option>
+              <option value="json">{t('formatJson')}</option>
+              <option value="csv">{t('formatCsv')}</option>
             </select>
           </div>
           <div className="flex items-end gap-2">
-            <button 
+            <button
               onClick={loadPreview}
               disabled={loadingPreview}
               className="px-3 py-2 rounded-lg bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90 disabled:opacity-50"
             >
-              {loadingPreview ? 'Carregando...' : 'Visualizar'}
+              {loadingPreview ? t('loading') : t('preview')}
             </button>
-            <a href={exportUrl} className="px-3 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">Baixar</a>
+            <a href={exportUrl} className="px-3 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">{t('download')}</a>
           </div>
         </div>
 
@@ -88,32 +90,32 @@ export default function ImportExportPage() {
         {previewData && (
           <div className="mt-6 space-y-4">
             <div className="bg-[var(--muted)]/30 border border-[var(--border)] rounded-lg p-4">
-              <h3 className="font-semibold text-[var(--foreground)] mb-3">📊 Resumo dos Dados</h3>
+              <h3 className="font-semibold text-[var(--foreground)] mb-3">{t('dataSummary')}</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-[var(--card)] p-3 rounded-lg border border-[var(--border)]">
                   <div className="text-2xl font-bold text-[var(--primary)]">
                     {previewData.data?.timesheets?.length || 0}
                   </div>
-                  <div className="text-sm text-[var(--muted-foreground)]">Timesheets</div>
+                  <div className="text-sm text-[var(--muted-foreground)]">{t('timesheets')}</div>
                 </div>
                 <div className="bg-[var(--card)] p-3 rounded-lg border border-[var(--border)]">
                   <div className="text-2xl font-bold text-[var(--primary)]">
                     {previewData.data?.entries?.length || 0}
                   </div>
-                  <div className="text-sm text-[var(--muted-foreground)]">Lançamentos</div>
+                  <div className="text-sm text-[var(--muted-foreground)]">{t('entries')}</div>
                 </div>
                 <div className="bg-[var(--card)] p-3 rounded-lg border border-[var(--border)]">
                   <div className="text-2xl font-bold text-[var(--primary)]">
                     {previewData.data?.approvals?.length || 0}
                   </div>
-                  <div className="text-sm text-[var(--muted-foreground)]">Aprovações</div>
+                  <div className="text-sm text-[var(--muted-foreground)]">{t('approvals')}</div>
                 </div>
                 <div className="bg-[var(--card)] p-3 rounded-lg border border-[var(--border)]">
                   <div className="text-xs text-[var(--muted-foreground)] break-all">
-                    Tenant: {previewData.tenant_id?.substring(0, 8)}...
+                    {t('tenant')}: {previewData.tenant_id?.substring(0, 8)}...
                   </div>
                   <div className="text-xs text-[var(--muted-foreground)] mt-1">
-                    {new Date(previewData.exported_at).toLocaleString('pt-BR')}
+                    {new Date(previewData.exported_at).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -123,16 +125,16 @@ export default function ImportExportPage() {
             {previewData.data?.timesheets && previewData.data.timesheets.length > 0 && (
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
                 <div className="px-4 py-3 bg-[var(--muted)]/40 border-b border-[var(--border)]">
-                  <h4 className="font-semibold text-[var(--foreground)]">Timesheets (primeiros 10)</h4>
+                  <h4 className="font-semibold text-[var(--foreground)]">{t('timesheetsPreview')}</h4>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-[var(--muted)]/20">
                       <tr>
                         <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">ID</th>
-                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Employee ID</th>
-                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Período</th>
-                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Status</th>
+                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">{t('employeeId')}</th>
+                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">{t('period')}</th>
+                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">{t('status')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -164,7 +166,7 @@ export default function ImportExportPage() {
                 </div>
                 {previewData.data.timesheets.length > 10 && (
                   <div className="px-4 py-2 bg-[var(--muted)]/20 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)]">
-                    + {previewData.data.timesheets.length - 10} timesheets adicionais
+                    + {previewData.data.timesheets.length - 10} {t('additionalTimesheets')}
                   </div>
                 )}
               </div>
@@ -174,7 +176,7 @@ export default function ImportExportPage() {
             {previewData.data?.entries && previewData.data.entries.length > 0 && (
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
                 <div className="px-4 py-3 bg-[var(--muted)]/40 border-b border-[var(--border)]">
-                  <h4 className="font-semibold text-[var(--foreground)]">Lançamentos (primeiros 10)</h4>
+                  <h4 className="font-semibold text-[var(--foreground)]">{t('entriesPreview')}</h4>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
@@ -182,9 +184,9 @@ export default function ImportExportPage() {
                       <tr>
                         <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Entry ID</th>
                         <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Timesheet ID</th>
-                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Tipo</th>
-                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Data</th>
-                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">Horário</th>
+                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">{t('type')}</th>
+                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">{t('date')}</th>
+                        <th className="text-left px-3 py-2 text-[var(--muted-foreground)] font-medium">{t('time')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -212,7 +214,7 @@ export default function ImportExportPage() {
                 </div>
                 {previewData.data.entries.length > 10 && (
                   <div className="px-4 py-2 bg-[var(--muted)]/20 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)]">
-                    + {previewData.data.entries.length - 10} lançamentos adicionais
+                    + {previewData.data.entries.length - 10} {t('additionalEntries')}
                   </div>
                 )}
               </div>
@@ -222,16 +224,16 @@ export default function ImportExportPage() {
             {previewData && (
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden">
                 <div className="px-4 py-3 bg-[var(--muted)]/40 border-b border-[var(--border)] flex items-center justify-between">
-                  <h4 className="font-semibold text-[var(--foreground)]">JSON Completo</h4>
+                  <h4 className="font-semibold text-[var(--foreground)]">{t('fullJson')}</h4>
                   <button
                     onClick={() => {
                       const jsonStr = JSON.stringify(previewData, null, 2);
                       navigator.clipboard.writeText(jsonStr);
-                      alert('JSON copiado para a área de transferência!');
+                      alert(t('jsonCopied'));
                     }}
                     className="px-3 py-1 text-xs bg-[var(--primary)] text-[var(--primary-foreground)] rounded hover:opacity-90"
                   >
-                    Copiar JSON
+                    {t('copyJson')}
                   </button>
                 </div>
                 <div className="p-4 overflow-x-auto">
@@ -246,10 +248,10 @@ export default function ImportExportPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-medium text-[var(--foreground)]">Import (dry-run)</h2>
+        <h2 className="font-medium text-[var(--foreground)]">{t('import')} (dry-run)</h2>
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
           <p className="text-amber-800 dark:text-amber-200 text-sm">
-            ⚠️ <strong>Modo de validação:</strong> Esta função apenas valida o formato do JSON sem fazer alterações no banco de dados.
+            ⚠️ <strong>{t('validationMode')}</strong> {t('validationWarning')}
           </p>
         </div>
         <form onSubmit={doImport} className="space-y-3">
@@ -259,14 +261,14 @@ export default function ImportExportPage() {
               onChange={e => setImportText(e.target.value)}
               rows={12}
               className="w-full px-3 py-2 rounded-md bg-[var(--card)] border border-[var(--border)] font-mono text-xs leading-relaxed"
-              placeholder='Cole aqui o JSON no formato:
+              placeholder={`${t('pasteJson')}
 {
   "data": {
     "timesheets": [],
     "entries": [],
     "approvals": []
   }
-}'
+}`}
             />
             {importText && (
               <button
@@ -274,7 +276,7 @@ export default function ImportExportPage() {
                 onClick={() => setImportText('')}
                 className="absolute top-2 right-2 px-2 py-1 text-xs bg-[var(--muted)] hover:bg-[var(--muted)]/80 text-[var(--muted-foreground)] rounded"
               >
-                Limpar
+                {t('clear')}
               </button>
             )}
           </div>
@@ -283,7 +285,7 @@ export default function ImportExportPage() {
               disabled={importing || !importText.trim()}
               className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
             >
-              {importing ? 'Validando...' : 'Validar JSON'}
+              {importing ? t('validating') : t('validate')}
             </button>
             {importResult && (
               <div className={`flex-1 px-3 py-2 rounded-lg text-sm ${

@@ -8,7 +8,7 @@ import { dispatchNotification } from '@/lib/notifications/dispatcher';
 
 const Schema = z.object({
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  tipo: z.enum(['embarque', 'desembarque', 'translado', 'onshore', 'offshore', 'folga']),
+  environment_id: z.string().uuid(),
   hora_ini: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   hora_fim: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   observacao: z.string().max(1000).nullable().optional(),
@@ -71,13 +71,25 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       action = 'manager_edit_closed_period';
     }
 
+    // Get environment to extract slug for backward compatibility with 'tipo' field
+    const { data: environment, error: envError } = await supabase
+      .from('environments')
+      .select('slug')
+      .eq('id', parsed.data.environment_id)
+      .single();
+
+    if (envError || !environment) {
+      return NextResponse.json({ error: 'environment_not_found' }, { status: 400 });
+    }
+
     const ins = await supabase
       .from('timesheet_entries')
       .insert({
         tenant_id: ts!.tenant_id,
         timesheet_id: id,
         data: parsed.data.data,
-        tipo: parsed.data.tipo,
+        tipo: environment.slug, // For backward compatibility
+        environment_id: parsed.data.environment_id,
         hora_ini: parsed.data.hora_ini ?? null,
         hora_fim: parsed.data.hora_fim ?? null,
         observacao: parsed.data.observacao ?? null

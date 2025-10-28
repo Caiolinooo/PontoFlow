@@ -7,7 +7,7 @@ import {z} from 'zod';
 
 const PatchSchema = z.object({
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  tipo: z.enum(['embarque', 'desembarque', 'translado', 'onshore', 'offshore', 'folga']).optional(),
+  environment_id: z.string().uuid().optional(),
   hora_ini: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   hora_fim: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   observacao: z.string().max(1000).nullable().optional()
@@ -48,9 +48,22 @@ export async function PATCH(req: NextRequest, context: {params: Promise<{id: str
     const eff = await getEffectivePeriodLock(supabase, ts.tenant_id, ts.employee_id, mk);
     if (eff.locked && user.role !== 'ADMIN') return NextResponse.json({ error: 'period_locked', level: eff.level, reason: eff.reason ?? null }, { status: 400 });
 
+    // If environment_id is being updated, also update tipo for backward compatibility
+    const updateData: any = { ...parsed.data };
+    if (parsed.data.environment_id) {
+      const { data: environment } = await supabase
+        .from('environments')
+        .select('slug')
+        .eq('id', parsed.data.environment_id)
+        .single();
+      if (environment) {
+        updateData.tipo = environment.slug;
+      }
+    }
+
     const {error} = await supabase
       .from('timesheet_entries')
-      .update(parsed.data)
+      .update(updateData)
       .eq('id', entryId)
       .eq('timesheet_id', id);
     if (error) return NextResponse.json({error: error.message}, {status: 400});

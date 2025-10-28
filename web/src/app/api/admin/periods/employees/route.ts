@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   // Resolve tenant (auto if single, else 409 with tenants list)
   let tenantId = user.tenant_id as string | undefined;
-  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const svc = getServiceSupabase();
   if (!tenantId) {
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   // Resolve tenant (auto if single, else 409 with tenants list)
   let tenantId = user.tenant_id as string | undefined;
-  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const svc = getServiceSupabase();
   if (!tenantId) {
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {

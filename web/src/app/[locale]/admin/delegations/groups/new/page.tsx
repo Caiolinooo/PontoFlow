@@ -6,7 +6,7 @@ import GroupForm from '@/components/admin/delegations/GroupForm';
 export default async function NewGroupPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   await requireRole(locale, ['ADMIN']);
-  const t = await getTranslations('admin.delegations');
+  const t = await getTranslations({ locale, namespace: 'admin.delegations' });
 
   return (
     <div className="space-y-6">

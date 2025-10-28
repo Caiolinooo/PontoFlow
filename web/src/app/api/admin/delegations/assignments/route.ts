@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const user = await requireApiRole(['ADMIN']);
     let tenantId = user.tenant_id as string | undefined;
     if (!tenantId) {
-      const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+      const svc = getServiceSupabase();
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
         tenantId = tenants[0].id;
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
 
     // Ensure tenantId is valid; auto-heal if single tenant exists
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     let { data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle();
     if (!tenantRow) {
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
@@ -41,13 +41,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const svcRead = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcRead = getServiceSupabase();
     // Ensure group belongs to same tenant (read with service to bypass RLS)
     const { data: grp } = await svcRead.from('groups').select('tenant_id').eq('id', parsed.data.group_id).single();
     if (!grp) return NextResponse.json({ error: 'group_not_found' }, { status: 404 });
     if (grp.tenant_id !== tenantId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-    const svcWrite = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcWrite = getServiceSupabase();
     const { error } = await svcWrite
       .from('manager_group_assignments')
       .insert({ manager_id: parsed.data.manager_id, group_id: parsed.data.group_id });
@@ -67,7 +67,7 @@ export async function DELETE(req: NextRequest) {
     const user = await requireApiRole(['ADMIN']);
     let tenantId = user.tenant_id as string | undefined;
     if (!tenantId) {
-      const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+      const svc = getServiceSupabase();
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
         tenantId = tenants[0].id;
@@ -82,7 +82,7 @@ export async function DELETE(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
 
     // Ensure tenantId is valid; auto-heal if single tenant exists
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     let { data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle();
     if (!tenantRow) {
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
@@ -94,13 +94,13 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    const svcRead = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcRead = getServiceSupabase();
     // Ensure group belongs to same tenant (read with service to bypass RLS)
     const { data: grp } = await svcRead.from('groups').select('tenant_id').eq('id', parsed.data.group_id).single();
     if (!grp) return NextResponse.json({ error: 'group_not_found' }, { status: 404 });
     if (grp.tenant_id !== tenantId) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-    const svcWrite = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcWrite = getServiceSupabase();
     const { error } = await svcWrite
       .from('manager_group_assignments')
       .delete()

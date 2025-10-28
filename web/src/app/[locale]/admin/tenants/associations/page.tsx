@@ -89,7 +89,7 @@ export default function TenantAssociationsPage() {
                 <div className="font-medium">Sem Tenant</div>
                 <div className="text-xs text-[var(--muted-foreground)]">Funcionários ainda não associados</div>
               </div>
-              <button className="text-sm px-2 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]" disabled={selectedCandidates.length === 0} onClick={() => apply(selectedCandidates, [])}>Adicionar ao tenant</button>
+              <button className="text-sm px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled={selectedCandidates.length === 0} onClick={() => apply(selectedCandidates, [])}>Adicionar ao tenant</button>
             </div>
             <ul className="max-h-[60vh] overflow-auto divide-y divide-[var(--border)]">
               {candidates.length === 0 && <li className="px-4 py-3 text-[var(--muted-foreground)]">Nenhum funcionário disponível.</li>}

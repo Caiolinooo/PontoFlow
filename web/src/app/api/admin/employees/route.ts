@@ -9,7 +9,7 @@ export async function GET() {
 
   // Resolve tenant with user choice when ambiguous
   let tenantId = user.tenant_id as string | undefined;
-  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const svc = getServiceSupabase();
 
   if (!tenantId) {
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
@@ -126,7 +126,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
   // Use service client to bypass RLS for admin operations
-  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const supabase = getServiceSupabase();
   const body = await req.json().catch(() => ({}));
   const profile_id = body?.profile_id as string | undefined;
   const vessel_id = body?.vessel_id as string | null | undefined;
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
 
   // Resolve tenant with option to choose
   let tenantId = user.tenant_id as string | undefined;
-  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const svc = getServiceSupabase();
   if (!tenantId) {
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {

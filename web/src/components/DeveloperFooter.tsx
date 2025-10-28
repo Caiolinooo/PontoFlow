@@ -1,6 +1,8 @@
 "use client";
+import { useTranslations } from 'next-intl';
 
 export default function DeveloperFooter() {
+  const t = useTranslations('footer');
   const currentYear = new Date().getFullYear();
 
   return (
@@ -9,12 +11,12 @@ export default function DeveloperFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--muted-foreground)]">
           {/* Copyright */}
           <div className="flex items-center gap-2">
-            <span>© {currentYear} PontoFlow. Todos os direitos reservados.</span>
+            <span>© {currentYear} PontoFlow. {t('copyright')}</span>
           </div>
 
           {/* Developer Info */}
           <div className="flex items-center gap-4">
-            <span className="hidden sm:inline">Desenvolvido por</span>
+            <span className="hidden sm:inline">{t('developedBy')}</span>
             <a
               href="mailto:Caiovaleriogoulartcorreia@gmail.com"
               className="font-medium text-[var(--foreground)] hover:text-[var(--primary)] transition-colors"

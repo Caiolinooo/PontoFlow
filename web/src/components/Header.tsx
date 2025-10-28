@@ -60,23 +60,6 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
             <span className="text-xl font-semibold text-[var(--surface-foreground)]">{siteTitle}</span>
           </a>
 
-          {/* Quick Home (Meta-like) - show only on non-admin routes and hide on desktop to avoid duplication */}
-          {pathname &&
-           !new RegExp(`^/${locale}/dashboard(?:/.*)?$`).test(pathname) &&
-           !new RegExp(`^/${locale}/admin(?:/.*)?$`).test(pathname) && (
-            <a
-              href={`/${locale}/dashboard`}
-              className="ml-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-[var(--muted)]/40 text-[var(--surface-foreground)] hover:bg-[var(--muted)]/60 transition-colors md:hidden"
-              aria-label="Dashboard"
-              title="Dashboard"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
-                <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="hidden sm:inline">Dashboard</span>
-            </a>
-          )}
-
           {/* Minimal Actions: Theme, Language, User */}
           <nav className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3">

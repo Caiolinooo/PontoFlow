@@ -1,7 +1,9 @@
 ﻿"use client";
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function AuditPage() {
+  const t = useTranslations('admin.audit');
   const [approvals, setApprovals] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,30 +13,30 @@ export default function AuditPage() {
     (async () => {
       try {
         const resp = await fetch('/api/admin/audit', { cache: 'no-store' });
-        if (!resp.ok) throw new Error('Falha ao carregar auditoria');
+        if (!resp.ok) throw new Error(t('loadFailed'));
         const j = await resp.json();
         setApprovals(j.approvals || []);
         setEntries(j.entries || []);
       } catch (e: any) {
-        setError(e?.message || 'Erro inesperado');
+        setError(e?.message || t('unexpectedError'));
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [t]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mx-auto mb-4"></div>
-        <p className="text-[var(--muted-foreground)]">Carregando auditoria...</p>
+        <p className="text-[var(--muted-foreground)]">{t('loading')}</p>
       </div>
     </div>
   );
 
   if (error) return (
     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-      <p className="text-red-800 dark:text-red-200 font-medium">Erro ao carregar auditoria</p>
+      <p className="text-red-800 dark:text-red-200 font-medium">{t('loadError')}</p>
       <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
     </div>
   );
@@ -56,14 +58,14 @@ export default function AuditPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)]">Auditoria</h1>
-        <p className="text-sm text-[var(--muted-foreground)]">Histórico de aprovações e lançamentos (últimos 200).</p>
+        <h1 className="text-2xl font-semibold text-[var(--foreground)]">{t('title')}</h1>
+        <p className="text-sm text-[var(--muted-foreground)]">{t('subtitle')}</p>
       </div>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-[var(--foreground)]">Aprovações</h2>
-          <span className="text-sm text-[var(--muted-foreground)]">{approvals.length} registros</span>
+          <h2 className="font-medium text-[var(--foreground)]">{t('approvals')}</h2>
+          <span className="text-sm text-[var(--muted-foreground)]">{approvals.length} {t('records')}</span>
         </div>
         <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
           {approvals.length > 0 ? (
@@ -71,11 +73,11 @@ export default function AuditPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium">Colaborador</th>
-                    <th className="text-left px-4 py-3 font-medium">Manager</th>
-                    <th className="text-left px-4 py-3 font-medium">Status</th>
-                    <th className="text-left px-4 py-3 font-medium">Mensagem</th>
-                    <th className="text-left px-4 py-3 font-medium">Data/Hora</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('employee')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('manager')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('status')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('message')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('dateTime')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,7 +119,7 @@ export default function AuditPage() {
             </div>
           ) : (
             <div className="px-6 py-12 text-center text-[var(--muted-foreground)]">
-              <p>Nenhuma aprovação registrada.</p>
+              <p>{t('noApprovalsFound')}</p>
             </div>
           )}
         </div>
@@ -125,8 +127,8 @@ export default function AuditPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-[var(--foreground)]">Lançamentos</h2>
-          <span className="text-sm text-[var(--muted-foreground)]">{entries.length} registros</span>
+          <h2 className="font-medium text-[var(--foreground)]">{t('entries')}</h2>
+          <span className="text-sm text-[var(--muted-foreground)]">{entries.length} {t('records')}</span>
         </div>
         <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
           {entries.length > 0 ? (
@@ -134,11 +136,11 @@ export default function AuditPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium">Colaborador</th>
-                    <th className="text-left px-4 py-3 font-medium">Tipo</th>
-                    <th className="text-left px-4 py-3 font-medium">Data</th>
-                    <th className="text-left px-4 py-3 font-medium">Horário</th>
-                    <th className="text-left px-4 py-3 font-medium">Criado em</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('employee')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('type')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('date')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('time')}</th>
+                    <th className="text-left px-4 py-3 font-medium">{t('dateTime')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,7 +179,7 @@ export default function AuditPage() {
             </div>
           ) : (
             <div className="px-6 py-12 text-center text-[var(--muted-foreground)]">
-              <p>Nenhum lançamento registrado.</p>
+              <p>{t('noEntriesFound')}</p>
             </div>
           )}
         </div>

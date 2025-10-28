@@ -1,10 +1,26 @@
 import { getTranslations } from 'next-intl/server';
 import { requireAuth } from '@/lib/auth/server';
+import { getServiceSupabase } from '@/lib/supabase/service';
 
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const user = await requireAuth(locale);
   const t = await getTranslations({ locale, namespace: 'dashboard' });
+
+  // Check if user is actually a manager of any group
+  let isActualManager = false;
+  if (user.role === 'MANAGER' || user.role === 'MANAGER_TIMESHEET') {
+    const supabase = getServiceSupabase();
+    const { data: mgrGroups } = await supabase
+      .from('manager_group_assignments')
+      .select('group_id')
+      .eq('manager_id', user.id)
+      .limit(1);
+    isActualManager = (mgrGroups && mgrGroups.length > 0) || false;
+  } else if (user.role === 'ADMIN') {
+    // Admins always have access
+    isActualManager = true;
+  }
   
   return (
     <div className="w-full space-y-8">
@@ -121,7 +137,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
           </div>
         </a>
 
-        {(user.role === 'MANAGER' || user.role === 'MANAGER_TIMESHEET' || user.role === 'ADMIN') && (
+        {isActualManager && (
           <a
             href={`/${locale}/manager/pending`}
             className="group relative bg-gradient-to-br from-[var(--card)] to-[var(--card)]/80 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 ease-out hover:-translate-y-1 p-6 border border-[var(--border)] hover:border-[var(--primary)]/50 ring-1 ring-transparent hover:ring-[var(--primary)]/30 overflow-hidden backdrop-blur"

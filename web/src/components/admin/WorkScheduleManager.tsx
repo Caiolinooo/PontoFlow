@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 type Schedule = {
   id: string;
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export default function WorkScheduleManager({ initialSchedules, employees, tenantSchedule, tenantId }: Props) {
+  const t = useTranslations('admin.workSchedules');
   const [schedules, setSchedules] = useState<Schedule[]>(initialSchedules);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,7 +47,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
 
   const handleCreate = async () => {
     if (!form.employee_id || !form.start_date) {
-      setError('Selecione um colaborador e data de início');
+      setError(t('selectEmployeeError'));
       return;
     }
 
@@ -63,7 +65,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
 
       if (form.work_schedule === 'custom') {
         if (!form.days_on || !form.days_off) {
-          setError('Para escala customizada, informe dias embarcado e desembarcado');
+          setError(t('customScheduleError'));
           return;
         }
         body.days_on = parseInt(form.days_on);
@@ -99,7 +101,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
         notes: '',
       });
     } catch (e: any) {
-      setError(e.message || 'Erro ao criar escala');
+      setError(e.message || t('createFailed'));
     } finally {
       setLoading(false);
     }
@@ -115,9 +117,9 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
       });
 
       if (!res.ok) throw new Error('update_failed');
-      alert('Escala padrão do tenant atualizada!');
+      alert(t('tenantScheduleUpdated'));
     } catch (e) {
-      alert('Erro ao atualizar escala padrão');
+      alert(t('updateTenantScheduleFailed'));
     } finally {
       setSavingTenant(false);
     }
@@ -132,41 +134,41 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
     <div className="space-y-6">
       {/* Tenant Default Schedule */}
       <div className="border rounded-lg p-4 bg-blue-50">
-        <h3 className="font-semibold mb-3">Escala Padrão do Tenant</h3>
+        <h3 className="font-semibold mb-3">{t('tenantDefaultSchedule')}</h3>
         <div className="flex items-center gap-3">
           <select
             value={tenantSched}
             onChange={(e) => setTenantSched(e.target.value)}
             className="border rounded px-3 py-2 text-sm"
           >
-            <option value="7x7">7x7 (7 dias embarcado, 7 dias folga)</option>
-            <option value="14x14">14x14 (14 dias embarcado, 14 dias folga)</option>
-            <option value="21x21">21x21 (21 dias embarcado, 21 dias folga)</option>
-            <option value="28x28">28x28 (28 dias embarcado, 28 dias folga)</option>
-            <option value="custom">Customizada (definir por colaborador)</option>
+            <option value="7x7">{t('7x7')}</option>
+            <option value="14x14">{t('14x14')}</option>
+            <option value="21x21">{t('21x21')}</option>
+            <option value="28x28">{t('28x28')}</option>
+            <option value="custom">{t('customSchedule')}</option>
           </select>
           <button
             onClick={handleUpdateTenantSchedule}
             disabled={savingTenant}
             className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
           >
-            {savingTenant ? 'Salvando...' : 'Salvar'}
+            {savingTenant ? t('saving') : t('save')}
           </button>
         </div>
         <p className="text-xs text-gray-600 mt-2">
-          Esta é a escala padrão aplicada a todos os colaboradores. Você pode criar exceções individuais abaixo.
+          {t('tenantDefaultScheduleDesc')}
         </p>
       </div>
 
       {/* Employee Overrides */}
       <div className="border rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold">Exceções de Escala por Colaborador</h3>
+          <h3 className="font-semibold">{t('exceptionsTitle')}</h3>
           <button
             onClick={() => setShowForm(!showForm)}
             className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
           >
-            {showForm ? 'Cancelar' : '+ Nova Exceção'}
+            {showForm ? t('cancel') : t('newException')}
           </button>
         </div>
 
@@ -180,13 +182,13 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
           <div className="mb-4 p-4 border rounded bg-gray-50 space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium mb-1">Colaborador</label>
+                <label className="block text-xs font-medium mb-1">{t('employee')}</label>
                 <select
                   value={form.employee_id}
                   onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
                   className="w-full border rounded px-3 py-2 text-sm"
                 >
-                  <option value="">Selecione...</option>
+                  <option value="">{t('selectEmployee')}</option>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>
                       {e.label}
@@ -196,7 +198,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">Escala</label>
+                <label className="block text-xs font-medium mb-1">{t('schedule')}</label>
                 <select
                   value={form.work_schedule}
                   onChange={(e) => setForm({ ...form, work_schedule: e.target.value as any })}
@@ -213,7 +215,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
               {form.work_schedule === 'custom' && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium mb-1">Dias Embarcado</label>
+                    <label className="block text-xs font-medium mb-1">{t('daysOn')}</label>
                     <input
                       type="number"
                       min="1"
@@ -223,7 +225,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1">Dias Desembarcado</label>
+                    <label className="block text-xs font-medium mb-1">{t('daysOff')}</label>
                     <input
                       type="number"
                       min="1"
@@ -236,7 +238,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
               )}
 
               <div>
-                <label className="block text-xs font-medium mb-1">Data Início</label>
+                <label className="block text-xs font-medium mb-1">{t('startDate')}</label>
                 <input
                   type="date"
                   value={form.start_date}
@@ -246,7 +248,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1">Data Fim (opcional)</label>
+                <label className="block text-xs font-medium mb-1">{t('endDate')}</label>
                 <input
                   type="date"
                   value={form.end_date}
@@ -257,7 +259,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1">Observações</label>
+              <label className="block text-xs font-medium mb-1">{t('notes')}</label>
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -272,7 +274,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
               disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? 'Criando...' : 'Criar Exceção'}
+              {loading ? t('creating') : t('createException')}
             </button>
           </div>
         )}
@@ -281,7 +283,7 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
         <div className="space-y-2">
           {schedules.length === 0 && (
             <p className="text-sm text-gray-500 text-center py-4">
-              Nenhuma exceção configurada. Todos os colaboradores seguem a escala padrão do tenant.
+              {t('noExceptions')}
             </p>
           )}
 
@@ -293,11 +295,11 @@ export default function WorkScheduleManager({ initialSchedules, employees, tenan
                   <div className="text-xs text-gray-600 mt-1">
                     <span className="font-semibold">{scheduleLabel(s.work_schedule)}</span>
                     {s.work_schedule === 'custom' && s.days_on && s.days_off && (
-                      <span> ({s.days_on} dias embarcado, {s.days_off} dias folga)</span>
+                      <span> ({s.days_on} {t('daysOn').toLowerCase()}, {s.days_off} {t('daysOff').toLowerCase()})</span>
                     )}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Período: {s.start_date} {s.end_date ? `até ${s.end_date}` : '(sem data fim)'}
+                    {t('period')}: {s.start_date} {s.end_date ? `${t('until')} ${s.end_date}` : t('noEndDate')}
                   </div>
                   {s.notes && (
                     <div className="text-xs text-gray-500 mt-1 italic">{s.notes}</div>

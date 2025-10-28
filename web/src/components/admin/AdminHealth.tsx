@@ -1,7 +1,9 @@
 "use client";
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function AdminHealth() {
+  const t = useTranslations('adminSettings.health');
   const [loading, setLoading] = React.useState(false);
   const [data, setData] = React.useState<any | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -48,7 +50,7 @@ export default function AdminHealth() {
     <div className="flex items-center justify-between py-1 text-sm">
       <span className="text-[var(--muted-foreground)]">{label}</span>
       <span className={ok === false ? 'text-red-500' : ok === true ? 'text-green-500' : 'text-amber-500'}>
-        {typeof value === 'boolean' ? (value ? 'Configurado' : 'Não configurado') : String(value)}
+        {typeof value === 'boolean' ? (value ? t('configured') : t('notConfigured')) : String(value)}
       </span>
     </div>
   );
@@ -58,7 +60,7 @@ export default function AdminHealth() {
       ok ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
            'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
     }`}>
-      {ok ? 'OK' : 'Falha'}
+      {ok ? 'OK' : t('failed')}
     </span>
   );
 
@@ -75,7 +77,7 @@ export default function AdminHealth() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold">Status Geral</h3>
+          <h3 className="text-lg font-semibold">{t('overallStatus')}</h3>
           {data && <StatusBadge ok={overallHealth} />}
         </div>
         <button
@@ -83,13 +85,13 @@ export default function AdminHealth() {
           disabled={loading}
           className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 text-sm font-medium"
         >
-          {loading ? 'Verificando...' : 'Reverificar'}
+          {loading ? t('checking') : t('recheck')}
         </button>
       </div>
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-sm text-red-800 dark:text-red-200">Erro: {error}</p>
+          <p className="text-sm text-red-800 dark:text-red-200">{t('error')}: {error}</p>
         </div>
       )}
 
@@ -98,21 +100,21 @@ export default function AdminHealth() {
           {/* Database */}
           <div className="bg-[var(--muted)]/30 rounded-lg p-4">
             <h4 className="font-semibold mb-3 flex items-center justify-between">
-              Banco de Dados
+              {t('database')}
               <StatusBadge ok={data.env.urlPresent && data.checks.serviceConnect?.ok} />
             </h4>
             <div className="space-y-1">
-              <Row label="URL Supabase" value={data.env.url} ok={data.env.urlPresent} />
-              <Row label="Anon Key" value={data.env.anonMasked} ok={data.env.anonPresent} />
-              <Row label="Service Key" value={data.env.serviceMasked} ok={data.env.servicePresent} />
-              <Row label="Conexão" value={data.checks.serviceConnect?.ok ? 'OK' : 'Falha'} ok={data.checks.serviceConnect?.ok} />
+              <Row label={t('supabaseUrl')} value={data.env.url} ok={data.env.urlPresent} />
+              <Row label={t('anonKey')} value={data.env.anonMasked} ok={data.env.anonPresent} />
+              <Row label={t('serviceKey')} value={data.env.serviceMasked} ok={data.env.servicePresent} />
+              <Row label={t('connection')} value={data.checks.serviceConnect?.ok ? 'OK' : t('failed')} ok={data.checks.serviceConnect?.ok} />
             </div>
           </div>
 
           {/* Tables */}
           <div className="bg-[var(--muted)]/30 rounded-lg p-4">
             <h4 className="font-semibold mb-3 flex items-center justify-between">
-              Tabelas
+              {t('tables')}
               <StatusBadge ok={
                 data.checks.tables.tenants.exists &&
                 data.checks.tables.tenant_settings.exists &&
@@ -120,19 +122,19 @@ export default function AdminHealth() {
               } />
             </h4>
             <div className="space-y-1">
-              <Row label="tenants" value={data.checks.tables.tenants.exists ? 'Existe' : 'Não existe'} ok={data.checks.tables.tenants.exists} />
-              <Row label="tenant_settings" value={data.checks.tables.tenant_settings.exists ? 'Existe' : 'Não existe'} ok={data.checks.tables.tenant_settings.exists} />
-              <Row label="users_unified" value={data.checks.tables.users_unified.exists ? 'Existe' : 'Não existe'} ok={data.checks.tables.users_unified.exists} />
+              <Row label="tenants" value={data.checks.tables.tenants.exists ? t('exists') : t('notExists')} ok={data.checks.tables.tenants.exists} />
+              <Row label="tenant_settings" value={data.checks.tables.tenant_settings.exists ? t('exists') : t('notExists')} ok={data.checks.tables.tenant_settings.exists} />
+              <Row label="users_unified" value={data.checks.tables.users_unified.exists ? t('exists') : t('notExists')} ok={data.checks.tables.users_unified.exists} />
             </div>
           </div>
 
           {/* Configuration */}
           <div className="bg-[var(--muted)]/30 rounded-lg p-4">
-            <h4 className="font-semibold mb-3">Configurações Opcionais</h4>
+            <h4 className="font-semibold mb-3">{t('optionalConfig')}</h4>
             <div className="space-y-1">
-              <Row label="SMTP Host" value={envChecks?.smtp.host} ok={envChecks?.smtp.host} />
-              <Row label="Sync Secret" value={envChecks?.sync.secret} ok={envChecks?.sync.secret} />
-              <Row label="API Base URL" value={envChecks?.api.baseUrl} ok={envChecks?.api.baseUrl} />
+              <Row label={t('smtpHost')} value={envChecks?.smtp.host} ok={envChecks?.smtp.host} />
+              <Row label={t('syncSecret')} value={envChecks?.sync.secret} ok={envChecks?.sync.secret} />
+              <Row label={t('apiBaseUrl')} value={envChecks?.api.baseUrl} ok={envChecks?.api.baseUrl} />
             </div>
           </div>
         </div>
@@ -140,15 +142,14 @@ export default function AdminHealth() {
 
       {!data && !error && (
         <div className="text-center py-8">
-          <p className="text-sm text-[var(--muted-foreground)]">Carregando status do sistema...</p>
+          <p className="text-sm text-[var(--muted-foreground)]">{t('loading')}</p>
         </div>
       )}
 
       {data?.checks?.tables && !overallHealth && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            <strong>Atenção:</strong> Alguns componentes do sistema não estão configurados corretamente.
-            Verifique as variáveis de ambiente e a inicialização do banco de dados.
+            <strong>{t('warning')}:</strong> {t('warningMessage')}
           </p>
         </div>
       )}

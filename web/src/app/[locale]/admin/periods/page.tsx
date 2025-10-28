@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSelectorModal';
 
 function toISO(y: number, m: number) {
@@ -14,6 +15,7 @@ function monthLabel(d: Date) {
 }
 
 export default function AdminPeriodsPage() {
+  const t = useTranslations('admin.periods');
   const params = useParams();
   const locale = (params?.locale as string) || 'pt-BR';
   const [locks, setLocks] = useState<Record<string, { locked: boolean; reason?: string | null }>>({});
@@ -66,14 +68,14 @@ export default function AdminPeriodsPage() {
           setTenantModalOpen(true);
           return;
         }
-        if (!resp.ok) throw new Error(j?.error || 'Falha ao carregar períodos');
+        if (!resp.ok) throw new Error(j?.error || t('loadFailed'));
         const rec: Record<string, { locked: boolean; reason?: string | null }> = {};
         for (const row of j.locks ?? []) {
           rec[row.period_month] = { locked: !!row.locked, reason: row.reason ?? null };
         }
         setLocks(rec);
       } catch (e: any) {
-        setError(e?.message || 'Erro inesperado');
+        setError(e?.message || t('unexpectedError'));
       } finally {
         setLoading(false);
       }
@@ -95,10 +97,10 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!resp.ok) throw new Error(j?.error || 'Falha ao salvar');
+      if (!resp.ok) throw new Error(j?.error || t('saveFailed'));
       setLocks(prev => ({ ...prev, [monthKey]: { ...(prev[monthKey] || {}), locked: nextLocked } }));
     } catch (e: any) {
-      setError(e?.message || 'Erro inesperado');
+      setError(e?.message || t('unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -116,10 +118,10 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!r.ok) throw new Error(j?.error || 'Falha ao carregar funcionários');
+      if (!r.ok) throw new Error(j?.error || t('loadEmployeesFailed'));
       setEmpList(j.employees || []);
     } catch (e: any) {
-      setEmpError(e?.message || 'Falha ao carregar funcionários');
+      setEmpError(e?.message || t('loadEmployeesFailed'));
     } finally {
       setEmpLoading(false);
     }
@@ -136,12 +138,12 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!r.ok) throw new Error(j?.error || 'Falha ao carregar overrides do funcionário');
+      if (!r.ok) throw new Error(j?.error || t('loadEmployeeOverridesFailed'));
       const rec: Record<string, { locked: boolean; reason?: string | null }> = {};
       for (const row of j.locks ?? []) rec[row.period_month] = { locked: !!row.locked, reason: row.reason ?? null };
       setEmpLocks(rec);
     } catch (e: any) {
-      setEmpError(e?.message || 'Erro ao carregar overrides');
+      setEmpError(e?.message || t('loadEmployeeOverridesError'));
     } finally {
       setEmpLoading(false);
     }
@@ -163,10 +165,10 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!resp.ok) throw new Error(j?.error || 'Falha ao salvar');
+      if (!resp.ok) throw new Error(j?.error || t('saveFailed'));
       setEmpLocks(prev => ({ ...prev, [monthKey]: { ...(prev[monthKey] || {}), locked: nextLocked } }));
     } catch (e: any) {
-      setEmpError(e?.message || 'Erro ao salvar override');
+      setEmpError(e?.message || t('saveEmployeeOverrideFailed'));
     } finally {
       setEmpLoading(false);
     }
@@ -184,10 +186,10 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!r.ok) throw new Error(j?.error || 'Falha ao carregar ambientes');
+      if (!r.ok) throw new Error(j?.error || t('loadEnvironmentsFailed'));
       setEnvList(j.environments || []);
     } catch (e: any) {
-      setEnvError(e?.message || 'Falha ao carregar ambientes');
+      setEnvError(e?.message || t('loadEnvironmentsFailed'));
     } finally {
       setEnvLoading(false);
     }
@@ -204,12 +206,12 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!r.ok) throw new Error(j?.error || 'Falha ao carregar overrides do ambiente');
+      if (!r.ok) throw new Error(j?.error || t('loadEnvironmentOverridesFailed'));
       const rec: Record<string, { locked: boolean; reason?: string | null }> = {};
       for (const row of j.locks ?? []) rec[row.period_month] = { locked: !!row.locked, reason: row.reason ?? null };
       setEnvLocks(rec);
     } catch (e: any) {
-      setEnvError(e?.message || 'Erro ao carregar overrides');
+      setEnvError(e?.message || t('loadEnvironmentOverridesError'));
     } finally {
       setEnvLoading(false);
     }
@@ -231,10 +233,10 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!resp.ok) throw new Error(j?.error || 'Falha ao salvar');
+      if (!resp.ok) throw new Error(j?.error || t('saveFailed'));
       setEnvLocks(prev => ({ ...prev, [monthKey]: { ...(prev[monthKey] || {}), locked: nextLocked } }));
     } catch (e: any) {
-      setEnvError(e?.message || 'Erro ao salvar override');
+      setEnvError(e?.message || t('saveEnvironmentOverrideFailed'));
     } finally {
       setEnvLoading(false);
     }
@@ -253,10 +255,10 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!r.ok) throw new Error(j?.error || 'Falha ao carregar grupos');
+      if (!r.ok) throw new Error(j?.error || t('loadGroupsFailed'));
       setGroupList(j.items || []);
     } catch (e: any) {
-      setGroupError(e?.message || 'Falha ao carregar grupos');
+      setGroupError(e?.message || t('loadGroupsFailed'));
     } finally {
       setGroupLoading(false);
     }
@@ -273,12 +275,12 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!r.ok) throw new Error(j?.error || 'Falha ao carregar overrides do grupo');
+      if (!r.ok) throw new Error(j?.error || t('loadGroupOverridesFailed'));
       const rec: Record<string, { locked: boolean; reason?: string | null }> = {};
       for (const row of j.locks ?? []) rec[row.period_month] = { locked: !!row.locked, reason: row.reason ?? null };
       setGroupLocks(rec);
     } catch (e: any) {
-      setGroupError(e?.message || 'Erro ao carregar overrides');
+      setGroupError(e?.message || t('loadGroupOverridesError'));
     } finally {
       setGroupLoading(false);
     }
@@ -300,24 +302,24 @@ export default function AdminPeriodsPage() {
         setTenantModalOpen(true);
         return;
       }
-      if (!resp.ok) throw new Error(j?.error || 'Falha ao salvar');
+      if (!resp.ok) throw new Error(j?.error || t('saveFailed'));
       setGroupLocks(prev => ({ ...prev, [monthKey]: { ...(prev[monthKey] || {}), locked: nextLocked } }));
     } catch (e: any) {
-      setGroupError(e?.message || 'Erro ao salvar override');
+      setGroupError(e?.message || t('saveGroupOverrideFailed'));
     } finally {
       setGroupLoading(false);
     }
   }
 
-  if (loading) return <div className="text-[var(--muted-foreground)]">Carregando...</div>;
+  if (loading) return <div className="text-[var(--muted-foreground)]">{t('loading')}</div>;
   if (error) return <div className="text-[var(--destructive)]">{error}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Períodos</h1>
-          <p className="text-sm text-[var(--muted-foreground)]">Abra ou feche os meses de lançamento e submissão.</p>
+          <h1 className="text-2xl font-semibold text-[var(--foreground)]">{t('title')}</h1>
+          <p className="text-sm text-[var(--muted-foreground)]">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -328,10 +330,10 @@ export default function AdminPeriodsPage() {
                 setError(null);
                 const r = await fetch('/api/admin/me/tenant', { method: 'GET', cache: 'no-store' });
                 const j = await r.json().catch(() => ({}));
-                if (!r.ok) throw new Error(j?.error || 'Falha ao carregar tenants');
+                if (!r.ok) throw new Error(j?.error || t('loadTenantsFailed'));
                 setTenantOptions(j?.tenants || []);
                 setTenantModalOpen(true);
-              } catch (e: any) { setError(e?.message || 'Falha ao carregar tenants'); }
+              } catch (e: any) { setError(e?.message || t('loadTenantsFailed')); }
             }}
           >
             Selecionar tenant
@@ -376,8 +378,8 @@ export default function AdminPeriodsPage() {
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">Overrides por Ambiente</h2>
-            <p className="text-sm text-[var(--muted-foreground)]">Travas específicas por ambiente (sobrepõem o tenant).</p>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">{t('overridesByEnvironment')}</h2>
+            <p className="text-sm text-[var(--muted-foreground)]">{t('overridesByEnvironmentDesc')}</p>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -385,7 +387,7 @@ export default function AdminPeriodsPage() {
               onChange={e => setEnvQuery(e.target.value)}
               onFocus={() => ensureEnvList()}
               className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)]"
-              placeholder="Buscar ambiente"
+              placeholder={t('searchEnvironment')}
             />
           </div>
         </div>
@@ -413,14 +415,14 @@ export default function AdminPeriodsPage() {
                   >Selecionar</button>
                 </div>
               ))}
-              {(!envList.length && !envLoading) && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">Nenhum resultado</div>}
-              {envLoading && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">Carregando...</div>}
+              {(!envList.length && !envLoading) && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">{t('noResults')}</div>}
+              {envLoading && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">{t('loading')}</div>}
             </div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted-foreground)] mb-1">Overrides do mês</div>
             {!selectedEnv ? (
-              <div className="text-sm text-[var(--muted-foreground)]">Selecione um ambiente ao lado para gerenciar overrides.</div>
+              <div className="text-sm text-[var(--muted-foreground)]">{t('selectEnvironmentPrompt')}</div>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
@@ -461,8 +463,8 @@ export default function AdminPeriodsPage() {
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">Overrides por Grupo</h2>
-            <p className="text-sm text-[var(--muted-foreground)]">Travas específicas por grupo (sobrepõem Ambiente e Tenant).</p>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">{t('overridesByGroup')}</h2>
+            <p className="text-sm text-[var(--muted-foreground)]">{t('overridesByGroupDesc')}</p>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -470,7 +472,7 @@ export default function AdminPeriodsPage() {
               onChange={e => setGroupQuery(e.target.value)}
               onFocus={() => ensureGroupList()}
               className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)]"
-              placeholder="Buscar grupo"
+              placeholder={t('searchGroup')}
             />
           </div>
         </div>
@@ -498,14 +500,14 @@ export default function AdminPeriodsPage() {
                   >Selecionar</button>
                 </div>
               ))}
-              {(!groupList.length && !groupLoading) && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">Nenhum resultado</div>}
-              {groupLoading && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">Carregando...</div>}
+              {(!groupList.length && !groupLoading) && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">{t('noResults')}</div>}
+              {groupLoading && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">{t('loading')}</div>}
             </div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted-foreground)] mb-1">Overrides do mês</div>
             {!selectedGroup ? (
-              <div className="text-sm text-[var(--muted-foreground)]">Selecione um grupo ao lado para gerenciar overrides.</div>
+              <div className="text-sm text-[var(--muted-foreground)]">{t('selectGroupPrompt')}</div>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
@@ -546,8 +548,8 @@ export default function AdminPeriodsPage() {
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">Overrides por Funcionário</h2>
-            <p className="text-sm text-[var(--muted-foreground)]">Defina travas específicas por colaborador (sobrepõem o tenant).</p>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">{t('overridesByEmployee')}</h2>
+            <p className="text-sm text-[var(--muted-foreground)]">{t('overridesByEmployeeDesc')}</p>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -555,7 +557,7 @@ export default function AdminPeriodsPage() {
               onChange={e => setEmpQuery(e.target.value)}
               onFocus={() => ensureEmpList()}
               className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)]"
-              placeholder="Buscar colaborador"
+              placeholder={t('searchEmployee')}
             />
           </div>
         </div>
@@ -584,14 +586,14 @@ export default function AdminPeriodsPage() {
                   >Selecionar</button>
                 </div>
               ))}
-              {(!empList.length && !empLoading) && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">Nenhum resultado</div>}
-              {empLoading && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">Carregando...</div>}
+              {(!empList.length && !empLoading) && <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">{t('noResults')}</div>}
+              {empLoading && <div className="px-3 py-2 text-sm text-[var(----muted-foreground)]">{t('loading')}</div>}
             </div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted-foreground)] mb-1">Overrides do mês</div>
             {!selectedEmp ? (
-              <div className="text-sm text-[var(--muted-foreground)]">Selecione um colaborador ao lado para gerenciar overrides.</div>
+              <div className="text-sm text-[var(--muted-foreground)]">{t('selectEmployeePrompt')}</div>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">

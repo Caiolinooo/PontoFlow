@@ -15,6 +15,7 @@
   "type": "commonjs",
   "dependencies": {
     "puppeteer": "^24.26.0",
+    "tweetsodium": "^0.0.4",
     "xlsx": "^0.18.5"
   }
 }

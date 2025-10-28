@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     // Resolver tenant (auto-heal se houver apenas um)
     let tenantId = user.tenant_id as string | undefined;
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     if (!tenantId) {
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const offsetRaw = parseInt(searchParams.get('offset') || '0', 10);
     const offset = Math.max(0, isNaN(offsetRaw) ? 0 : offsetRaw);
 
-    const svcRead = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcRead = getServiceSupabase();
 
     if (q) {
       // 1) Buscar perfis pelo termo
