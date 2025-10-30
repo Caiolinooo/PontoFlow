@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "PontoFlow"
+    "title": "Sistema de Gestão de Folha de Ponto"
   },
   "footer": {
     "copyright": "Todos os direitos reservados.",
@@ -18,12 +18,12 @@
     },
     "modules": {
       "myTimesheet": {
-        "title": "Meu Timesheet",
-        "description": "Criar e editar lançamentos"
+        "title": "Minha Folha de Ponto",
+        "description": "Registrar e gerenciar lançamentos de horas"
       },
       "managerPending": {
-        "title": "Pendências (Gerente)",
-        "description": "Aprovar/Recusar timesheets"
+        "title": "Aguardando Aprovação",
+        "description": "Aprovar/Rejeitar folhas de ponto"
       },
       "reports": {
         "title": "Relatórios",
@@ -36,6 +36,20 @@
       "settings": {
         "title": "Configurações",
         "description": "Idioma, notificações"
+      }
+    },
+    "alerts": {
+      "manager": {
+        "teamSummary": "Equipe: {pending} pendente(s), {draft} rascunho(s)"
+      },
+      "employee": {
+        "notStarted": "Você ainda não iniciou sua folha de ponto de {month}.",
+        "draft": "Você possui uma folha de ponto em rascunho para {month}."
+      },
+      "cta": {
+        "open": "Abrir",
+        "review": "Revisar",
+        "fillNow": "Registrar agora"
       }
     }
   },
@@ -139,11 +153,11 @@
     "pushNotifications": "Notificações Push",
     "pushNotificationsDesc": "Receba notificações do navegador",
     "deadlineReminders": "Lembretes de Prazo",
-    "deadlineRemindersDesc": "Seja lembrado antes do prazo",
+    "deadlineRemindersDesc": "Receba notificações antes do prazo de fechamento",
     "approvalNotifications": "Notificações de Aprovação",
-    "approvalNotificationsDesc": "Seja notificado quando seu timesheet for aprovado",
-    "rejectionNotifications": "Notificações de Recusa",
-    "rejectionNotificationsDesc": "Seja notificado quando seu timesheet for recusado",
+    "approvalNotificationsDesc": "Seja notificado quando sua folha de ponto for aprovada",
+    "rejectionNotifications": "Notificações de Rejeição",
+    "rejectionNotificationsDesc": "Seja notificado quando sua folha de ponto for rejeitada",
     "subscribe": "Inscrever",
     "unsubscribe": "Desinscrever",
     "loading": "Carregando...",
@@ -176,7 +190,7 @@
     "review": {
       "title": "Revisão de Timesheet",
       "subtitle": "Analise as entradas e tome uma ação",
-      "timesheet": "Timesheet",
+      "timesheet": "Folha de Ponto",
       "employee": "Colaborador",
       "period": "Período",
       "status": "Status",
@@ -186,6 +200,8 @@
       "start": "Início",
       "end": "Fim",
       "note": "Observação",
+      "actions": "Ações",
+
       "annotations": "Anotações",
       "rejectReason": "Motivo da recusa",
       "rejectTitle": "Recusar timesheet",
@@ -197,8 +213,8 @@
       "noEntries": "Sem lançamentos."
     },
     "pending": {
-      "title": "Timesheets Pendentes",
-      "subtitle": "Revise e aprove os timesheets submetidos",
+      "title": "Folhas de Ponto da Equipe",
+      "subtitle": "Visualize o status do mês e acompanhe sua equipe",
       "employee": "Colaborador",
       "date": "Data",
       "type": "Tipo",
@@ -206,8 +222,35 @@
       "status": "Status",
       "actions": "Ações",
       "review": "Revisar",
-      "noPending": "Nenhum timesheet pendente",
-      "noPendingDescription": "Não há timesheets aguardando aprovação no momento."
+      "noPending": "Nenhuma folha de ponto pendente",
+      "noPendingDescription": "Não há folhas de ponto aguardando aprovação no momento.",
+      "loading": "Carregando timesheets...",
+      "error": "Erro ao carregar dados",
+      "retry": "Tentar novamente",
+      "filters": {
+        "month": "Período (YYYY-MM)",
+        "apply": "Filtrar",
+        "clear": "Limpar"
+      },
+      "counters": {
+        "total": "Total",
+        "pending": "Pendentes",
+        "draft": "Rascunhos",
+        "submitted": "Enviados",
+        "approved": "Aprovados",
+        "rejected": "Recusados"
+      },
+      "statusLabels": {
+        "pendente": "Pendente",
+        "rascunho": "Rascunho",
+        "enviado": "Enviado",
+        "aprovado": "Aprovado",
+        "recusado": "Recusado"
+      },
+      "notifyEmployee": "Notificar",
+      "notifying": "Notificando...",
+      "notifySuccess": "Notificado",
+      "notifyError": "Erro ao notificar"
     }
   },
   "employee": {
@@ -229,10 +272,10 @@
         "cancel": "Cancelar"
       },
       "errors": {
-        "employeeNotConfigured": "Seu perfil não está vinculado a um colaborador neste tenant. Contate o administrador.",
-        "missingTenant": "Sua conta não está associada a um tenant.",
-        "invalidPeriod": "Período inválido.",
-        "generic": "Ocorreu um erro. Tente novamente."
+        "employeeNotConfigured": "Seu perfil não está vinculado a um colaborador nesta organização. Entre em contato com o administrador do sistema.",
+        "missingTenant": "Sua conta não está associada a uma organização.",
+        "invalidPeriod": "Período selecionado é inválido.",
+        "generic": "Ocorreu um erro inesperado. Entre em contato com o suporte técnico se o problema persistir."
       },
       "table": {
         "date": "Data",
@@ -247,8 +290,8 @@
       "title": "Meu Timesheet",
       "subtitle": "Registre suas atividades e envie para aprovação",
       "sectionTitle": "Entradas do período",
-      "submit": "Enviar para aprovação",
-      "blocked": "Período fechado. Edição desabilitada.",
+      "submit": "Submeter para aprovação",
+      "blocked": "Período finalizado. Edição não permitida.",
       "date": "Data",
       "type": "Tipo",
       "start": "Início",
@@ -296,15 +339,15 @@
     "saved": "Preferências salvas com sucesso."
   },
   "errors": {
-    "generic": "Ocorreu um erro. Tente novamente."
+    "generic": "Ocorreu um erro inesperado. Entre em contato com o suporte técnico se o problema persistir."
   },
   "validation": {
-    "emailInvalid": "E-mail inválido",
-    "passwordMin": "Mínimo de {min} caracteres",
-    "passwordRequiresUpper": "Deve conter pelo menos uma letra maiúscula",
-    "passwordRequiresLower": "Deve conter pelo menos uma letra minúscula",
-    "passwordRequiresNumber": "Deve conter pelo menos um número",
-    "passwordRequiresSpecial": "Deve conter pelo menos um caractere especial",
+    "emailInvalid": "Formato de e-mail inválido",
+    "passwordMin": "Mínimo de {min} caracteres obrigatórios",
+    "passwordRequiresUpper": "Obrigatório conter pelo menos uma letra maiúscula",
+    "passwordRequiresLower": "Obrigatório conter pelo menos uma letra minúscula",
+    "passwordRequiresNumber": "Obrigatório conter pelo menos um número",
+    "passwordRequiresSpecial": "Obrigatório conter pelo menos um caractere especial",
     "passwordsDoNotMatch": "As senhas não coincidem",
     "firstNameTooShort": "Nome muito curto",
     "lastNameTooShort": "Sobrenome muito curto"
@@ -591,7 +634,7 @@
       "approvals": "Aprovações",
       "entries": "Lançamentos",
       "records": "registros",
-      "timesheet": "Timesheet",
+      "timesheet": "Folha de Ponto",
       "manager": "Manager",
       "status": "Status",
       "message": "Mensagem",
@@ -700,7 +743,7 @@
       "deleteConfirmHelp": "Digite exatamente o nome do ambiente para confirmar a exclusão"
     },
     "myTimesheet": {
-      "title": "Meu Timesheet",
+      "title": "Minha Folha de Ponto",
       "blocked": "⚠️ Este timesheet está bloqueado para edição",
       "weekdays": {
         "sun": "Dom",

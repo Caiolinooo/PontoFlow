@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {createClient} from '@supabase/supabase-js';
 import {requireApiRole} from '@/lib/auth/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
+import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatcher';
 import { logAudit } from '@/lib/audit/logger';
 
 const supabase = createClient(
@@ -117,11 +118,12 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       .single();
     if (e2) return NextResponse.json({error: e2.message}, {status: 500});
 
-    // Notify employee
+    // Notify employee (both email and in-app)
     try {
-      await dispatchNotification({
+      await dispatchEnhancedNotification({
         type: 'timesheet_rejected',
         to: prof.email,
+        user_id: emp.profile_id,
         payload: {
           employeeName: emp.display_name ?? 'Colaborador',
           managerName: user.name,
@@ -130,7 +132,8 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
           annotations: parsed.data.annotations?.map(a => ({field: a.field, message: a.message})) ?? [],
           url: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/timesheets/${id}`,
           locale: (prof.locale as 'pt-BR' | 'en-GB') ?? 'pt-BR',
-          tenantId: updated.tenant_id
+          tenantId: updated.tenant_id,
+          email: prof.email
         }
       });
     } catch {}

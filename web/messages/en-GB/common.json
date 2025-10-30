@@ -37,6 +37,20 @@
         "title": "Settings",
         "description": "Language, notifications"
       }
+    },
+    "alerts": {
+      "manager": {
+        "teamSummary": "Team: {pending} pending, {draft} in draft"
+      },
+      "employee": {
+        "notStarted": "You haven’t started your timesheet for {month}.",
+        "draft": "You have a draft timesheet for {month}."
+      },
+      "cta": {
+        "open": "Open",
+        "review": "Review",
+        "fillNow": "Fill now"
+      }
     }
   },
   "buttons": {
@@ -185,6 +199,8 @@
       "start": "Start",
       "end": "End",
       "note": "Note",
+      "actions": "Actions",
+
       "annotations": "Annotations",
       "rejectReason": "Rejection reason",
       "rejectTitle": "Reject timesheet",
@@ -206,7 +222,32 @@
       "actions": "Actions",
       "review": "Review",
       "noPending": "No pending timesheets",
-      "noPendingDescription": "There are no timesheets awaiting approval at this time."
+      "noPendingDescription": "There are no timesheets awaiting approval at this time.",
+      "filters": {
+        "month": "Period (YYYY-MM)",
+        "apply": "Filter",
+        "clear": "Clear"
+      },
+      "counters": {
+        "total": "Total",
+        "pending": "Pending",
+        "draft": "Draft",
+        "submitted": "Submitted",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "statusLabels": {
+        "pendente": "Pending",
+        "rascunho": "Draft",
+        "enviado": "Submitted",
+        "aprovado": "Approved",
+        "recusado": "Rejected"
+      }
+,
+          "notifyEmployee": "Notify",
+          "notifying": "Notifying...",
+          "notifySuccess": "Notification sent",
+          "notifyError": "Error notifying"
     }
   },
   "employee": {

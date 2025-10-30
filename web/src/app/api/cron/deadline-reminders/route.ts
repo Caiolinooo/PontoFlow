@@ -24,7 +24,7 @@ export async function POST() {
   const periodStart = firstDayOfMonth(now);
   const deadline = firstDayOfNextMonth(now);
   const daysLeft = Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-  const shouldRun = [7, 3, 1, 0].includes(daysLeft);
+  const shouldRun = [7, 5, 3, 2, 1, 0].includes(daysLeft);
 
   // Gate automated runs by cadence; allow override with FORCE_CRON
   if (!process.env.FORCE_CRON && !shouldRun) {

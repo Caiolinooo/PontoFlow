@@ -2,6 +2,7 @@ import {NextRequest, NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 import {requireApiRole} from '@/lib/auth/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
+import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatcher';
 import { logAudit } from '@/lib/audit/logger';
 
 const supabase = createClient(
@@ -86,18 +87,20 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       .single();
     if (e2) return NextResponse.json({error: e2.message}, {status: 500});
 
-    // Send notification email (best-effort)
+    // Send notifications (both email and in-app)
     try {
-      await dispatchNotification({
+      await dispatchEnhancedNotification({
         type: 'timesheet_approved',
         to: prof.email,
+        user_id: emp.profile_id,
         payload: {
           employeeName: emp.display_name ?? 'Colaborador',
           managerName: user.name,
           period: `${updated.periodo_ini} - ${updated.periodo_fim}`,
           url: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/timesheets/${id}`,
           locale: (prof.locale as 'pt-BR' | 'en-GB') ?? 'pt-BR',
-          tenantId: updated.tenant_id
+          tenantId: updated.tenant_id,
+          email: prof.email
         }
       });
     } catch {}

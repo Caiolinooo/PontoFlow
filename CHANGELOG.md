@@ -4,6 +4,95 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.2.5] - 2025-10-30
+
+### Added
+- **Manager Team Overview**: Complete visibility of all team members' timesheet status
+  - New API endpoint `GET /api/manager/team-timesheets` with derived status logic
+  - Shows all employees in manager's groups with status: pendente, rascunho, enviado, aprovado, recusado
+  - Month filter (YYYY-MM format) to view any period
+  - Status counters in header (total, pending, draft, submitted, approved, rejected)
+  - Color-coded status badges for quick visual identification
+- **Manager Notification System**: Direct employee notification capability
+  - New API endpoint `POST /api/manager/notify-employee` for sending reminders
+  - "Notify" button for employees with pending/draft status
+  - Visual feedback (loading, success, error states) on notification button
+  - Email sent using existing `deadline_reminder` template
+  - Respects employee's locale preference (pt-BR/en-GB)
+  - Audit trail in `notification_log` table
+- **Enhanced In-App Alerts**: Dashboard alerts with full i18n support
+  - Manager alerts: Team summary with pending/draft counts and CTA to pending page
+  - Employee alerts: Not started or draft status with CTA to timesheets
+  - All alert messages use i18n keys with parameterized translations
+  - Action buttons with localized labels
+- **Improved Notification Cadence**: More frequent deadline reminders
+  - Updated from T-7, T-3, T-1, T to T-7, T-5, T-3, T-2, T-1, T
+  - Ensures managers receive reminders on day 29 (when deadline is day 1 of next month)
+  - Better coverage for end-of-month scenarios
+- **Enhanced Notification System**: Dual notification delivery (email + in-app)
+  - New `dispatchEnhancedNotification` function for combined delivery
+  - Approval notifications now sent via both email and in-app
+  - Rejection notifications now sent via both email and in-app
+  - Better user engagement with multiple notification channels
+
+### Changed
+- **Manager Pending Page**: Complete redesign with comprehensive team view
+  - Renamed from "Pendências" to show all team timesheets, not just submitted ones
+  - Added month filter form with apply/clear buttons
+  - Added 6 status counter cards at top of page
+  - Status column now shows translated labels with color-coded badges
+  - Actions column includes both "Review" and "Notify" buttons where applicable
+  - Better responsive layout for filters and counters
+- **API Authorization**: Improved manager authorization pattern
+  - Consistent use of `manager_id` (not `manager_user_id`) across all endpoints
+  - ADMIN role can access all employees in tenant
+  - MANAGER/MANAGER_TIMESHEET roles limited to assigned groups
+  - Service role Supabase client used for proper RLS bypass where needed
+
+### Fixed
+- **Manager Authorization Bugs**: Fixed incorrect column references
+  - Changed `manager_user_id` to `manager_id` in multiple endpoints
+  - Fixed manager group assignment queries
+  - Proper employee membership checks
+- **API Response Structure**: Alerts API now returns i18n keys instead of hardcoded messages
+  - Enables proper translation on client side
+  - Supports parameterized messages (e.g., {pending}, {draft}, {month})
+- **Translation Coverage**: Added missing translations for all new features
+  - `manager.pending.filters.*` - Month filter labels
+  - `manager.pending.counters.*` - Status counter labels
+  - `manager.pending.statusLabels.*` - Status badge translations
+  - `manager.pending.notifyEmployee` - Notification button states
+  - `dashboard.alerts.*` - Alert messages for manager and employee
+  - All translations available in both pt-BR and en-GB
+
+### Technical Details
+- **New Files**:
+  - `web/src/app/api/manager/team-timesheets/route.ts` - Team overview API
+  - `web/src/app/api/manager/notify-employee/route.ts` - Employee notification API
+  - `web/src/components/manager/NotifyEmployeeButton.tsx` - Client notification button
+  - `web/src/lib/notifications/in-app-dispatcher.ts` - Enhanced notification dispatcher
+- **Modified Files**:
+  - `web/src/app/[locale]/manager/pending/page.tsx` - Complete redesign
+  - `web/src/app/[locale]/dashboard/page.tsx` - Integrated AlertBanner
+  - `web/src/app/api/notifications/alerts/route.ts` - i18n key response structure
+  - `web/src/app/api/cron/deadline-reminders/route.ts` - Updated cadence
+  - `web/src/app/api/manager/timesheets/[id]/approve/route.ts` - Enhanced notifications
+  - `web/src/app/api/manager/timesheets/[id]/reject/route.ts` - Enhanced notifications
+  - `web/src/components/AlertBanner.tsx` - Translation support
+  - `web/messages/pt-BR/common.json` - Added 20+ new translation keys
+  - `web/messages/en-GB/common.json` - Added 20+ new translation keys
+
+### Security
+- Manager notification endpoint properly validates group membership
+- ADMIN bypass only for users with ADMIN role
+- Service role key used only on server-side
+- All notifications respect tenant isolation
+
+### Performance
+- Team overview API optimized with single query for all employees
+- Derived status calculated efficiently on backend
+- Month filter reduces data transfer for historical views
+
 ## [0.2.4] - 2025-10-27
 
 ### Fixed
