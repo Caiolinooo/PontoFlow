@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         .from('manager_group_assignments')
         .select('group_id')
         .eq('tenant_id', ts.tenant_id)
-        .eq('manager_user_id', user.id)
+        .eq('manager_id', user.id)
         .in('group_id', groupIds)
         .limit(1);
       if (!mg || mg.length === 0) return NextResponse.json({ error: 'forbidden' }, { status: 403 });

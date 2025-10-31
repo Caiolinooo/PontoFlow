@@ -208,19 +208,79 @@ export default function AdminTenantSettings({ locale, settings }: AdminTenantSet
           </div>
         </div>
 
-        {/* Work Mode Settings */}
-        <div>
-          <h3 className="text-md font-medium mb-3 text-[var(--foreground)]">Modo de Trabalho</h3>
-          <div className="grid grid-cols-1 gap-4">
+        {/* Timezone and Work Mode Settings */}
+        <div className="bg-[var(--card)] rounded-lg p-6 border border-[var(--border)]">
+          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">🌍 Configurações de Região e Horário</h2>
+          <div className="space-y-4">
+            
+            {/* Timezone Settings */}
             <div>
-              <label className="block text-sm font-medium mb-1">Tipo de Regime de Trabalho</label>
+              <label className="block text-sm font-medium mb-1">⏰ Fuso Horário (Timezone) <span className="text-red-500">*</span></label>
+              <select
+                name="timezone"
+                defaultValue={settings?.timezone ?? 'America/Sao_Paulo'}
+                className="w-full rounded border p-2 bg-[var(--input)]"
+                required
+              >
+                <optgroup label="🇧🇷 Américas">
+                  <option value="America/Sao_Paulo">São Paulo (UTC-3)</option>
+                  <option value="America/New_York">Nova York (UTC-5)</option>
+                  <option value="America/Los_Angeles">Los Angeles (UTC-8)</option>
+                  <option value="America/Chicago">Chicago (UTC-6)</option>
+                  <option value="America/Mexico_City">Cidade do México (UTC-6)</option>
+                  <option value="America/Bogota">Bogotá (UTC-5)</option>
+                  <option value="America/Lima">Lima (UTC-5)</option>
+                  <option value="America/Argentina/Buenos_Aires">Buenos Aires (UTC-3)</option>
+                  <option value="America/Santiago">Santiago (UTC-4)</option>
+                </optgroup>
+                <optgroup label="🇪🇺 Europa">
+                  <option value="Europe/London">Londres (UTC+0)</option>
+                  <option value="Europe/Paris">Paris (UTC+1)</option>
+                  <option value="Europe/Berlin">Berlim (UTC+1)</option>
+                  <option value="Europe/Madrid">Madri (UTC+1)</option>
+                  <option value="Europe/Rome">Roma (UTC+1)</option>
+                  <option value="Europe/Amsterdam">Amsterdã (UTC+1)</option>
+                  <option value="Europe/Lisbon">Lisboa (UTC+0)</option>
+                  <option value="Europe/Moscow">Moscou (UTC+3)</option>
+                </optgroup>
+                <optgroup label="🌏 Ásia">
+                  <option value="Asia/Tokyo">Tóquio (UTC+9)</option>
+                  <option value="Asia/Shanghai">Xangai (UTC+8)</option>
+                  <option value="Asia/Hong_Kong">Hong Kong (UTC+8)</option>
+                  <option value="Asia/Singapore">Singapura (UTC+8)</option>
+                  <option value="Asia/Seoul">Seul (UTC+9)</option>
+                  <option value="Asia/Kuala_Lumpur">Kuala Lumpur (UTC+8)</option>
+                  <option value="Asia/Bangkok">Bangkok (UTC+7)</option>
+                  <option value="Asia/Dubai">Dubai (UTC+4)</option>
+                </optgroup>
+                <optgroup label="🌍 Outras Regiões">
+                  <option value="Africa/Cairo">Cairo (UTC+2)</option>
+                  <option value="Africa/Lagos">Lagos (UTC+1)</option>
+                  <option value="Africa/Johannesburg">Johannesburg (UTC+2)</option>
+                  <option value="Australia/Sydney">Sydney (UTC+10)</option>
+                  <option value="Australia/Melbourne">Melbourne (UTC+10)</option>
+                  <option value="Pacific/Auckland">Auckland (UTC+12)</option>
+                  <option value="UTC">UTC (UTC+0)</option>
+                </optgroup>
+              </select>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                🇺🇸 <strong>Importante:</strong> Este timezone será usado para todos os cálculos de datas, deadlines, e períodos do tenant.
+                <br />
+                ⚙️ Os cálculos de timesheets, aprovações e relatórios respeitarão este fuso horário.
+              </p>
+            </div>
+
+            {/* Work Mode Settings */}
+            <div>
+              <label className="block text-sm font-medium mb-1">⚙️ Modo de Trabalho</label>
               <select
                 name="work_mode"
-                defaultValue={settings?.work_mode ?? 'standard'}
+                defaultValue={settings?.work_mode ?? 'padrao'}
                 className="w-full rounded border p-2 bg-[var(--input)]"
               >
                 <option value="offshore">🚢 Offshore - Regime de embarque/desembarque com escalas rotativas (7x7, 14x14, 21x21, 28x28)</option>
-                <option value="standard">🏢 Padrão - Trabalho normal com marcação diária de ponto (22 dias/mês no Brasil)</option>
+                <option value="padrao">🏢 Padrão - Trabalho normal com marcação diária de ponto (22 dias/mês no Brasil)</option>
+                <option value="standard">🏢 Padrão (Alt) - Trabalho normal com marcação diária de ponto (22 dias/mês no Brasil)</option>
                 <option value="flexible">⚙️ Flexível - Regras personalizadas por tenant</option>
               </select>
               <p className="text-xs text-[var(--muted-foreground)] mt-1">

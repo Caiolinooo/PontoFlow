@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle } from 'lucide-react';
+
 
 interface Environment {
   id: string;
@@ -62,7 +62,7 @@ export default function DeleteEnvironmentModal({
       <div className="space-y-5">
         {/* Warning Banner */}
         <div className="flex gap-3 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" strokeWidth="2"/><line x1="12" y1="17" x2="12" y2="17" strokeWidth="2"/></svg>
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">
               {t('deleteWarningTitle')}
@@ -144,7 +144,7 @@ export default function DeleteEnvironmentModal({
               </>
             ) : (
               <>
-                <AlertTriangle className="w-4 h-4" />
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" strokeWidth="2"/><line x1="12" y1="17" x2="12" y2="17" strokeWidth="2"/></svg>
                 {t('delete')}
               </>
             )}

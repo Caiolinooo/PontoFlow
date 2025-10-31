@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
 
     // Resolve tenant: if user has none and there is exactly one tenant, adopt it and persist for the user
     let tenantId = user.tenant_id as string | undefined;
+    console.log('[GET /api/admin/delegations/groups] User tenant_id:', tenantId);
+
     if (!tenantId) {
       const svc = getServiceSupabase();
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
@@ -32,7 +34,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    let query = supabase
+    // Use service client to bypass RLS
+    const svc = getServiceSupabase();
+    let query = svc
       .from('groups')
       .select('*')
       .eq('tenant_id', tenantId)
@@ -41,6 +45,12 @@ export async function GET(req: NextRequest) {
     if (q) query = query.ilike('name', `%${q}%`);
 
     const { data, error } = await query;
+
+    console.log('[GET /api/admin/delegations/groups] Query result:', {
+      tenantId,
+      count: data?.length || 0,
+      error: error?.message
+    });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 

@@ -120,6 +120,11 @@ export default async function AdminTimesheetsPage({
   }));
 
   const statusLabels: Record<string, string> = {
+    draft: t('statusDraft'),
+    submitted: t('statusSubmitted'),
+    approved: t('statusApproved'),
+    rejected: t('statusRejected'),
+    // Legacy Portuguese values for backward compatibility
     rascunho: t('statusDraft'),
     enviado: t('statusSubmitted'),
     aprovado: t('statusApproved'),
@@ -128,6 +133,11 @@ export default async function AdminTimesheetsPage({
   };
 
   const statusColors: Record<string, string> = {
+    draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+    submitted: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    // Legacy Portuguese values for backward compatibility
     rascunho: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
     enviado: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     aprovado: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -190,11 +200,10 @@ export default async function AdminTimesheetsPage({
               className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
             >
               <option value="">{t('allStatuses')}</option>
-              <option value="rascunho">{t('statusDraft')}</option>
-              <option value="enviado">{t('statusSubmitted')}</option>
-              <option value="aprovado">{t('statusApproved')}</option>
-              <option value="recusado">{t('statusRejected')}</option>
-              <option value="bloqueado">Bloqueado</option>
+              <option value="draft">{t('statusDraft')}</option>
+              <option value="submitted">{t('statusSubmitted')}</option>
+              <option value="approved">{t('statusApproved')}</option>
+              <option value="rejected">{t('statusRejected')}</option>
             </select>
           </div>
 

@@ -5,30 +5,40 @@ import AdminSettingsTabs from '@/components/admin/AdminSettingsTabs';
 
 export default async function AdminSettingsPage(props: { params: Promise<{ locale: string }> }) {
   const { locale } = await props.params;
-  await requireRole(locale, ['ADMIN']);
+  const user = await requireRole(locale, ['ADMIN']);
 
   const t = await getTranslations({ locale, namespace: 'adminSettings' });
 
   const supabase = await getServerSupabase();
 
-  // Fetch tenant and settings
+  console.log('[ADMIN SETTINGS] User tenant_id:', user.tenant_id);
+
+  // Fetch tenant and settings with graceful fallbacks
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, name, slug, work_schedule, work_mode, settings')
-    .eq('id', (await supabase.auth.getUser()).data.user?.user_metadata?.tenant_id)
+    .select('id, name, slug, timezone, work_schedule, work_mode, settings, deadline_day')
+    .eq('id', user.tenant_id)
     .maybeSingle();
+
+  console.log('[ADMIN SETTINGS] Tenant:', tenant);
 
   const { data: settings } = await supabase
     .from('tenant_settings')
     .select('*')
-    .eq('tenant_id', tenant?.id)
+    .eq('tenant_id', user.tenant_id)
     .maybeSingle();
 
-  // Merge tenant work_mode into settings for easier access in component
+  console.log('[ADMIN SETTINGS] Settings:', settings);
+
+  // Merge tenant settings with graceful fallbacks for missing columns
   const mergedSettings = {
     ...settings,
-    work_mode: tenant?.work_mode || 'standard',
+    timezone: tenant?.timezone || settings?.timezone || 'America/Sao_Paulo',
+    work_mode: tenant?.work_mode || settings?.work_mode || 'padrao',
+    deadline_day: tenant?.deadline_day || settings?.deadline_day || 16,
   };
+
+  console.log('[ADMIN SETTINGS] Merged settings:', mergedSettings);
 
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-6">

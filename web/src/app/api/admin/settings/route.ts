@@ -95,15 +95,113 @@ export async function PUT(req: NextRequest) {
       payload.auto_fill_future_days = body.auto_fill_future_days !== 'false' && body.auto_fill_future_days !== false;
     }
 
-    // Handle work_mode separately (it goes to tenants table, not tenant_settings)
-    if (body.work_mode !== undefined && ['offshore', 'standard', 'flexible'].includes(body.work_mode)) {
-      const { error: tenantError } = await supabase
-        .from('tenants')
-        .update({ work_mode: body.work_mode })
-        .eq('id', user.tenant_id);
+    // Handle work_mode and timezone separately (they go to tenants table, not tenant_settings)
+    if (body.work_mode !== undefined) {
+      // Normalize work_mode values to ensure compatibility
+      let normalizedWorkMode = body.work_mode;
+      if (body.work_mode === 'padrao') {
+        normalizedWorkMode = 'standard';
+      } else if (body.work_mode === 'standard') {
+        normalizedWorkMode = 'standard';
+      }
+      
+      if (['offshore', 'standard', 'flexible'].includes(normalizedWorkMode)) {
+        try {
+          const { error: tenantError } = await supabase
+            .from('tenants')
+            .update({ work_mode: normalizedWorkMode })
+            .eq('id', user.tenant_id);
 
-      if (tenantError) {
-        console.error('Error updating tenant work_mode:', tenantError);
+          if (tenantError) {
+            if (tenantError.code === '42703') {
+              console.warn('Tenant work_mode column does not exist yet, skipping work_mode update');
+            } else {
+              console.error('Error updating tenant work_mode:', tenantError);
+            }
+          }
+        } catch (err) {
+          console.warn('Could not update work_mode in tenants table:', err);
+        }
+      }
+    }
+
+    // Handle timezone separately (it goes to tenants table, not tenant_settings)
+    if (body.timezone !== undefined) {
+      const validTimezones = [
+        'America/Sao_Paulo',
+        'America/New_York',
+        'America/Los_Angeles',
+        'America/Chicago',
+        'America/Mexico_City',
+        'America/Bogota',
+        'America/Lima',
+        'America/Argentina/Buenos_Aires',
+        'America/Santiago',
+        'Europe/London',
+        'Europe/Paris',
+        'Europe/Berlin',
+        'Europe/Madrid',
+        'Europe/Rome',
+        'Europe/Amsterdam',
+        'Europe/Lisbon',
+        'Europe/Moscow',
+        'Asia/Tokyo',
+        'Asia/Shanghai',
+        'Asia/Hong_Kong',
+        'Asia/Singapore',
+        'Asia/Seoul',
+        'Asia/Kuala_Lumpur',
+        'Asia/Bangkok',
+        'Asia/Dubai',
+        'Africa/Cairo',
+        'Africa/Lagos',
+        'Africa/Johannesburg',
+        'Australia/Sydney',
+        'Australia/Melbourne',
+        'Pacific/Auckland',
+        'UTC'
+      ];
+
+      if (validTimezones.includes(body.timezone)) {
+        try {
+          const { error: tenantError } = await supabase
+            .from('tenants')
+            .update({ timezone: body.timezone })
+            .eq('id', user.tenant_id);
+
+          if (tenantError) {
+            if (tenantError.code === '42703') {
+              console.warn('Tenant timezone column does not exist yet, skipping timezone update');
+            } else {
+              console.error('Error updating tenant timezone:', tenantError);
+            }
+          }
+        } catch (err) {
+          console.warn('Could not update timezone in tenants table:', err);
+        }
+      }
+    }
+    
+    // Handle deadline_day in tenants table as well (migration support)
+    if (body.deadline_day !== undefined) {
+      try {
+        const parsed = parseInt(body.deadline_day, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 31) {
+          const { error: tenantError } = await supabase
+            .from('tenants')
+            .update({ deadline_day: parsed })
+            .eq('id', user.tenant_id);
+
+          if (tenantError) {
+            if (tenantError.code === '42703') {
+              console.warn('Tenant deadline_day column does not exist yet, skipping deadline_day update');
+            } else {
+              console.error('Error updating tenant deadline_day:', tenantError);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not update deadline_day in tenants table:', err);
       }
     }
 

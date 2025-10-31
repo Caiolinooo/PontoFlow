@@ -1,8 +1,85 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
-The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
+e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
+
+## [0.2.6] - 2025-10-31
+
+### Adicionado
+- **Sistema completo de notificações multi-canal**
+  - Notificações in-app com badge e modal de visualização
+  - Notificações push no navegador via Web Push API
+  - Notificações por email via SMTP configurável
+  - Painel de teste completo com seleção de tipo e canal
+  - Payloads realistas em português para todos os tipos de notificação
+
+- **Gerenciamento de subscrições push**
+  - Subscribe/unsubscribe funcional com persistência no banco
+  - Verificação automática de permissões do navegador
+  - Lógica manual de update/insert para compatibilidade com schema
+  - Endpoint DELETE para unsubscribe
+
+- **Painel de teste de notificações reformulado**
+  - Seleção de tipo de notificação (Aprovada, Rejeitada, Lembrete, Enviada)
+  - Checkboxes para escolher canais de envio (Email e/ou Navegador)
+  - Teste completo multi-canal simultâneo
+  - Teste rápido de email para verificar configuração SMTP
+  - Feedback detalhado de sucesso/erro por canal
+
+- **Configurações do tenant pré-preenchidas**
+  - Carregamento automático das configurações atuais do tenant
+  - Campos pré-populados com dados existentes do banco
+  - Melhor experiência de usuário para edição de configurações
+
+### Corrigido
+- **Schema mismatch nas tabelas de notificações**
+  - Tabela `notifications`: Corrigido uso de `read_at` (timestamp) ao invés de `read` (boolean)
+  - Tabela `notifications`: Removido campo `event` que não existe no schema
+  - Tabela `notifications`: Adicionados campos `action_url` e `priority` conforme schema
+  - Tabela `push_subscriptions`: Removido campo `subscribed_at` inexistente
+
+- **Constraint de push_subscriptions**
+  - Implementada lógica manual de verificação e update/insert
+  - Corrigido erro "no unique or exclusion constraint matching the ON CONFLICT specification"
+  - Hook de unsubscribe atualizado para usar método DELETE correto
+
+- **Permissões de relatórios para MANAGER**
+  - Manager sem grupos agora vê apenas próprio relatório (como USER)
+  - Manager com grupos vê relatórios dos colaboradores dos grupos que gerencia
+  - Lógica aplicada tanto em generate quanto em export
+
+- **Mapeamento de tipo de dia em timesheets**
+  - "Folga" agora mapeia corretamente para "folga" ao invés de "férias"
+
+### Documentação
+- `docs/NOTIFICATIONS-COMPLETE-FIX.md` - Guia completo do sistema de notificações
+- `docs/NOTIFICATIONS-FIX.md` - Detalhes das correções aplicadas
+- `docs/REJECTED-TIMESHEET-NOTIFICATIONS.md` - Sistema de notificações de rejeição
+- `docs/REPORTS-PERMISSIONS-FIX.md` - Correção de permissões de relatórios
+- `docs/ADMIN-SETTINGS-FIX.md` - Correção de configurações do admin
+
+## [0.2.5] - 2025-10-30
+
+### Adicionado
+- **Sistema de notificações para timesheets rejeitados**
+  - Alerta visual no dashboard quando timesheet é rejeitado
+  - Banner no timesheet com motivo da rejeição do gerente
+  - Verificação automática de prazo para reenvio
+  - Permissão de edição habilitada automaticamente para timesheets rejeitados
+  - Mensagens diferenciadas para dentro/fora do prazo de reenvio
+
+- **Traduções completas PT/EN para notificações de rejeição**
+  - Mensagens de alerta traduzidas em português e inglês
+  - Textos de banner traduzidos
+  - Formatação de datas localizada por idioma
+
+### Corrigido
+- **Autenticação com fallback para users_unified**
+  - `getUserFromToken` agora verifica Supabase Auth e tabela `users_unified`
+  - Sessões validadas corretamente para usuários importados/legados
+  - Logs detalhados adicionados para debug de autenticação
 
 ## [0.2.4] - 2025-10-27
 

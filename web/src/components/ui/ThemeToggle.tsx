@@ -19,15 +19,7 @@ export default function ThemeToggle({ align = "right" as "left" | "right" }) {
 
   async function apply(next: ThemeChoice) {
     setTheme(next);
-    try {
-      await fetch("/api/theme", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: next }),
-        cache: "no-store",
-      });
-    } catch {}
-    // Apply immediately client-side
+    // Apply immediately client-side first for better UX
     try {
       const root = document.documentElement;
       root.classList.remove("dark");
@@ -37,9 +29,20 @@ export default function ThemeToggle({ align = "right" as "left" | "right" }) {
         if (prefersDark) root.classList.add("dark");
       }
       localStorage.setItem("theme", next);
-      // Cookie is set by the API; still set here as a fallback
-      document.cookie = `theme=${next}; path=/; max-age=${60 * 60 * 24 * 365}`;
     } catch {}
+    
+    // Persist via unified API
+    try {
+      await fetch("/api/theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: next }),
+        cache: "no-store",
+      });
+    } catch {
+      // Fallback: set cookie directly if API fails
+      document.cookie = `theme=${next}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    }
   }
 
   const baseBtn = "px-3 py-1.5 rounded-md text-sm font-medium border border-[var(--input-border)] bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors";

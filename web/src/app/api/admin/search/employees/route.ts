@@ -5,7 +5,7 @@ import { getServerSupabase } from '@/lib/supabase/server';
 // GET /api/admin/search/employees?q=...&limit=20
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireApiRole(['ADMIN']);
+    const user = await requireApiRole(['ADMIN', 'MANAGER', 'MANAGER_TIMESHEET']);
     if (!user.tenant_id) return NextResponse.json({ error: 'missing_tenant' }, { status: 400 });
 
     const { searchParams } = new URL(req.url);

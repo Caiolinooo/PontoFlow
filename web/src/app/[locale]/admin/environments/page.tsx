@@ -5,7 +5,7 @@ import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSele
 import EditEnvironmentModal from '@/components/admin/EditEnvironmentModal';
 import DeleteEnvironmentModal from '@/components/admin/DeleteEnvironmentModal';
 import { useTranslations } from 'next-intl';
-import { Pencil, Trash2 } from 'lucide-react';
+
 
 interface Environment {
   id: string;
@@ -106,7 +106,7 @@ export default function EnvironmentsPage() {
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-200 dark:border-blue-800 transition-colors text-sm font-medium"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 4l4 4M3 21l3 0 14-14-4-4L3 17v4z"/></svg>
                         {t('edit')}
                       </button>
                       <button
@@ -116,7 +116,7 @@ export default function EnvironmentsPage() {
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 transition-colors text-sm font-medium"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
                         {t('delete')}
                       </button>
                     </div>

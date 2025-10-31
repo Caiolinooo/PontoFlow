@@ -1,18 +1,16 @@
 import {NextRequest, NextResponse} from 'next/server';
-import {createClient} from '@supabase/supabase-js';
 import {requireApiRole} from '@/lib/auth/server';
+import {getServiceSupabase} from '@/lib/supabase/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
+import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatcher';
 import { logAudit } from '@/lib/audit/logger';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function POST(_req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
     const user = await requireApiRole(['ADMIN', 'MANAGER', 'MANAGER_TIMESHEET']);
     const {id} = await context.params;
+
+    const supabase = getServiceSupabase();
 
     // Fetch timesheet and authorize access by manager groups (unless ADMIN)
     const { data: ts, error: eTs } = await supabase
@@ -44,7 +42,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
     // Update status to approved
     const {data: updated, error} = await supabase
       .from('timesheets')
-      .update({status: 'aprovado'})
+      .update({status: 'approved'})
       .eq('id', id)
       .select('id,employee_id,periodo_ini,periodo_fim,tenant_id')
       .single();
@@ -56,7 +54,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       tenant_id: updated.tenant_id,
       timesheet_id: id,
       manager_id: user.id,
-      status: 'aprovado',
+      status: 'approved',
       mensagem: null
     });
 
@@ -67,8 +65,8 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       action: 'approve',
       resourceType: 'timesheet',
       resourceId: id,
-      oldValues: { prev_status: 'enviado' },
-      newValues: { status: 'aprovado' }
+      oldValues: { prev_status: 'submitted' },
+      newValues: { status: 'approved' }
     });
 
     // Fetch employee profile for email + locale
@@ -86,18 +84,20 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       .single();
     if (e2) return NextResponse.json({error: e2.message}, {status: 500});
 
-    // Send notification email (best-effort)
+    // Send notifications (both email and in-app)
     try {
-      await dispatchNotification({
+      await dispatchEnhancedNotification({
         type: 'timesheet_approved',
         to: prof.email,
+        user_id: emp.profile_id,
         payload: {
           employeeName: emp.display_name ?? 'Colaborador',
           managerName: user.name,
           period: `${updated.periodo_ini} - ${updated.periodo_fim}`,
           url: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/timesheets/${id}`,
           locale: (prof.locale as 'pt-BR' | 'en-GB') ?? 'pt-BR',
-          tenantId: updated.tenant_id
+          tenantId: updated.tenant_id,
+          email: prof.email
         }
       });
     } catch {}

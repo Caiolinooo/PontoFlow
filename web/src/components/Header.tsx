@@ -4,6 +4,8 @@ import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
+import NotificationBadge from './notifications/NotificationBadge';
+import NotificationModal from './notifications/NotificationModal';
 import { useState, useEffect } from 'react';
 import type { User } from '@/lib/auth/custom-auth';
 import { branding } from '@/config/branding';
@@ -14,19 +16,31 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [loading, setLoading] = useState(!initialUser);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Extract locale from pathname
   const locale = pathname?.split('/')[1] || 'pt-BR';
 
   useEffect(() => {
     if (initialUser !== undefined) return; // Já temos o usuário do servidor; evita refetch e flicker
-    fetch('/api/auth/session')
+    
+    // Enhanced session check with better error handling
+    fetch('/api/auth/session', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
-        setUser(data.user);
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+          // Debug logging for authentication issues
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Session check failed:', data.message || 'No user data');
+          }
+        }
         setLoading(false);
       })
-      .catch(() => {
+      .catch(error => {
+        console.error('Session check error:', error);
         setUser(null);
         setLoading(false);
       });
@@ -65,6 +79,9 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
             <div className="flex items-center gap-3">
               <ThemeToggle />
               <LanguageSwitcher />
+              {user && (
+                <NotificationBadge onClick={() => setShowNotifications(true)} />
+              )}
             </div>
 
             {!loading && (

@@ -5,7 +5,7 @@ import { getServiceSupabase } from '@/lib/supabase/service';
 
 /**
  * Admin Tenants: PATCH/DELETE
- * PATCH /api/admin/tenants/[id] { name?, slug?, description? }
+ * PATCH /api/admin/tenants/[id] { name?, slug?, description?, timezone? }
  * DELETE /api/admin/tenants/[id]
  */
 
@@ -30,6 +30,28 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     if (typeof json.description === 'string' || json.description === null) update.description = json.description;
     if (typeof json.work_schedule === 'string' && ['7x7', '14x14', '21x21', '28x28', 'custom'].includes(json.work_schedule)) {
       update.work_schedule = json.work_schedule;
+    }
+    
+    // Handle timezone update with validation
+    if (typeof json.timezone === 'string') {
+      const validTimezones = [
+        'UTC',
+        'America/Sao_Paulo', 'America/New_York', 'America/Los_Angeles', 'America/Chicago',
+        'America/Mexico_City', 'America/Bogota', 'America/Lima', 'America/Argentina/Buenos_Aires',
+        'America/Santiago',
+        'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid', 'Europe/Rome',
+        'Europe/Amsterdam', 'Europe/Lisbon', 'Europe/Moscow',
+        'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Seoul',
+        'Asia/Kuala_Lumpur', 'Asia/Bangkok', 'Asia/Dubai',
+        'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg',
+        'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland'
+      ];
+      
+      if (validTimezones.includes(json.timezone)) {
+        update.timezone = json.timezone;
+      } else {
+        return NextResponse.json({ error: 'Invalid timezone value' }, { status: 400 });
+      }
     }
 
     if (Object.keys(update).length === 0) {

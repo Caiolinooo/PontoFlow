@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         employee_id: employee.id,
         periodo_ini: parsed.data.periodo_ini,
         periodo_fim: parsed.data.periodo_fim,
-        status: 'rascunho',
+        status: 'draft',
       })
       .select('id')
       .single();

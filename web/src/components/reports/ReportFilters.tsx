@@ -3,18 +3,38 @@
 import React from 'react';
 import { ReportFilters } from '@/lib/reports/generator';
 
+interface Period {
+  startDate: string;
+  endDate: string;
+  periodKey: string;
+  label: string;
+  isCurrent: boolean;
+}
+
 interface Props {
   onFilter: (filters: ReportFilters) => void;
   labels: Record<string, string>;
+  availableYears?: number[];
+  availablePeriods?: Period[];
+  currentPeriod?: Period | null;
 }
 
-export default function ReportFiltersComponent({ onFilter, labels }: Props) {
+export default function ReportFiltersComponent({
+  onFilter,
+  labels,
+  availableYears = [],
+  availablePeriods = [],
+  currentPeriod = null,
+}: Props) {
   const [filters, setFilters] = React.useState<ReportFilters>({});
   const [loading, setLoading] = React.useState(false);
   const [employeeQuery, setEmployeeQuery] = React.useState('');
   const [employeeResults, setEmployeeResults] = React.useState<Array<{ id: string; label: string }>>([]);
   const [employeeSearching, setEmployeeSearching] = React.useState(false);
   const [showEmployeeDropdown, setShowEmployeeDropdown] = React.useState(false);
+  const [selectedYear, setSelectedYear] = React.useState<string>('');
+  const [selectedPeriod, setSelectedPeriod] = React.useState<string>('');
+  const [filteredPeriods, setFilteredPeriods] = React.useState<Period[]>(availablePeriods);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleChange = (key: keyof ReportFilters, value: string) => {
@@ -64,6 +84,51 @@ export default function ReportFiltersComponent({ onFilter, labels }: Props) {
     setShowEmployeeDropdown(false);
   };
 
+  // Update filtered periods when year changes
+  React.useEffect(() => {
+    if (!selectedYear) {
+      setFilteredPeriods(availablePeriods);
+    } else {
+      const filtered = availablePeriods.filter(period => {
+        const periodYear = new Date(period.startDate).getFullYear();
+        return periodYear.toString() === selectedYear;
+      });
+      setFilteredPeriods(filtered);
+    }
+  }, [selectedYear, availablePeriods]);
+
+  const handleYearChange = (value: string) => {
+    setSelectedYear(value);
+    setSelectedPeriod(''); // Reset period selection when year changes
+
+    if (!value) {
+      // Clear date filters
+      const { startDate, endDate, ...rest } = filters;
+      setFilters(rest);
+    }
+  };
+
+  const handlePeriodChange = (value: string) => {
+    setSelectedPeriod(value);
+
+    if (!value) {
+      // Clear date filters
+      const { startDate, endDate, ...rest } = filters;
+      setFilters(rest);
+      return;
+    }
+
+    // Find the selected period
+    const period = filteredPeriods.find(p => `${p.startDate}|${p.endDate}` === value);
+    if (period) {
+      setFilters(prev => ({
+        ...prev,
+        startDate: period.startDate,
+        endDate: period.endDate
+      }));
+    }
+  };
+
   const handleApply = async () => {
     setLoading(true);
     try {
@@ -78,6 +143,8 @@ export default function ReportFiltersComponent({ onFilter, labels }: Props) {
     setEmployeeQuery('');
     setEmployeeResults([]);
     setShowEmployeeDropdown(false);
+    setSelectedYear('');
+    setSelectedPeriod('');
     onFilter({});
   };
 
@@ -86,30 +153,46 @@ export default function ReportFiltersComponent({ onFilter, labels }: Props) {
       <h3 className="font-semibold mb-4 text-[var(--card-foreground)]">{labels.filters || 'Filters'}</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Start Date */}
+        {/* Year Selector */}
         <div>
           <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
-            {labels.startDate || 'Start Date'}
+            {labels.year || 'Ano'}
           </label>
-          <input
-            type="date"
-            value={filters.startDate || ''}
-            onChange={(e) => handleChange('startDate', e.target.value)}
+          <select
+            value={selectedYear}
+            onChange={(e) => handleYearChange(e.target.value)}
             className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
-          />
+          >
+            <option value="">{labels.allYears || 'Todos os anos'}</option>
+            {availableYears.map((year) => (
+              <option key={year} value={year.toString()}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* End Date */}
+        {/* Period Selector (Custom Periods) */}
         <div>
           <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
-            {labels.endDate || 'End Date'}
+            {labels.period || 'Período'}
           </label>
-          <input
-            type="date"
-            value={filters.endDate || ''}
-            onChange={(e) => handleChange('endDate', e.target.value)}
+          <select
+            value={selectedPeriod}
+            onChange={(e) => handlePeriodChange(e.target.value)}
             className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
-          />
+            disabled={!selectedYear && availableYears.length > 0}
+          >
+            <option value="">{labels.allPeriods || 'Todos os períodos'}</option>
+            {filteredPeriods.map((period) => (
+              <option
+                key={`${period.startDate}|${period.endDate}`}
+                value={`${period.startDate}|${period.endDate}`}
+              >
+                {period.label} {period.isCurrent ? `(${labels.current || 'Atual'})` : ''}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Status */}

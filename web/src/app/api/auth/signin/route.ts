@@ -22,9 +22,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Set session cookie
-    const cookieStore = await cookies();
-    cookieStore.set('timesheet_session', result.token, {
+    console.log('[SIGNIN API] Login successful, setting cookie with token:', result.token.substring(0, 20) + '...');
+
+    // Create response with user data
+    const response = NextResponse.json({
+      user: result.user,
+      success: true,
+    });
+
+    // Set session cookie on the response
+    response.cookies.set('timesheet_session', result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -32,10 +39,9 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    return NextResponse.json({
-      user: result.user,
-      success: true,
-    });
+    console.log('[SIGNIN API] Cookie set on response');
+
+    return response;
   } catch (error) {
     console.error('Sign in API error:', error);
     return NextResponse.json(

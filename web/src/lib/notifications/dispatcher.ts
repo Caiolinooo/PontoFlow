@@ -46,7 +46,7 @@ export async function dispatchNotification(event: Event) {
         branding: { companyName, logoUrl }
       });
       await sendEmail({to: event.to, subject, html});
-      return;
+      return { subject, html };
     }
     case 'timesheet_approved': {
       let companyName: string | undefined;
@@ -73,17 +73,17 @@ export async function dispatchNotification(event: Event) {
         branding: { companyName, logoUrl }
       });
       await sendEmail({to: event.to, subject, html});
-      return;
+      return { subject, html };
     }
     case 'deadline_reminder': {
       const {subject, html} = deadlineReminderEmail(event.payload);
       await sendEmail({to: event.to, subject, html});
-      return;
+      return { subject, html };
     }
     case 'manager_pending_reminder': {
       const {subject, html} = managerPendingReminderEmail(event.payload);
       await sendEmail({to: event.to, subject, html});
-      return;
+      return { subject, html };
     }
     case 'timesheet_submitted': {
       let companyName: string | undefined;
@@ -103,7 +103,7 @@ export async function dispatchNotification(event: Event) {
       } catch {}
       const {subject, html} = timesheetSubmittedEmail({ ...event.payload, branding: { companyName, logoUrl } });
       await sendEmail({to: event.to, subject, html});
-      return;
+      return { subject, html };
     }
     case 'timesheet_adjusted': {
       let companyName: string | undefined;
@@ -130,7 +130,7 @@ export async function dispatchNotification(event: Event) {
         branding: { companyName, logoUrl }
       });
       await sendEmail({to: event.to, subject, html});
-      return;
+      return { subject, html };
     }
   }
 }

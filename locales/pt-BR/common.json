@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Gestor de Timesheet ABZ Group"
+    "title": "Sistema de Gestão de Folha de Ponto ABZ Group"
   },
   "nav": {
     "admin": "Admin",
@@ -22,9 +22,55 @@
   },
   "notifications": {
     "deadline": {
-      "reminderDays": "Seu timesheet do período {period} está pendente. Tempo restante: {days} dias.",
-      "blocked": "Período {period} está bloqueado para edição. Contate seu gerente."
+      "reminderDays": "Sua folha de ponto do período {period} está pendente. Prazo restante: {days} dias.",
+      "blocked": "Período {period} está bloqueado para edição. Entre em contato com seu gestor."
     }
+  },
+  "manager": {
+    "pending": {
+      "title": "Timesheets Pendentes",
+      "subtitle": "Revise e aprove os timesheets pendentes dos seus colaboradores",
+      "loading": "Carregando timesheets...",
+      "error": "Erro ao carregar dados",
+      "retry": "Tentar novamente",
+      "employee": "Colaborador",
+      "noPending": "Nenhum timesheet pendente",
+      "noPendingDescription": "Todos os timesheets estão em dia. Parabéns!",
+      "review": "Revisar",
+      "period": "Período",
+      "status": "Status",
+      "actions": "Ações",
+      "counters": {
+        "total": "Total",
+        "pending": "Pendente",
+        "draft": "Rascunho",
+        "submitted": "Enviado",
+        "approved": "Aprovado",
+        "rejected": "Recusado"
+      },
+      "statusLabels": {
+        "draft": "Rascunho",
+        "submitted": "Enviado",
+        "approved": "Aprovado",
+        "rejected": "Recusado",
+        "pendente": "Pendente",
+        "rascunho": "Rascunho",
+        "enviado": "Enviado",
+        "aprovado": "Aprovado",
+        "recusado": "Recusado"
+      },
+      "filters": {
+        "month": "Mês",
+        "apply": "Aplicar",
+        "clear": "Limpar"
+      }
+    }
+  },
+  "errors": {
+    "generic": "Erro interno. Tente novamente."
+  },
+  "messages": {
+    "saved": "Salvo:"
   }
 }
 

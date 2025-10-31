@@ -26,6 +26,24 @@ export default function TenantSelector({ currentTenantId, locale }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Check if current user is admin
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkUserRole() {
+      try {
+        const res = await fetch('/api/admin/me/tenant');
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.user?.role === 'ADMIN');
+        }
+      } catch (err) {
+        console.error('Error checking user role:', err);
+      }
+    }
+    checkUserRole();
+  }, []);
+
   useEffect(() => {
     async function loadTenants() {
       try {
@@ -43,8 +61,8 @@ export default function TenantSelector({ currentTenantId, locale }: Props) {
     loadTenants();
   }, []);
 
-  // Don't show selector if user only has one tenant
-  if (loading || tenants.length <= 1) {
+  // Don't show selector if user only has one tenant AND is not admin
+  if (loading || (tenants.length <= 1 && !isAdmin)) {
     return null;
   }
 

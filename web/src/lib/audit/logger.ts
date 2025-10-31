@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 export async function logAudit(params: {
   tenantId: string;
   userId: string;
-  action: 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'submit' | 'manager_edit_closed_period' | 'employee_acknowledge_adjustment';
+  action: 'create' | 'update' | 'delete' | 'view' | 'approve' | 'reject' | 'submit' | 'manager_edit_closed_period' | 'employee_acknowledge_adjustment' | 'batch_create';
   resourceType: string;
   resourceId?: string | null;
   oldValues?: any;

@@ -49,6 +49,13 @@ export default function AdminSystemConfig() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Email test states
+  const [emailTestLoading, setEmailTestLoading] = useState(false);
+  const [emailTestResult, setEmailTestResult] = useState<any>(null);
+  const [emailTestError, setEmailTestError] = useState<string | null>(null);
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [sendTestEmail, setSendTestEmail] = useState(false);
+
   const saveConfig = async () => {
     setSaving(true);
     setMessage(null);
@@ -251,6 +258,53 @@ export default function AdminSystemConfig() {
     URL.revokeObjectURL(url);
   };
 
+  const testEmailConfiguration = async () => {
+    setEmailTestLoading(true);
+    setEmailTestError(null);
+    setEmailTestResult(null);
+
+    try {
+      const config: any = {
+        provider: emailProvider,
+        sendTestEmail: sendTestEmail && testEmailAddress,
+        testEmail: testEmailAddress
+      };
+
+      // Add SMTP config
+      if (emailProvider === 'gmail' || emailProvider === 'smtp') {
+        config.host = smtpHost || (emailProvider === 'gmail' ? 'smtp.gmail.com' : '');
+        config.port = parseInt(smtpPort) || 587;
+        config.user = smtpUser;
+        config.pass = smtpPass;
+        config.from = mailFrom;
+      } else if (emailProvider === 'exchange-oauth2') {
+        config.azureTenantId = azureTenantId;
+        config.azureClientId = azureClientId;
+        config.azureClientSecret = azureClientSecret;
+        config.from = mailFrom;
+        config.user = smtpUser; // Use as the email that will send
+      }
+
+      const response = await fetch('/api/admin/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Teste de configuração falhou');
+      }
+
+      setEmailTestResult(result);
+    } catch (error: any) {
+      setEmailTestError(error.message);
+    } finally {
+      setEmailTestLoading(false);
+    }
+  };
+
   const tabs = [
     { id: 'database' as const, label: t('database.title') },
     { id: 'email' as const, label: t('email.title') },
@@ -379,45 +433,63 @@ export default function AdminSystemConfig() {
               <div className="space-y-3">
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">SMTP_HOST</label>
+                    <label className="block text-sm font-medium mb-1">SMTP_HOST <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       value={smtpHost}
                       onChange={(e) => setSmtpHost(e.target.value)}
                       placeholder={emailProvider === 'gmail' ? 'smtp.gmail.com' : 'smtp.example.com'}
                       className="w-full rounded border p-2 bg-[var(--input)]"
+                      required
                     />
+                    {!smtpHost && (
+                      <p className="text-xs text-red-500 mt-1">Host é obrigatório</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">SMTP_PORT</label>
+                    <label className="block text-sm font-medium mb-1">SMTP_PORT <span className="text-red-500">*</span></label>
                     <input
-                      type="text"
+                      type="number"
                       value={smtpPort}
                       onChange={(e) => setSmtpPort(e.target.value)}
                       placeholder="587"
                       className="w-full rounded border p-2 bg-[var(--input)]"
+                      min="1"
+                      max="65535"
+                      required
                     />
+                    <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                      Padrão: 587 (TLS), 465 (SSL)
+                    </p>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">SMTP_USER</label>
+                  <label className="block text-sm font-medium mb-1">SMTP_USER <span className="text-red-500">*</span></label>
                   <input
-                    type="text"
+                    type="email"
                     value={smtpUser}
                     onChange={(e) => setSmtpUser(e.target.value)}
                     placeholder="seu-email@gmail.com"
                     className="w-full rounded border p-2 bg-[var(--input)]"
+                    required
                   />
+                  {!smtpUser && (
+                    <p className="text-xs text-red-500 mt-1">Usuário é obrigatório</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">SMTP_PASS</label>
+                  <label className="block text-sm font-medium mb-1">SMTP_PASS <span className="text-red-500">*</span></label>
                   <input
                     type="password"
                     value={smtpPass}
                     onChange={(e) => setSmtpPass(e.target.value)}
                     placeholder="Senha ou App Password"
                     className="w-full rounded border p-2 bg-[var(--input)]"
+                    required
                   />
+                  {!smtpPass && (
+                    <p className="text-xs text-red-500 mt-1">Senha é obrigatória</p>
+                  )}
                   {emailProvider === 'gmail' && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                       {t('email.gmailNote')}
@@ -425,14 +497,18 @@ export default function AdminSystemConfig() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">MAIL_FROM</label>
+                  <label className="block text-sm font-medium mb-1">MAIL_FROM <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={mailFrom}
                     onChange={(e) => setMailFrom(e.target.value)}
                     placeholder='"Sistema" <no-reply@example.com>'
                     className="w-full rounded border p-2 bg-[var(--input)]"
+                    required
                   />
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    Formato: "Nome do Remetente" &lt;email@dominio.com&gt;
+                  </p>
                 </div>
               </div>
             )}
@@ -519,6 +595,94 @@ export default function AdminSystemConfig() {
                 </div>
               </div>
             )}
+
+            {/* Email Test Section */}
+            <div className="bg-[var(--muted)]/30 rounded-lg p-4 space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">🧪 Testar Configuração de Email</h4>
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                  Teste suas configurações de email antes de salvar para garantir que o sistema funcionará corretamente.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email para teste (opcional)</label>
+                <input
+                  type="email"
+                  value={testEmailAddress}
+                  onChange={(e) => setTestEmailAddress(e.target.value)}
+                  placeholder="teste@exemplo.com"
+                  className="w-full rounded border p-2 bg-[var(--input)]"
+                />
+                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                  Deixe vazio para apenas testar a configuração sem enviar email
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="sendTestEmail"
+                  checked={sendTestEmail}
+                  onChange={(e) => setSendTestEmail(e.target.checked)}
+                  disabled={!testEmailAddress}
+                  className="rounded"
+                />
+                <label htmlFor="sendTestEmail" className="text-sm">
+                  Enviar email de teste
+                </label>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={testEmailConfiguration}
+                  disabled={emailTestLoading || 
+                    (emailProvider === 'smtp' && (!smtpHost || !smtpUser || !smtpPass || !mailFrom)) ||
+                    (emailProvider === 'gmail' && (!smtpHost || !smtpUser || !smtpPass || !mailFrom)) ||
+                    (emailProvider === 'exchange-oauth2' && (!azureTenantId || !azureClientId || !azureClientSecret || !mailFrom))
+                  }
+                  className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 text-sm font-medium flex items-center gap-2"
+                >
+                  {emailTestLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Testando...
+                    </>
+                  ) : (
+                    <>
+                      🧪 Testar Configuração
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {emailTestError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <h5 className="font-medium text-red-900 dark:text-red-100 mb-1">❌ Erro no Teste</h5>
+                  <p className="text-sm text-red-800 dark:text-red-200">{emailTestError}</p>
+                </div>
+              )}
+
+              {emailTestResult && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 space-y-2">
+                  <h5 className="font-medium text-green-900 dark:text-green-100">✅ Teste Concluído</h5>
+                  <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
+                    <p><strong>Provedor:</strong> {emailTestResult.provider}</p>
+                    <p><strong>Host:</strong> {emailTestResult.configuration?.host}:{emailTestResult.configuration?.port}</p>
+                    <p><strong>Usuário:</strong> {emailTestResult.configuration?.user}</p>
+                    <p><strong>Status do Transporte:</strong> {emailTestResult.transportTest?.success ? 'OK' : 'Falhou'}</p>
+                    {emailTestResult.emailTest && (
+                      <>
+                        <p><strong>Email de Teste:</strong> {emailTestResult.emailTest.sent ? 'Enviado' : 'Não enviado'}</p>
+                        {emailTestResult.emailTest.error && (
+                          <p><strong>Erro do Email:</strong> {emailTestResult.emailTest.error}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

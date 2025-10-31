@@ -38,7 +38,7 @@ async function ensureManagerAccess(supabase: any, user: any, timesheetId: string
     .from('manager_group_assignments')
     .select('group_id')
     .eq('tenant_id', ts.tenant_id)
-    .eq('manager_user_id', user.id)
+    .eq('manager_id', user.id)
     .in('group_id', groupIds)
     .limit(1);
 
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       newValues: {
         timesheet_id: id,
         data: parsed.data.data,
-        tipo: parsed.data.tipo,
+        tipo: environment.slug,
         hora_ini: parsed.data.hora_ini ?? null,
         hora_fim: parsed.data.hora_fim ?? null,
         justification: eff.locked ? parsed.data.justification ?? '' : undefined

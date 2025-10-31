@@ -131,10 +131,9 @@ export function usePushNotifications() {
         await subscription.unsubscribe();
 
         // Notify server
-        await fetch('/api/notifications/unsubscribe', {
-          method: 'POST',
+        await fetch('/api/notifications/subscribe', {
+          method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
         });
       }
 

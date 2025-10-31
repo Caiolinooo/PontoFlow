@@ -3,10 +3,10 @@
  */
 
 export enum TimesheetStatus {
-  DRAFT = 'rascunho',
-  SUBMITTED = 'enviado',
-  APPROVED = 'aprovado',
-  REJECTED = 'recusado',
+  DRAFT = 'draft',
+  SUBMITTED = 'submitted',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
 export enum EntryType {

@@ -35,13 +35,24 @@ export default function UnifiedBottomNav({ initialUser }: UnifiedBottomNavProps)
 
   useEffect(() => {
     if (initialUser !== undefined) return;
-    fetch('/api/auth/session')
+    
+    // Enhanced session check with better error handling
+    fetch('/api/auth/session', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
-        setUser(data.user);
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+          // Debug logging for authentication issues
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Bottom nav session check failed:', data.message || 'No user data');
+          }
+        }
         setLoading(false);
       })
-      .catch(() => {
+      .catch(error => {
+        console.error('Bottom nav session check error:', error);
         setUser(null);
         setLoading(false);
       });

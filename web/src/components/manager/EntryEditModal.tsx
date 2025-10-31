@@ -6,6 +6,7 @@ export type ManagerEntry = {
   id: string;
   data: string;
   environment_id?: string | null;
+  tipo?: string | null;
   hora_ini?: string | null;
   hora_fim?: string | null;
   observacao?: string | null;

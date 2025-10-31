@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type Tenant = { id: string; name: string };
 
@@ -10,6 +10,20 @@ export default function TenantSwitcher() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [open]);
 
   useEffect(() => {
     (async () => {
@@ -38,12 +52,12 @@ export default function TenantSwitcher() {
   const label = tenants.find(t => t.id === current)?.name || (current ? current : 'Sem tenant');
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button type="button" onClick={() => setOpen(v => !v)} className="text-sm px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)]">
         {loading ? 'Carregando...' : `Tenant: ${label}`}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-64 border border-[var(--border)] bg-[var(--card)] rounded-lg shadow">
+        <div className="absolute right-0 -mt-2 bottom-full mb-2 w-64 border border-[var(--border)] bg-[var(--card)] rounded-lg shadow">
           <div className="p-2 text-xs text-[var(--muted-foreground)]">Selecionar tenant</div>
           <ul className="max-h-80 overflow-auto">
             {tenants.length === 0 ? (

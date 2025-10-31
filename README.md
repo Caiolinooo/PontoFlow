@@ -99,7 +99,85 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 - `.env`, `.env.*` ignorados por padrão no Git; não comitar chaves sensíveis
 - Service Role do Supabase só no servidor; nunca expor `SUPABASE_SERVICE_ROLE_KEY` no cliente
 
+## Known Issues
+
+### Database Schema
+- **Missing `notification_preferences` table**: Sistema usa fallback com preferências padrão. Não afeta funcionalidade.
+- **Missing `tenant_id` in delegation tables**: Performance de queries pode ser afetada em tenants com muitos grupos. Migração disponível em `docs/migrations/phase-22-add-tenant-to-delegations.sql`.
+
+### Notifications
+- **VAPID keys configuration**: Push notifications requerem configuração manual de VAPID keys. Documentação em `docs/NOTIFICATIONS-COMPLETE-FIX.md`.
+- **SMTP configuration required**: Email notifications requerem configuração SMTP válida no `.env.local`.
+
+### Performance
+- **Redis dependency optional**: Cache service funciona sem Redis, mas performance pode ser melhorada com Redis configurado.
+
+### UI/UX
+- **Service Worker registration**: Push notifications podem requerer reload da página após primeira instalação do service worker.
+
+---
+
 ## Changelog
+
+### 0.2.6 (2025-10-31)
+- **feat(notifications)**: Sistema completo de notificações multi-canal
+  - ✅ Notificações in-app com badge e modal
+  - ✅ Notificações push no navegador (Web Push API)
+  - ✅ Notificações por email via SMTP
+  - ✅ Painel de teste completo com seleção de tipo e canal
+  - ✅ Payloads realistas em português para todos os tipos
+- **feat(notifications)**: Gerenciamento de subscrições push
+  - ✅ Subscribe/unsubscribe funcional
+  - ✅ Verificação de permissões do navegador
+  - ✅ Persistência de subscrições no banco
+  - ✅ Lógica manual de update/insert para compatibilidade
+- **fix(notifications)**: Correção de schema mismatch
+  - ✅ Tabela `notifications`: `read_at` (timestamp) ao invés de `read` (boolean)
+  - ✅ Tabela `notifications`: Removido campo `event` inexistente
+  - ✅ Tabela `notifications`: Adicionados campos `action_url` e `priority`
+  - ✅ Tabela `push_subscriptions`: Removido campo `subscribed_at` inexistente
+- **fix(notifications)**: Correção de constraint de push_subscriptions
+  - ✅ Implementada lógica manual de verificação e update/insert
+  - ✅ Endpoint DELETE para unsubscribe
+  - ✅ Hook atualizado para usar método DELETE correto
+- **feat(admin)**: Painel de teste de notificações reformulado
+  - ✅ Seleção de tipo de notificação (Aprovada, Rejeitada, Lembrete, Enviada)
+  - ✅ Checkboxes para escolher canais (Email e/ou Navegador)
+  - ✅ Teste completo multi-canal simultâneo
+  - ✅ Teste rápido de email para verificar SMTP
+  - ✅ Feedback detalhado de sucesso/erro por canal
+- **feat(admin)**: Configurações do tenant pré-preenchidas
+  - ✅ Carregamento automático das configurações atuais
+  - ✅ Campos pré-populados com dados existentes
+  - ✅ Melhor UX para edição de configurações
+- **fix(reports)**: Correção de permissões de relatórios para MANAGER
+  - ✅ Manager sem grupos: vê apenas próprio relatório
+  - ✅ Manager com grupos: vê relatórios dos colaboradores dos grupos
+  - ✅ Lógica aplicada em generate e export
+- **fix(timesheets)**: Correção de mapeamento de tipo de dia
+  - ✅ "Folga" agora mapeia corretamente para "folga" (não "férias")
+- **docs**: Documentação completa do sistema de notificações
+  - ✅ `docs/NOTIFICATIONS-COMPLETE-FIX.md` - Guia completo
+  - ✅ `docs/NOTIFICATIONS-FIX.md` - Correções aplicadas
+  - ✅ `docs/REJECTED-TIMESHEET-NOTIFICATIONS.md` - Notificações de rejeição
+  - ✅ `docs/REPORTS-PERMISSIONS-FIX.md` - Correção de permissões
+  - ✅ `docs/ADMIN-SETTINGS-FIX.md` - Correção de configurações
+
+### 0.2.5 (2025-10-30)
+- **feat(timesheets)**: Sistema de notificações para timesheets rejeitados
+  - ✅ Alerta visual no dashboard quando timesheet é rejeitado
+  - ✅ Banner no timesheet com motivo da rejeição
+  - ✅ Verificação automática de prazo para reenvio
+  - ✅ Permissão de edição habilitada para timesheets rejeitados
+  - ✅ Mensagens diferenciadas para dentro/fora do prazo
+- **feat(i18n)**: Traduções completas PT/EN para notificações de rejeição
+  - ✅ Mensagens de alerta traduzidas
+  - ✅ Textos de banner traduzidos
+  - ✅ Formatação de datas localizada
+- **fix(auth)**: Correção de autenticação com fallback para users_unified
+  - ✅ getUserFromToken agora verifica Supabase Auth e users_unified
+  - ✅ Sessões validadas corretamente para usuários importados
+  - ✅ Logs detalhados para debug de autenticação
 
 ### 0.2.4 (2025-10-27)
 - **fix(notifications)**: API agora retorna preferências padrão quando tabela não existe (erro 500 corrigido)

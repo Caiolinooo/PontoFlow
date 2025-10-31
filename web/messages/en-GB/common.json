@@ -37,6 +37,24 @@
         "title": "Settings",
         "description": "Language, notifications"
       }
+    },
+    "alerts": {
+      "manager": {
+        "teamSummary": "Team: {pending} pending, {draft} in draft"
+      },
+      "employee": {
+        "notStarted": "You haven’t started your timesheet for {month}.",
+        "draft": "You have a draft timesheet for {month}.",
+        "rejectedWithinDeadline": "⚠️ Your timesheet for {month} was REJECTED and needs correction by {deadline}. Reason: {reason}",
+        "rejectedPastDeadline": "❌ Your timesheet for {month} was REJECTED (deadline expired on {deadline}). Reason: {reason}"
+      },
+      "cta": {
+        "open": "Open",
+        "review": "Review",
+        "fillNow": "Fill now",
+        "correctNow": "Correct now",
+        "view": "View"
+      }
     }
   },
   "buttons": {
@@ -174,7 +192,7 @@
   "manager": {
     "review": {
       "title": "Timesheet Review",
-      "subtitle": "Check entries and take an action",
+      "subtitle": "Review entries and take action",
       "timesheet": "Timesheet",
       "employee": "Employee",
       "period": "Period",
@@ -185,6 +203,7 @@
       "start": "Start",
       "end": "End",
       "note": "Note",
+      "actions": "Actions",
       "annotations": "Annotations",
       "rejectReason": "Rejection reason",
       "rejectTitle": "Reject timesheet",
@@ -192,12 +211,12 @@
       "annotationField": "Field (optional)",
       "annotationEntry": "Entry (optional)",
       "annotationMessage": "Message",
-      "approvals": "Approvals history",
+      "approvals": "Approval history",
       "noEntries": "No entries."
     },
     "pending": {
-      "title": "Pending Timesheets",
-      "subtitle": "Review and approve submitted timesheets",
+      "title": "Team Timesheets",
+      "subtitle": "View monthly status and track your team",
       "employee": "Employee",
       "date": "Date",
       "type": "Type",
@@ -206,7 +225,38 @@
       "actions": "Actions",
       "review": "Review",
       "noPending": "No pending timesheets",
-      "noPendingDescription": "There are no timesheets awaiting approval at this time."
+      "noPendingDescription": "There are no timesheets awaiting approval at this time.",
+      "loading": "Loading timesheets...",
+      "error": "Error loading data",
+      "retry": "Try again",
+      "filters": {
+        "month": "Period (YYYY-MM)",
+        "apply": "Filter",
+        "clear": "Clear"
+      },
+      "counters": {
+        "total": "Total",
+        "pending": "Pending",
+        "draft": "Drafts",
+        "submitted": "Submitted",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "statusLabels": {
+        "pendente": "Pending",
+        "rascunho": "Draft",
+        "enviado": "Submitted",
+        "aprovado": "Approved",
+        "recusado": "Rejected",
+        "draft": "Draft",
+        "submitted": "Submitted",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "notifyEmployee": "Notify",
+      "notifying": "Notifying...",
+      "notifySuccess": "Notification sent",
+      "notifyError": "Error notifying"
     }
   },
   "employee": {
@@ -262,12 +312,20 @@
     }
   },
   "reports": {
+    "title": "Reports",
+    "description": "Generate and export timesheet reports",
     "filters": "Filters",
+    "year": "Year",
+    "allYears": "All Years",
+    "period": "Period",
+    "allPeriods": "All Periods",
+    "current": "Current",
     "startDate": "Start Date",
     "endDate": "End Date",
     "status": "Status",
     "employee": "Employee",
     "employeeId": "Employee ID",
+    "employeeName": "Search by name...",
     "allStatuses": "All Statuses",
     "draft": "Draft",
     "submitted": "Submitted",
@@ -281,15 +339,44 @@
     "generatedAt": "Generated at",
     "exportCSV": "Export CSV",
     "exportJSON": "Export JSON",
+    "exportPDF": "Export PDF",
+    "exportExcel": "Export Excel",
     "total": "Total",
     "pending": "Pending",
+    "pendingItems": "Pending Items",
     "entries": "Entries",
     "period": "Period",
     "details": "Details",
     "summary": "Summary Report",
     "detailed": "Detailed Report",
+    "reportType": "Report Type",
+    "reportScope": "Report Scope",
+    "timesheets": "Timesheets",
+    "hours": "Hours",
+    "totalHours": "Total Hours",
+    "averageHours": "Average Hours",
+    "scopeTimesheets": "All Timesheets",
+    "scopeTimesheetsDesc": "View all timesheets without status filters",
+    "scopePending": "Pending Items",
+    "scopePendingDesc": "Only timesheets awaiting approval",
+    "scopeApproved": "Approved Only",
+    "scopeApprovedDesc": "Only approved timesheets",
+    "scopeRejected": "Rejected Only",
+    "scopeRejectedDesc": "Only rejected timesheets",
+    "scopeByEmployee": "By Employee",
+    "scopeByEmployeeDesc": "Group and consolidate data by employee",
+    "scopeByVessel": "By Vessel",
+    "scopeByVesselDesc": "Group and consolidate data by vessel",
+    "reportTitleAllTimesheets": "All Timesheets",
+    "reportTitlePending": "Pending Items",
+    "reportTitleApproved": "Approved Timesheets",
+    "reportTitleRejected": "Rejected Timesheets",
+    "reportTitleByEmployee": "By Employee",
+    "reportTitleByVessel": "By Vessel",
     "error": "Error generating report",
-    "exportError": "Error exporting report"
+    "exportError": "Error exporting report",
+    "summaryReportTitle": "Administrative Reports - Timesheet Summary Report",
+    "detailedReportTitle": "Administrative Reports - Timesheet Detailed Report"
   },
   "messages": {
     "saved": "Preferences saved."

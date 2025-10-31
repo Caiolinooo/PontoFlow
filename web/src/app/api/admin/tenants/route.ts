@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const name = String(body.name ?? '').trim();
     const slugRaw = String(body.slug ?? '').trim();
+    const timezone = String(body.timezone ?? 'America/Sao_Paulo').trim();
+    
     const slug = slugRaw
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, '-')
@@ -60,6 +62,27 @@ export async function POST(req: NextRequest) {
     if (!name || !slug) {
       return NextResponse.json(
         { error: 'Missing required fields: name, slug' },
+        { status: 400 }
+      );
+    }
+
+    // Validate timezone
+    const validTimezones = [
+      'UTC',
+      'America/Sao_Paulo', 'America/New_York', 'America/Los_Angeles', 'America/Chicago',
+      'America/Mexico_City', 'America/Bogota', 'America/Lima', 'America/Argentina/Buenos_Aires',
+      'America/Santiago',
+      'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid', 'Europe/Rome',
+      'Europe/Amsterdam', 'Europe/Lisbon', 'Europe/Moscow',
+      'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Seoul',
+      'Asia/Kuala_Lumpur', 'Asia/Bangkok', 'Asia/Dubai',
+      'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg',
+      'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland'
+    ];
+
+    if (!validTimezones.includes(timezone)) {
+      return NextResponse.json(
+        { error: 'Invalid timezone. Please select a valid timezone.' },
         { status: 400 }
       );
     }
@@ -83,6 +106,7 @@ export async function POST(req: NextRequest) {
       .insert({
         name,
         slug,
+        timezone,
         description: body.description?.trim?.() || null,
         created_at: new Date().toISOString()
       })

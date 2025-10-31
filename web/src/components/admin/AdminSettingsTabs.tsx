@@ -14,7 +14,7 @@ interface AdminSettingsTabsProps {
 }
 
 export default function AdminSettingsTabs({ locale, tenant, settings }: AdminSettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('health');
+  const [activeTab, setActiveTab] = useState<TabId>('tenant');
   const t = useTranslations('adminSettings.tabs');
   const tHealth = useTranslations('adminSettings.health');
 

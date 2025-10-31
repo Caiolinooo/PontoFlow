@@ -1,14 +1,10 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
-import {createClient} from '@supabase/supabase-js';
 import {requireApiRole} from '@/lib/auth/server';
+import {getServiceSupabase} from '@/lib/supabase/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
+import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatcher';
 import { logAudit } from '@/lib/audit/logger';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 const Schema = z.object({
   reason: z.string().min(3),
@@ -32,6 +28,8 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     if (!parsed.success) {
       return NextResponse.json({error: 'invalid_body', issues: parsed.error.issues}, {status: 400});
     }
+
+    const supabase = getServiceSupabase();
 
     // Fetch timesheet and authorize
     const { data: ts, error: eTs } = await supabase
@@ -63,18 +61,21 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     // Update status to rejected
     const {data: updated, error} = await supabase
       .from('timesheets')
-      .update({status: 'recusado'})
+      .update({status: 'rejected'})
       .eq('id', id)
       .select('id,employee_id,periodo_ini,periodo_fim,tenant_id')
       .single();
-    if (error) return NextResponse.json({error: error.message}, {status: 400});
+    if (error) {
+      console.error('[reject] Failed to update timesheet status:', error.message);
+      return NextResponse.json({error: error.message}, {status: 400});
+    }
 
     // Insert approval record (rejected)
     await supabase.from('approvals').insert({
       tenant_id: updated.tenant_id,
       timesheet_id: id,
       manager_id: user.id,
-      status: 'recusado',
+      status: 'rejected',
       mensagem: parsed.data.reason
     });
 
@@ -85,10 +86,14 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
         timesheet_id: id,
         entry_id: a.entry_id ?? null,
         field_path: a.field ?? null,
-        message: a.message
+        message: a.message,
+        created_by: user.id
       }));
       const {error: eAnn} = await supabase.from('timesheet_annotations').insert(rows);
-      if (eAnn) return NextResponse.json({error: eAnn.message}, {status: 500});
+      if (eAnn) {
+        console.error('[reject] Failed to insert annotations:', eAnn.message);
+        return NextResponse.json({error: eAnn.message}, {status: 500});
+      }
     }
 
     // Audit (non-blocking)
@@ -98,39 +103,47 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       action: 'reject',
       resourceType: 'timesheet',
       resourceId: id,
-      oldValues: { prev_status: 'enviado' },
-      newValues: { status: 'recusado', reason: parsed.data.reason, annotations: parsed.data.annotations ?? [] }
+      oldValues: { prev_status: 'submitted' },
+      newValues: { status: 'rejected', reason: parsed.data.reason, annotations: parsed.data.annotations ?? [] }
     });
 
     // Fetch employee + profile for email + locale
     const {data: emp, error: e1} = await supabase
       .from('employees')
-      .select('id, display_name, profile_id')
+      .select('id, profile_id')
       .eq('id', updated.employee_id)
       .single();
-    if (e1) return NextResponse.json({error: e1.message}, {status: 500});
+    if (e1 || !emp) {
+      console.error('[reject] Failed to fetch employee:', e1?.message);
+      return NextResponse.json({error: e1?.message ?? 'employee_not_found'}, {status: 500});
+    }
 
     const {data: prof, error: e2} = await supabase
       .from('profiles')
-      .select('email, locale')
+      .select('display_name, email, locale')
       .eq('user_id', emp.profile_id)
       .single();
-    if (e2) return NextResponse.json({error: e2.message}, {status: 500});
+    if (e2 || !prof) {
+      console.error('[reject] Failed to fetch profile:', e2?.message);
+      return NextResponse.json({error: e2?.message ?? 'profile_not_found'}, {status: 500});
+    }
 
-    // Notify employee
+    // Notify employee (both email and in-app)
     try {
-      await dispatchNotification({
+      await dispatchEnhancedNotification({
         type: 'timesheet_rejected',
         to: prof.email,
+        user_id: emp.profile_id,
         payload: {
-          employeeName: emp.display_name ?? 'Colaborador',
+          employeeName: prof.display_name ?? 'Colaborador',
           managerName: user.name,
           period: `${updated.periodo_ini} - ${updated.periodo_fim}`,
           reason: parsed.data.reason,
           annotations: parsed.data.annotations?.map(a => ({field: a.field, message: a.message})) ?? [],
           url: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/timesheets/${id}`,
           locale: (prof.locale as 'pt-BR' | 'en-GB') ?? 'pt-BR',
-          tenantId: updated.tenant_id
+          tenantId: updated.tenant_id,
+          email: prof.email
         }
       });
     } catch {}

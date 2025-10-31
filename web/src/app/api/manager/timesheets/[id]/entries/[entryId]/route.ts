@@ -36,7 +36,7 @@ async function ensureManagerAccess(supabase: any, user: any, timesheetId: string
     .from('manager_group_assignments')
     .select('group_id')
     .eq('tenant_id', ts.tenant_id)
-    .eq('manager_user_id', user.id)
+    .eq('manager_id', user.id)
     .in('group_id', groupIds)
     .limit(1);
   if (!mg || mg.length === 0) return { error: 'forbidden' as const };
@@ -162,9 +162,11 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const monthKey = `${new Date(ts!.periodo_ini).getFullYear()}-${String(new Date(ts!.periodo_ini).getMonth()+1).padStart(2,'0')}-01`;
     const eff = await getEffectivePeriodLock(supabase, ts!.tenant_id, ts!.employee_id, monthKey);
 
+    // Get justification from request body
+    const json = await req.json().catch(() => ({}));
+    const just = (json?.justification || '').toString();
+
     if (eff.locked && user.role !== 'ADMIN') {
-      const json = await req.json().catch(() => ({}));
-      const just = (json?.justification || '').toString();
       if (!just || just.trim().length < 10) {
         return NextResponse.json({ error: 'justification_required' }, { status: 400 });
       }
@@ -207,6 +209,19 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
           });
         }
       } catch {}
+    }
+
+    // Create annotation if justification was provided
+    if (just && just.trim().length >= 10) {
+      await supabase
+        .from('timesheet_annotations')
+        .insert({
+          timesheet_id: id,
+          entry_id: entryId,
+          message: `Lançamento excluído. Justificativa: ${just}`,
+          tenant_id: ts!.tenant_id,
+          created_by: user.id
+        });
     }
 
     const { error: delErr } = await supabase

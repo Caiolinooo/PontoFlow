@@ -24,14 +24,17 @@ export default function AdminDelegationsPage() {
     try {
       const r = await fetch('/api/admin/delegations/groups', { cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
+      console.log('[Delegations Page] API response:', { status: r.status, data: j });
       if (r.status === 409 && j?.error === 'tenant_required') {
         setTenantOptions(j.tenants || []);
         setTenantModalOpen(true);
         return;
       }
       if (!r.ok) throw new Error(j?.error || t('loadFailed'));
+      console.log('[Delegations Page] Setting rows:', j.items);
       setRows((j.items || []).map((g: any) => ({ id: g.id, name: g.name })));
     } catch (e: any) {
+      console.error('[Delegations Page] Error:', e);
       setError(e?.message || t('unexpectedError'));
     } finally {
       setLoading(false);

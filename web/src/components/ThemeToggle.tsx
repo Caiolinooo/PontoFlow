@@ -24,11 +24,10 @@ export default function ThemeToggle() {
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
     try { localStorage.setItem('theme', theme); } catch {}
-    // Best-effort persist as cookie (server uses it for SSR no-flash)
-    fetch('/api/profile/theme', {
+    // Unified theme persistence via API
+    fetch('/api/theme', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-
       body: JSON.stringify({ theme })
     }).catch(() => {});
   }, [theme]);

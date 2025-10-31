@@ -54,6 +54,18 @@ export async function middleware(request: NextRequest) {
     if (user) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     } else {
+      // Clear invalid token if exists
+      if (token) {
+        const response = NextResponse.redirect(new URL(`/${locale}/auth/signin`, request.url));
+        response.cookies.set('timesheet_session', '', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          expires: new Date(0),
+          path: '/',
+        });
+        return response;
+      }
       return NextResponse.redirect(new URL(`/${locale}/auth/signin`, request.url));
     }
   }
@@ -77,6 +89,20 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const signInUrl = new URL(`/${locale}/auth/signin`, request.url);
       signInUrl.searchParams.set('redirect', pathname);
+      
+      // Clear invalid token if exists
+      if (token) {
+        const response = NextResponse.redirect(signInUrl);
+        response.cookies.set('timesheet_session', '', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          expires: new Date(0),
+          path: '/',
+        });
+        return response;
+      }
+      
       return NextResponse.redirect(signInUrl);
     }
 

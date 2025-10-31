@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 type Entry = {
   id: string;
   data: string;
-  tipo: string;
   hora_ini?: string | null;
   hora_fim?: string | null;
   observacao?: string | null;
@@ -61,7 +60,7 @@ export default function TimesheetCalendar({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showAutoFillModal, setShowAutoFillModal] = useState(false);
-  const [suggestedEntries, setSuggestedEntries] = useState<Array<{date: string; tipo: string; environment_id: string; selected: boolean}>>([]);
+  const [suggestedEntries, setSuggestedEntries] = useState<Array<{date: string; environment_id: string; selected: boolean}>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<Environment[]>([]);
@@ -144,7 +143,7 @@ export default function TimesheetCalendar({
    *
    * Onde N = days_on (ex: 28) e M = days_off (ex: 28)
    */
-  const calculateSuggestedEntries = (startDate: string, startTipo: 'embarque' | 'desembarque'): Array<{date: string; tipo: string; environment_id: string; selected: boolean}> => {
+  const calculateSuggestedEntries = (startDate: string, startTipo: 'embarque' | 'desembarque'): Array<{date: string; environment_id: string; selected: boolean}> => {
     if (!workSchedule) return [];
 
     const { work_schedule, days_on, days_off } = workSchedule;
@@ -173,7 +172,7 @@ export default function TimesheetCalendar({
       return [];
     }
 
-    const suggestions: Array<{date: string; tipo: string; environment_id: string; selected: boolean}> = [];
+    const suggestions: Array<{date: string; environment_id: string; selected: boolean}> = [];
     const start = new Date(startDate);
 
     // Extend period to next 6 months to allow cross-month suggestions
@@ -195,7 +194,6 @@ export default function TimesheetCalendar({
         if (!existingEntry) {
           suggestions.push({
             date: dateStr,
-            tipo: 'offshore',
             environment_id: offshoreEnv.id,
             selected: true // Pre-selected by default
           });
@@ -212,7 +210,6 @@ export default function TimesheetCalendar({
         if (!existingEntry) {
           suggestions.push({
             date: dateStr,
-            tipo: 'desembarque',
             environment_id: desembarqueEnv.id,
             selected: true
           });
@@ -231,7 +228,6 @@ export default function TimesheetCalendar({
         if (!existingEntry) {
           suggestions.push({
             date: dateStr,
-            tipo: 'folga',
             environment_id: folgaEnv.id,
             selected: false // Not pre-selected - user might have changes
           });
@@ -248,7 +244,6 @@ export default function TimesheetCalendar({
         if (!existingEntry) {
           suggestions.push({
             date: dateStr,
-            tipo: 'embarque',
             environment_id: embarqueEnv.id,
             selected: false // Not pre-selected - might be a "dobra" or cancelled
           });
@@ -267,7 +262,6 @@ export default function TimesheetCalendar({
         if (!existingEntry) {
           suggestions.push({
             date: dateStr,
-            tipo: 'folga',
             environment_id: folgaEnv.id,
             selected: true // Pre-selected by default
           });
@@ -284,7 +278,6 @@ export default function TimesheetCalendar({
         if (!existingEntry) {
           suggestions.push({
             date: dateStr,
-            tipo: 'embarque',
             environment_id: embarqueEnv.id,
             selected: false // Not pre-selected - might be cancelled or delayed
           });
@@ -393,15 +386,10 @@ export default function TimesheetCalendar({
     // Generate temporary ID
     const tempId = `temp-${Date.now()}-${Math.random()}`;
 
-    // Get environment info for tipo (backward compatibility)
-    const selectedEnv = getEnvironment(form.environment_id);
-    const tipo = selectedEnv?.slug || 'offshore';
-
     // Create entry object
     const newEntry: Entry = {
       id: tempId,
       data: selectedDate,
-      tipo,
       environment_id: form.environment_id,
       hora_ini: form.hora_ini || null,
       hora_fim: null,
@@ -462,12 +450,9 @@ export default function TimesheetCalendar({
 
     allEntriesToCreate.forEach(entryData => {
       const tempId = `temp-${Date.now()}-${Math.random()}`;
-      const selectedEnv = getEnvironment(entryData.environment_id);
-      const tipo = selectedEnv?.slug || 'offshore';
 
       const newEntry: Entry = {
         id: tempId,
-        tipo,
         ...entryData,
       };
 
@@ -686,7 +671,24 @@ export default function TimesheetCalendar({
     }
   };
 
-  const blocked = status !== 'draft';
+  // Check if we can edit based on status and period deadline
+  const isAfterDeadline = () => {
+    try {
+      // Check if current date is after the timesheet period end
+      const periodEnd = new Date(periodo_fim);
+      const today = new Date();
+      return today > periodEnd;
+    } catch (error) {
+      console.warn('Error checking deadline:', error);
+      return false;
+    }
+  };
+
+  // Allow editing if status is 'draft', 'rejected', OR if we're after the period deadline
+  // This ensures users can edit timesheets even after period end (e.g., after day 16 for ABZ Group)
+  // REJECTED timesheets MUST be editable so users can correct and resubmit
+  const canEditTimesheet = status === 'draft' || status === 'rejected' || isAfterDeadline();
+  const blocked = !canEditTimesheet;
 
   return (
     <div className="space-y-3 sm:space-y-4 animate-fade-in">
@@ -709,9 +711,30 @@ export default function TimesheetCalendar({
         <p className="text-sm text-[var(--muted-foreground)]">
           {new Date(periodo_ini).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
         </p>
-        {blocked && (
+        {blocked && !isAfterDeadline() && (
           <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 rounded-lg text-xs sm:text-sm animate-scale-in">
             {t('blocked')}
+          </div>
+        )}
+        {isAfterDeadline() && (
+          <div className="mt-2 p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 rounded-lg text-xs sm:text-sm animate-scale-in">
+            ⚠️ Período fechado - Você pode editar até que seu gestor aprove ou feche o período
+          </div>
+        )}
+        {status === 'rejected' && (
+          <div className="mt-2 p-3 bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200 rounded-lg text-xs sm:text-sm border-2 border-red-300 dark:border-red-700 animate-scale-in">
+            <div className="flex items-start gap-2">
+              <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-bold mb-1">❌ TIMESHEET RECUSADO</p>
+                <p className="text-xs opacity-90">
+                  Seu timesheet foi recusado pelo gestor. Por favor, corrija os problemas apontados e reenvie.
+                  Verifique os alertas no dashboard para mais detalhes sobre o motivo da recusa.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1118,7 +1141,10 @@ export default function TimesheetCalendar({
 
               <div className="space-y-6">
                 {/* Working Days (Offshore) - Pre-selected */}
-                {suggestedEntries.filter(s => s.tipo === 'offshore').length > 0 && (
+                {suggestedEntries.filter(s => {
+                  const env = getEnvironment(s.environment_id);
+                  return env?.slug === 'offshore';
+                }).length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="inline-block w-3 h-3 bg-cyan-500 rounded-full"></span>
@@ -1126,7 +1152,10 @@ export default function TimesheetCalendar({
                         {t('autoFill.workingDays')}
                       </h4>
                       <span className="text-xs text-[var(--muted-foreground)] ml-auto">
-                        {suggestedEntries.filter(s => s.tipo === 'offshore' && s.selected).length} selecionados
+                        {suggestedEntries.filter(s => {
+                          const env = getEnvironment(s.environment_id);
+                          return env?.slug === 'offshore' && s.selected;
+                        }).length} selecionados
                       </span>
                     </div>
                     <p className="text-xs text-[var(--muted-foreground)] mb-3">
@@ -1135,40 +1164,49 @@ export default function TimesheetCalendar({
                     <div className="space-y-2">
                       {suggestedEntries
                         .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
-                        .filter(s => s.tipo === 'offshore')
-                        .map((suggestion) => (
-                          <div
-                            key={suggestion.originalIndex}
-                            className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors border border-cyan-200 dark:border-cyan-800"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={suggestion.selected}
-                              onChange={(e) => {
-                                const newSuggestions = [...suggestedEntries];
-                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
-                                setSuggestedEntries(newSuggestions);
-                              }}
-                              className="w-5 h-5 rounded border-[var(--border)] text-blue-600 focus:ring-2 focus:ring-blue-500"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-[var(--foreground)]">
-                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
-                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
-                                  {suggestion.tipo}
+                        .filter(s => {
+                          const env = getEnvironment(s.environment_id);
+                          return env?.slug === 'offshore';
+                        })
+                        .map((suggestion) => {
+                          const env = getEnvironment(suggestion.environment_id);
+                          return (
+                            <div
+                              key={suggestion.originalIndex}
+                              className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors border border-cyan-200 dark:border-cyan-800"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={suggestion.selected}
+                                onChange={(e) => {
+                                  const newSuggestions = [...suggestedEntries];
+                                  newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                  setSuggestedEntries(newSuggestions);
+                                }}
+                                className="w-5 h-5 rounded border-[var(--border)] text-blue-600 focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-medium text-[var(--foreground)]">
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
+                                    {env?.slug || 'offshore'}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 )}
 
                 {/* Desembarque - Pre-selected */}
-                {suggestedEntries.filter(s => s.tipo === 'desembarque').length > 0 && (
+                {suggestedEntries.filter(s => {
+                  const env = getEnvironment(s.environment_id);
+                  return env?.slug === 'desembarque';
+                }).length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="inline-block w-3 h-3 bg-purple-500 rounded-full"></span>
@@ -1179,40 +1217,49 @@ export default function TimesheetCalendar({
                     <div className="space-y-2">
                       {suggestedEntries
                         .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
-                        .filter(s => s.tipo === 'desembarque')
-                        .map((suggestion) => (
-                          <div
-                            key={suggestion.originalIndex}
-                            className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors border border-purple-200 dark:border-purple-800"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={suggestion.selected}
-                              onChange={(e) => {
-                                const newSuggestions = [...suggestedEntries];
-                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
-                                setSuggestedEntries(newSuggestions);
-                              }}
-                              className="w-5 h-5 rounded border-[var(--border)] text-purple-600 focus:ring-2 focus:ring-purple-500"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-[var(--foreground)]">
-                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
-                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-purple-100 text-purple-800">
-                                  {suggestion.tipo}
+                        .filter(s => {
+                          const env = getEnvironment(s.environment_id);
+                          return env?.slug === 'desembarque';
+                        })
+                        .map((suggestion) => {
+                          const env = getEnvironment(suggestion.environment_id);
+                          return (
+                            <div
+                              key={suggestion.originalIndex}
+                              className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors border border-purple-200 dark:border-purple-800"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={suggestion.selected}
+                                onChange={(e) => {
+                                  const newSuggestions = [...suggestedEntries];
+                                  newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                  setSuggestedEntries(newSuggestions);
+                                }}
+                                className="w-5 h-5 rounded border-[var(--border)] text-purple-600 focus:ring-2 focus:ring-purple-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-medium text-[var(--foreground)]">
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  <div className="inline-block px-3 py-1 rounded-md text-xs bg-purple-100 text-purple-800">
+                                    {env?.slug || 'desembarque'}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 )}
 
                 {/* Days Off (Folga) - Pre-selected */}
-                {suggestedEntries.filter(s => s.tipo === 'folga').length > 0 && (
+                {suggestedEntries.filter(s => {
+                  const env = getEnvironment(s.environment_id);
+                  return env?.slug === 'folga';
+                }).length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="inline-block w-3 h-3 bg-gray-500 rounded-full"></span>
@@ -1220,7 +1267,10 @@ export default function TimesheetCalendar({
                         {t('autoFill.daysOff')}
                       </h4>
                       <span className="text-xs text-[var(--muted-foreground)] ml-auto">
-                        {suggestedEntries.filter(s => s.tipo === 'folga' && s.selected).length} selecionados
+                        {suggestedEntries.filter(s => {
+                          const env = getEnvironment(s.environment_id);
+                          return env?.slug === 'folga' && s.selected;
+                        }).length} selecionados
                       </span>
                     </div>
                     <p className="text-xs text-[var(--muted-foreground)] mb-3">
@@ -1229,40 +1279,49 @@ export default function TimesheetCalendar({
                     <div className="space-y-2">
                       {suggestedEntries
                         .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
-                        .filter(s => s.tipo === 'folga')
-                        .map((suggestion) => (
-                          <div
-                            key={suggestion.originalIndex}
-                            className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900/30 transition-colors border border-gray-200 dark:border-gray-800"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={suggestion.selected}
-                              onChange={(e) => {
-                                const newSuggestions = [...suggestedEntries];
-                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
-                                setSuggestedEntries(newSuggestions);
-                              }}
-                              className="w-5 h-5 rounded border-[var(--border)] text-gray-600 focus:ring-2 focus:ring-gray-500"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-[var(--foreground)]">
-                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
-                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-gray-100 text-gray-800">
-                                  {suggestion.tipo}
+                        .filter(s => {
+                          const env = getEnvironment(s.environment_id);
+                          return env?.slug === 'folga';
+                        })
+                        .map((suggestion) => {
+                          const env = getEnvironment(suggestion.environment_id);
+                          return (
+                            <div
+                              key={suggestion.originalIndex}
+                              className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900/30 transition-colors border border-gray-200 dark:border-gray-800"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={suggestion.selected}
+                                onChange={(e) => {
+                                  const newSuggestions = [...suggestedEntries];
+                                  newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                  setSuggestedEntries(newSuggestions);
+                                }}
+                                className="w-5 h-5 rounded border-[var(--border)] text-gray-600 focus:ring-2 focus:ring-gray-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-medium text-[var(--foreground)]">
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  <div className="inline-block px-3 py-1 rounded-md text-xs bg-gray-100 text-gray-800">
+                                    {env?.slug || 'folga'}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 )}
 
                 {/* Next Embarque (Suggestion only - not pre-selected) */}
-                {suggestedEntries.filter(s => s.tipo === 'embarque').length > 0 && (
+                {suggestedEntries.filter(s => {
+                  const env = getEnvironment(s.environment_id);
+                  return env?.slug === 'embarque';
+                }).length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="inline-block w-3 h-3 bg-blue-500 rounded-full"></span>
@@ -1276,37 +1335,43 @@ export default function TimesheetCalendar({
                     <div className="space-y-2">
                       {suggestedEntries
                         .map((suggestion, index) => ({ ...suggestion, originalIndex: index }))
-                        .filter(s => s.tipo === 'embarque')
-                        .map((suggestion) => (
-                          <div
-                            key={suggestion.originalIndex}
-                            className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors border border-blue-200 dark:border-blue-800 opacity-75"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={suggestion.selected}
-                              onChange={(e) => {
-                                const newSuggestions = [...suggestedEntries];
-                                newSuggestions[suggestion.originalIndex].selected = e.target.checked;
-                                setSuggestedEntries(newSuggestions);
-                              }}
-                              className="w-5 h-5 rounded border-[var(--border)] text-blue-600 focus:ring-2 focus:ring-blue-500"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-[var(--foreground)]">
-                                  {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
-                                <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
-                                  {suggestion.tipo}
+                        .filter(s => {
+                          const env = getEnvironment(s.environment_id);
+                          return env?.slug === 'embarque';
+                        })
+                        .map((suggestion) => {
+                          const env = getEnvironment(suggestion.environment_id);
+                          return (
+                            <div
+                              key={suggestion.originalIndex}
+                              className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors border border-blue-200 dark:border-blue-800 opacity-75"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={suggestion.selected}
+                                onChange={(e) => {
+                                  const newSuggestions = [...suggestedEntries];
+                                  newSuggestions[suggestion.originalIndex].selected = e.target.checked;
+                                  setSuggestedEntries(newSuggestions);
+                                }}
+                                className="w-5 h-5 rounded border-[var(--border)] text-blue-600 focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-medium text-[var(--foreground)]">
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                  <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
+                                    {env?.slug || 'embarque'}
+                                  </div>
+                                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-auto">
+                                    ⚠️ Opcional
+                                  </span>
                                 </div>
-                                <span className="text-xs text-amber-600 dark:text-amber-400 ml-auto">
-                                  ⚠️ Opcional
-                                </span>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 )}
