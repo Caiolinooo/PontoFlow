@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabase } from '@/lib/supabase/client';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const { searchParams } = new URL(req.url);
-    
+
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
     const unreadOnly = searchParams.get('unread') === 'true';
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = getSupabase() as any;
     let query = supabase
       .from('notifications')
       .select('*')

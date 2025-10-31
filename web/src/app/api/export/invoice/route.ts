@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from '@/lib/supabase/client';
 import { generateInvoice, validateInvoice, invoiceToJSON, invoiceToPDF } from '@/lib/invoice/generator';
 
 export async function POST(req: NextRequest) {
   const user = await requireApiAuth();
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = getSupabase() as any;
 
   try {
     const { timesheetId, format = 'json' } = await req.json();
@@ -35,7 +33,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate total hours
-    const totalHours = timesheet.entries?.reduce((sum: number, entry: { tipo: string }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const totalHours = timesheet.entries?.reduce((sum: number, entry: any) => {
       if (entry.tipo === 'embarque' || entry.tipo === 'desembarque') {
         return sum + 1;
       }
