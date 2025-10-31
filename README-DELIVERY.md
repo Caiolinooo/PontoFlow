@@ -1,6 +1,6 @@
 # 🚀 Timesheet Manager - Delivery Report
 
-**Project**: Timesheet Manager for ABZ Group  
+**Project**: PontoFlow (Timesheet Manager)
 **Date**: 2025-10-16  
 **Status**: ✅ **DELIVERED** (60% Complete - Phases 0-15)  
 **Build**: ✅ Passing  
@@ -57,7 +57,7 @@ A **production-ready timesheet management system** for offshore workers with com
 
 ✅ **Notification System**
 - 5 corporate email templates
-- ABZ branding (logo, colors, formal tone)
+- Branding da sua marca (logo, cores, tom formal)
 - Bilingual support
 - Audit trail of sent notifications
 
@@ -151,7 +151,7 @@ web/
 │   │   └── ...
 │   └── __tests__/                 # Test files
 ├── public/
-│   └── logo-abz.png               # ABZ logo
+│   └── brand/logo.svg             # Default logo
 ├── vitest.config.ts               # Test configuration
 └── package.json
 
@@ -318,7 +318,7 @@ For questions or issues:
 
 ## 📝 License
 
-Internal project for ABZ Group
+Personal project (PontoFlow)
 
 ---
 

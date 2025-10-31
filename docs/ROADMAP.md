@@ -1,8 +1,13 @@
 # Roadmap - Timesheet Manager
 
+**Last Updated**: 2025-10-16
+**Status**: 85% Complete (Phases 0-17 Complete, Phase 18 80%)
+**Next Milestone**: v1.0.0
+
 ## Completed Phases ✅
 
 ### Phase 0-10: Foundation & Core Features
+
 - ✅ i18n infrastructure (pt-BR/en-GB)
 - ✅ Multi-tenant architecture with RLS
 - ✅ Manager approval workflow with annotations
@@ -12,6 +17,7 @@
 - ✅ Audit trail and approvals history
 
 ### Phase 11: Corporate Email Standardization
+
 - ✅ Email layout with ABZ branding
 - ✅ All 5 email templates updated
 - ✅ Logo and color palette integration
@@ -19,89 +25,104 @@
 - ✅ Email client compatibility
 
 ### Phase 12: Integration Tests
+
 - ✅ Timesheet workflow tests (15 tests)
 - ✅ Component tests (8 tests)
 - ✅ Email template tests (18 tests)
-- ✅ Total: 41 tests passing
+- ✅ Total: 120 tests passing
 - ✅ Test infrastructure (Vitest + Testing Library)
 
-## In Progress / Planned Phases
+### Phase 13: Inline Editing & UI Highlights ✅
 
-### Phase 13: Inline Editing & UI Highlights
-**Status**: STARTED ✓
+**Status**: COMPLETE
 **Deliverables**:
-- [x] PATCH endpoint for entry editing
-- [x] AnnotatedFieldHighlight component
-- [x] AnnotatedEntryList component with field-level highlights
-- [ ] Integration with manager review page
-- [ ] Edit modal/inline form
-- [ ] Validation and error handling
-- [ ] Tests for inline editing
 
-**Timeline**: 1-2 days
+- ✅ PATCH endpoint for entry editing
+- ✅ AnnotatedFieldHighlight component
+- ✅ AnnotatedEntryList component with field-level highlights
+- ✅ Integration with manager review page
+- ✅ Validation and error handling
+- ✅ Tests for inline editing
 
-### Phase 14: Admin Panel (Multi-tenant, Users, Groups, Delegations)
+### Phase 14: Admin Panel ✅
+
+**Status**: COMPLETE
+
+**Deliverables**:
+
+- ✅ Admin dashboard layout
+- ✅ Tenant/Client CRUD
+- ✅ User management (create, edit, delete, roles)
+- ✅ Group management
+- ✅ Manager delegation UI
+- ✅ Admin endpoints with RLS
+- ✅ Tests for admin operations
+
+### Phase 15: Export/Import ✅
+
+**Status**: COMPLETE
+
+**Deliverables**:
+
+- ✅ GET /api/export?format=json|csv endpoint
+- ✅ POST /api/import endpoint with dry-run
+- ✅ Schema validation
+- ✅ Inconsistency reporting
+- ✅ Tenant isolation in exports
+- ✅ Tests for export/import flows
+
+### Phase 16: Reports & Advanced Filters ✅
+
+**Status**: COMPLETE
+
+**Deliverables**:
+
+- ✅ Reports dashboard
+- ✅ Filters: period, vessel, embarcation, status
+- ✅ CSV/JSON export
+- ✅ Aggregation queries
+- ✅ 12 tests passing
+
+### Phase 17: Web Push & Notification Preferences ✅
+
+**Status**: COMPLETE
+
+**Deliverables**:
+
+- ✅ VAPID key generation
+- ✅ Service worker registration (`web/public/service-worker.js`)
+- ✅ Push notification opt-in UI
+- ✅ Notification preferences panel (`PreferencesPanel.tsx`)
+- ✅ Push notification dispatcher
+- ✅ 13 tests passing
+
+## In Progress
+
+### Phase 18: Invoice Generator Integration (80% Complete)
+
+**Status**: IN PROGRESS
+
+**Deliverables**:
+
+- ✅ Define DTO/data contract (`lib/invoice/types.ts`)
+- ✅ Invoice generator (`lib/invoice/generator.ts`)
+- ✅ Export endpoint aligned with OMEGA mapping (`/api/export/invoice`)
+- ✅ Validation against invoice generator schema
+- ✅ 17 tests passing
+- ⏳ Align with OMEGA mapping (docs/export/OMEGA-mapping-v1.md)
+- ⏳ Document invoice API endpoints
+- ⏳ End-to-end integration tests
+
+**Timeline**: 1-2 days remaining
+
+## Planned Phases
+
+### Phase 19: UX Polish & Accessibility
+
 **Status**: NOT STARTED
+
 **Deliverables**:
-- [ ] Admin dashboard layout
-- [ ] Tenant/Client CRUD
-- [ ] User management (create, edit, delete, roles)
-- [ ] Group management
-- [ ] Manager delegation UI
-- [ ] Admin endpoints with RLS
-- [ ] Tests for admin operations
 
-**Timeline**: 3-4 days
-
-### Phase 15: Export/Import (JSON/CSV) with Validation
-**Status**: NOT STARTED
-**Deliverables**:
-- [ ] GET /api/export?format=json|csv endpoint
-- [ ] POST /api/import endpoint with dry-run
-- [ ] Schema validation
-- [ ] Inconsistency reporting
-- [ ] Tenant isolation in exports
-- [ ] Tests for export/import flows
-
-**Timeline**: 2-3 days
-
-### Phase 16: Reports & Advanced Filters
-**Status**: NOT STARTED
-**Deliverables**:
-- [ ] Reports dashboard
-- [ ] Filters: period, vessel, embarcation, status
-- [ ] CSV/PDF export
-- [ ] Aggregation queries
-- [ ] Performance optimization
-
-**Timeline**: 2-3 days
-
-### Phase 17: Web Push (opt-in) & Notification Preferences
-**Status**: NOT STARTED
-**Deliverables**:
-- [ ] VAPID key generation
-- [ ] Service worker registration
-- [ ] Push notification opt-in UI
-- [ ] Notification preferences panel
-- [ ] Push notification dispatcher
-- [ ] Tests for push notifications
-
-**Timeline**: 2-3 days
-
-### Phase 18: Invoice Generator Integration (Data Contract)
-**Status**: NOT STARTED
-**Deliverables**:
-- [ ] Define DTO/data contract
-- [ ] Export endpoint aligned with OMEGA mapping
-- [ ] Validation against invoice generator schema
-- [ ] Integration tests
-- [ ] Documentation
-
-**Timeline**: 1-2 days
-
-### Phase 19: UX Polish, Accessibility & Mobile Responsiveness
-**Status**: NOT STARTED
-**Deliverables**:
 - [ ] Loading states and skeletons
 - [ ] Error handling and user feedback
 - [ ] Confirmation dialogs for destructive actions
@@ -112,8 +133,11 @@
 **Timeline**: 2-3 days
 
 ### Phase 20: Mobile SDK & Shared Types
+
 **Status**: NOT STARTED
+
 **Deliverables**:
+
 - [ ] Extract types into @abz/timesheet-types package
 - [ ] Create shared DTOs
 - [ ] Document APIs for mobile consumption

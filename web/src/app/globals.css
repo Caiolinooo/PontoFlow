@@ -1,0 +1,94 @@
+@import "tailwindcss";
+@import "../styles/animations.css";
+
+:root {
+  color-scheme: light;
+  /* Core tokens */
+  --background: #f5f7fb;           /* página */
+  --foreground: #111318;           /* texto principal */
+  --card: #ffffff;                 /* cartão/painel */
+  --card-foreground: #101418;
+  --surface: #0b1220;              /* header/nav – permanece escuro nos dois temas */
+  --surface-foreground: #ffffff;
+  --border: #e5e7eb;               /* borda leve */
+  --muted: #f3f4f6;                /* superfícies sutis */
+  --muted-foreground: #6b7280;     /* texto secundário */
+  --primary: #005dff;              /* primary */
+  --primary-foreground: #ffffff;
+  --secondary: #111318;            /* botão secundário escuro */
+  --secondary-foreground: #ffffff;
+  --destructive: #dc2626;          /* red-600 */
+  --destructive-foreground: #ffffff;
+  /* Form/input tokens (Meta-style systemwide) */
+  --input: #ffffff;                 /* light theme input background */
+  --input-foreground: #111318;      /* text inside fields */
+  --input-border: #d1d5db;          /* gray-300 */
+  --input-placeholder: #9ca3af;     /* gray-400 */
+  --input-label-bg: #ffffff;        /* floating label tile background */
+
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b0f14;           /* página escura */
+  --foreground: #e5e7eb;           /* texto claro */
+  --card: #111827;                 /* cinza-900 */
+  --card-foreground: #e5e7eb;
+  --surface: #0b1220;              /* header/nav */
+  --surface-foreground: #ffffff;
+  --border: #1f2937;               /* cinza-800 */
+  --muted: #0f172a;                /* slate-900 */
+  --muted-foreground: #94a3b8;     /* slate-400 */
+  /* Form/input tokens */
+  --input: #0b1220;                 /* input background (same as surface) */
+  --input-foreground: #e5e7eb;
+  --input-border: #334155;          /* slate-700 */
+  --input-placeholder: #94a3b8;     /* slate-400 */
+  --input-label-bg: #000000;        /* black floating label */
+
+  --primary: #3b82f6;              /* azul-500 em dark para acessibilidade */
+  --primary-foreground: #ffffff;
+  --secondary: #374151;            /* gray-700 */
+  --secondary-foreground: #ffffff;
+  --destructive: #ef4444;          /* red-500 */
+  --destructive-foreground: #ffffff;
+}
+
+/* Smooth color transitions */
+* { transition: color 120ms ease, background-color 120ms ease; }
+
+
+/* Global form styles: improve contrast and readability across the app */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+select,
+textarea {
+  background: var(--input) !important;
+  color: var(--input-foreground) !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--input-placeholder);
+  opacity: 1;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 25%, transparent);
+}
+
+label { color: var(--foreground); font-weight: 600; }
+
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
