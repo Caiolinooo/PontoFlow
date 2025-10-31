@@ -3,17 +3,22 @@ import { requireApiRole } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Admin client for auth operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+// Admin client for auth operations - lazy initialization
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  return createClient(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
-  }
-);
+  });
+}
 
 // GET: retorna tenant atual do usuário e lista de tenants (id, name)
 export async function GET() {
@@ -66,6 +71,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Get current user metadata
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user.id);
     if (!authUser?.user) {
       return NextResponse.json({ error: 'user_not_found' }, { status: 404 });

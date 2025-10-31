@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireApiAuth } from '@/lib/auth/server';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anon) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  return createClient(url, anon);
+}
 
 const defaultPrefs = {
   emailNotifications: true,
@@ -18,6 +24,7 @@ const defaultPrefs = {
 export async function GET() {
   try {
     const user = await requireApiAuth();
+    const supabase = getSupabase();
 
     const { data, error } = await supabase
       .from('notification_preferences')
@@ -69,6 +76,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const body: unknown = await req.json().catch(() => ({}));
+    const supabase = getSupabase();
 
     const prefs = body as Partial<{
       emailNotifications: boolean;
