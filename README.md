@@ -119,6 +119,22 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
+### 0.3.0 (2025-10-31) - **VERSÃO ATUAL**
+- **feat(database)**: Sistema de Validação Automática de Banco de Dados
+  - ✅ Validação completa de 17 tabelas multi-tenant com verificação de estrutura
+  - ✅ Verificação de 50+ índices de performance otimizados
+  - ✅ Validação de políticas RLS em todas as tabelas
+  - ✅ Análise de 24+ funções especializadas do sistema
+  - ✅ Interface web moderna em `/admin/database-setup`
+  - ✅ CLI robusto para automação (`scripts/setup-database.ts`)
+  - ✅ Sistema não-invasivo com backup e rollback automático
+  - ✅ Geração automática de SQL com scripts CREATE TABLE
+  - ✅ Progress bar em tempo real com step-by-step
+- **fix(build)**: Corrigido erro TypeScript no build do Netlify
+  - ✅ Corrigido `Property 'options' does not exist on type 'DatabaseSetupCLI'`
+  - ✅ Definida interface TypeScript apropriada para propriedade options
+  - ✅ Build agora funciona 100% sem warnings TypeScript
+
 ### 0.2.9 (2025-10-31)
 - **fix(middleware)**: Configuração de runtime para Node.js
   - ✅ Middleware agora usa Node.js runtime ao invés de Edge Runtime

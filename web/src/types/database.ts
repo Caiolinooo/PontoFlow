@@ -395,6 +395,17 @@ export class SqlGenerationError extends Error {
 // EXPORTS ADICIONAIS PARA COMPATIBILIDADE
 // ===============================
 
+// Define Database type locally since we don't have Supabase types generated
+export type Database = {
+  public: {
+    Tables: Record<string, {
+      Row: Record<string, any>;
+      Insert: Record<string, any>;
+      Update: Record<string, any>;
+    }>;
+  };
+};
+
 export type SupabaseTable = keyof Database['public']['Tables'];
 
 export type ValidationResult<T> = {
@@ -420,6 +431,6 @@ export type ExecutionMode =
 export {
   // Re-export common Supabase types for convenience
   type PostgrestSingleResponse,
-  type PostgrestListResponse,
+  type PostgrestResponse,
   type PostgrestError,
 } from '@supabase/supabase-js';

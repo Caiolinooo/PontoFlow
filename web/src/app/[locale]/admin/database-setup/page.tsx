@@ -17,7 +17,7 @@ export default async function DatabaseSetupPage(props: {
   const { locale } = await props.params;
   const user = await requireRole(locale, ['ADMIN']);
 
-  const t = await getTranslations({ namespace: 'adminDatabaseSetup' });
+  const t = await getTranslations({ locale, namespace: 'adminDatabaseSetup' });
 
   const supabase = await getServerSupabase();
 

@@ -32,7 +32,7 @@ export interface DatabaseSetupOptions {
 export class DatabaseSetup {
   private validator: DatabaseValidator;
   private generator: SqlGenerator;
-  private supabase: ReturnType<typeof createClient<Database>>;
+  private supabase: ReturnType<typeof createClient>;
   private options: Required<DatabaseSetupOptions>;
   private isRunning = false;
   private currentStep = 0;
@@ -42,7 +42,7 @@ export class DatabaseSetup {
   constructor(supabaseUrl: string, supabaseKey: string, options: DatabaseSetupOptions = {}) {
     this.validator = new DatabaseValidator(supabaseUrl, supabaseKey);
     this.generator = new SqlGenerator();
-    this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+    this.supabase = createClient(supabaseUrl, supabaseKey);
     
     this.options = {
       autoFix: options.autoFix ?? false,
@@ -295,10 +295,10 @@ export class DatabaseSetup {
       // Dividir script em statements individuais
       const statements = this.splitSqlStatements(script.sql);
       
-      const results = [];
+      const results: any[] = [];
       for (const statement of statements) {
         if (statement.trim()) {
-          const { data, error } = await this.supabase.rpc('exec_sql', { sql: statement });
+          const { data, error } = await this.supabase.rpc('exec_sql', { sql_query: statement });
           
           if (error) {
             throw new DatabaseSetupError(
@@ -308,7 +308,7 @@ export class DatabaseSetup {
             );
           }
           
-          results.push({ statement, data, success: true });
+          results.push({ statement, data: data as any, success: true });
         }
       }
 
@@ -441,15 +441,15 @@ export class DatabaseSetup {
   /**
    * Cria resultado de erro
    */
-  private createErrorResult(steps: ExecutionStep[], startTime: Date, error: any): ExecutionResult {
+  private createErrorResult(steps: ExecutionStep[], startTime: number, error: any): ExecutionResult {
     const completedSteps = steps.filter(s => s.status === 'completed').length;
     const failedSteps = steps.filter(s => s.status === 'failed').length;
 
     return {
       success: false,
-      startedAt: startTime,
+      startedAt: new Date(startTime),
       completedAt: new Date(),
-      duration: Date.now() - startTime.getTime(),
+      duration: Date.now() - startTime,
       steps,
       rollbackExecuted: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido',

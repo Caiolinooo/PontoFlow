@@ -385,16 +385,32 @@ export function useDatabaseStatus() {
 export function useDatabaseNotifications() {
   const { executionResult, validationReport } = useDatabaseSetup();
 
+  const formatDuration = useCallback((milliseconds: number): string => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }, []);
+
   const getNotificationMessage = useCallback(() => {
     if (executionResult?.success) {
+      const duration = executionResult.duration || 0;
+      const formattedDuration = formatDuration(duration);
       return {
         type: 'success' as const,
         title: 'Configuração Concluída',
-        message: `Banco configurado com sucesso em ${formatDuration(executionResult.duration!)}`,
+        message: `Banco configurado com sucesso em ${formattedDuration}`,
       };
     }
 
-    if (validationReport?.summary.overallScore < 50) {
+    if (validationReport?.summary && validationReport.summary.overallScore < 50) {
       return {
         type: 'warning' as const,
         title: 'Banco Requer Atenção',

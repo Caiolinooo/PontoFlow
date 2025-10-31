@@ -511,8 +511,8 @@ ON CONFLICT (name) DO NOTHING;
   private getTableDefinition(tableName: string): TableDefinition | null {
     // Implementação baseada no DatabaseValidator
     const validator = new (require('./database-validator').DatabaseValidator)('dummy', 'dummy');
-    const expectedTables = validator.getExpectedTables();
-    return expectedTables.find(t => t.name === tableName) || null;
+    const expectedTables = (validator as any).getExpectedTables();
+    return expectedTables.find((t: any) => t.name === tableName) || null;
   }
 
   private getIndexDefinition(indexName: string): IndexDefinition | null {

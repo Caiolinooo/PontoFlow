@@ -144,7 +144,14 @@ export default function DatabaseSetupClient({
       {/* Header com controles */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-4">
-          <DatabaseStatusIndicator />
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
+              dbConnected ? 'bg-green-500' : 'bg-red-500'
+            }`}></div>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {dbConnected ? 'Conectado' : 'Desconectado'}
+            </span>
+          </div>
           {state.isValidating && (
             <div className="flex items-center text-blue-600 dark:text-blue-400">
               <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>

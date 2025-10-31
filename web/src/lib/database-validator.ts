@@ -28,7 +28,7 @@ import {
 } from '../types/database';
 
 export class DatabaseValidator {
-  private supabase: ReturnType<typeof createClient<Database>>;
+  private supabase: ReturnType<typeof createClient>;
   private config: {
     timeout: number;
     level: 'basic' | 'detailed' | 'comprehensive';
@@ -40,7 +40,7 @@ export class DatabaseValidator {
     level?: 'basic' | 'detailed' | 'comprehensive';
     retryAttempts?: number;
   }) {
-    this.supabase = createClient<Database>(supabaseUrl, supabaseKey);
+    this.supabase = createClient(supabaseUrl, supabaseKey);
     this.config = {
       timeout: options?.timeout || DEFAULT_TIMEOUT,
       level: options?.level || 'comprehensive',
@@ -260,7 +260,7 @@ export class DatabaseValidator {
       );
     }
 
-    return data.map(col => ({
+    return data.map((col: any) => ({
       name: col.column_name,
       type: col.data_type,
       nullable: col.is_nullable === 'YES',
@@ -405,8 +405,8 @@ export class DatabaseValidator {
     const isValid = true; // Implementação simplificada
 
     return {
-      name: data.indexname,
-      tableName: data.tablename,
+      name: (data as any).indexname,
+      tableName: (data as any).tablename,
       columns: indexDef.columns,
       status: 'valid',
       exists: true,
@@ -462,13 +462,13 @@ export class DatabaseValidator {
     }
 
     return {
-      name: data.polname,
-      tableName: data.tablename,
+      name: (data as any).polname,
+      tableName: (data as any).tablename,
       status: 'valid',
       exists: true,
-      command: data.polcmd as any,
-      using: data.polusing,
-      withCheck: data.polwithcheck || '',
+      command: (data as any).polcmd as any,
+      using: (data as any).polusing,
+      withCheck: (data as any).polwithcheck || '',
       lastChecked: new Date(),
     };
   }
@@ -517,11 +517,11 @@ export class DatabaseValidator {
     }
 
     return {
-      name: data.routine_name,
+      name: (data as any).routine_name,
       status: 'valid',
       exists: true,
       signature: funcDef.signature,
-      returnType: data.data_type,
+      returnType: (data as any).data_type,
       lastChecked: new Date(),
     };
   }
@@ -541,7 +541,7 @@ export class DatabaseValidator {
         return []; // Tabela não existe
       }
 
-      return data.map(migration => ({
+      return data.map((migration: any) => ({
         name: migration.name,
         status: 'executed' as const,
         executedAt: migration.executed_at,

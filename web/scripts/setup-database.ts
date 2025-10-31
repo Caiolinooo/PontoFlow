@@ -39,6 +39,19 @@ const DEFAULT_TIMEOUT = 30000;
 // ===============================
 
 class DatabaseSetupCLI {
+  private options: {
+    validateOnly: boolean;
+    autoFix: boolean;
+    backup: boolean;
+    rollback: boolean;
+    quiet: boolean;
+    configFile: string;
+    timeout: number;
+    output: string;
+    outputFile: string | null;
+  };
+  private setup: any;
+
   constructor() {
     this.options = this.parseArguments();
     this.setup = null;
@@ -99,7 +112,7 @@ class DatabaseSetupCLI {
           break;
 
         case '--output-file':
-          options.outputFile = args[i + 1] || 'database-setup-report.json';
+          options.outputFile = (args[i + 1] ?? 'database-setup-report.json') as string;
           i++; // Pular próximo argumento
           break;
 
@@ -185,7 +198,8 @@ Configuração (.env):
       return config;
 
     } catch (error) {
-      this.log('error', `Erro na inicialização: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      this.log('error', `Erro na inicialização: ${errorMessage}`);
       process.exit(1);
     }
   }
@@ -193,7 +207,7 @@ Configuração (.env):
   /**
    * Carregar configurações
    */
-  loadConfig() {
+  loadConfig(): any {
     // Em um script standalone, tentar carregar de .env ou variáveis de ambiente
     const config = {
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
@@ -204,26 +218,26 @@ Configuração (.env):
   }
 
   /**
-   * Handler para progresso
-   */
-  handleProgress(progress) {
-    if (!this.options.quiet) {
-      const percent = Math.round(progress.percentage);
-      const step = progress.currentStep;
-      const total = progress.totalSteps;
-      
-      process.stdout.write(`\r[${step}/${total}] ${progress.currentStepName} ${percent}%`);
-      
-      if (percent === 100) {
-        process.stdout.write('\n');
-      }
+  * Handler para progresso
+  */
+handleProgress(progress: any) {
+  if (!this.options.quiet) {
+    const percent = Math.round(progress.percentage);
+    const step = progress.currentStep;
+    const total = progress.totalSteps;
+    
+    process.stdout.write(`\r[${step}/${total}] ${progress.currentStepName} ${percent}%`);
+    
+    if (percent === 100) {
+      process.stdout.write('\n');
     }
   }
+}
 
   /**
    * Handler para mudança de step
    */
-  handleStepChange(step) {
+  handleStepChange(step: any) {
     if (!this.options.quiet && step.status === 'completed') {
       console.log(`✅ ${step.name} (${step.duration}ms)`);
     } else if (!this.options.quiet && step.status === 'failed') {
@@ -234,13 +248,13 @@ Configuração (.env):
   /**
    * Log com cores
    */
-  log(level, message) {
+  log(level: string, message: string) {
     if (this.options.quiet && level !== 'error') {
       return;
     }
 
     const timestamp = new Date().toISOString();
-    const colors = {
+    const colors: Record<string, string> = {
       info: '\x1b[36m',     // Cyan
       success: '\x1b[32m',  // Green
       warning: '\x1b[33m',  // Yellow
@@ -269,7 +283,8 @@ Configuração (.env):
       return report;
 
     } catch (error) {
-      this.log('error', `❌ Falha na validação: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      this.log('error', `❌ Falha na validação: ${errorMessage}`);
       throw error;
     }
   }
@@ -297,7 +312,8 @@ Configuração (.env):
       return result;
 
     } catch (error) {
-      this.log('error', `❌ Erro durante setup: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      this.log('error', `❌ Erro durante setup: ${errorMessage}`);
       process.exit(1);
     }
   }
@@ -305,7 +321,7 @@ Configuração (.env):
   /**
    * Mostrar resumo da validação
    */
-  displayValidationSummary(report) {
+  displayValidationSummary(report: any) {
     const summary = report.summary;
     
     console.log('\n📊 RESUMO DA VALIDAÇÃO');
@@ -336,7 +352,7 @@ Configuração (.env):
 
     if (report.errors.length > 0) {
       console.log('❌ ERROS:');
-      report.errors.forEach((error, index) => {
+      report.errors.forEach((error: string, index: number) => {
         console.log(`  ${index + 1}. ${error}`);
       });
       console.log('');
@@ -344,7 +360,7 @@ Configuração (.env):
 
     if (report.warnings.length > 0) {
       console.log('⚠️ AVISOS:');
-      report.warnings.forEach((warning, index) => {
+      report.warnings.forEach((warning: string, index: number) => {
         console.log(`  ${index + 1}. ${warning}`);
       });
       console.log('');
@@ -352,7 +368,7 @@ Configuração (.env):
 
     if (report.recommendations.length > 0) {
       console.log('💡 RECOMENDAÇÕES:');
-      report.recommendations.forEach((rec, index) => {
+      report.recommendations.forEach((rec: string, index: number) => {
         console.log(`  ${index + 1}. ${rec}`);
       });
       console.log('');
@@ -362,12 +378,13 @@ Configuração (.env):
   /**
    * Mostrar resumo da execução
    */
-  displayExecutionSummary(result) {
+  displayExecutionSummary(result: any) {
     const { summary } = result;
+    const duration = result.duration || 0;
     
     console.log('\n📊 RESUMO DA EXECUÇÃO');
     console.log('='.repeat(50));
-    console.log(`Tempo Total: ${DatabaseSetup.formatDuration(result.duration)}`);
+    console.log(`Tempo Total: ${DatabaseSetup.formatDuration(duration)}`);
     console.log(`Status: ${result.success ? 'Sucesso' : 'Falha'}`);
     console.log('');
     
@@ -387,21 +404,22 @@ Configuração (.env):
   /**
    * Salvar resultado em arquivo
    */
-  saveResult(result, filename) {
+  saveResult(result: any, filename: string) {
     try {
       const fs = require('fs');
       const data = JSON.stringify(result, null, 2);
       fs.writeFileSync(filename, data);
       this.log('success', `Resultado salvo em: ${filename}`);
     } catch (error) {
-      this.log('error', `Erro ao salvar arquivo: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      this.log('error', `Erro ao salvar arquivo: ${errorMessage}`);
     }
   }
 
   /**
    * Formatar saída
    */
-  formatOutput(result, format) {
+  formatOutput(result: any, format: string) {
     switch (format) {
       case 'json':
         return JSON.stringify(result, null, 2);
@@ -432,19 +450,18 @@ Configuração (.env):
         result = await this.runValidation();
         
         // Verificar se precisa de correções
-        const needsFix = this.analysisNeedsFix(result);
-        if (needsFix && this.options.autoFix) {
-          this.log('warning', 'Correções necessárias detectadas. Executando auto-fix...');
+          const needsFix = this.analysisNeedsFix(result);
+          if (needsFix && this.options.autoFix) {
+            this.log('warning', 'Correções necessárias detectadas. Executando auto-fix...');
+            result = await this.runSetup();
+          } else if (needsFix && !this.options.autoFix) {
+            this.log('warning', 'Correções necessárias, mas auto-fix não habilitado. Use --auto-fix para aplicar correções.');
+            process.exit(1);
+          }
+        } else {
+          // Setup completo
           result = await this.runSetup();
-        } else if (needsFix && !this.options.autoFix) {
-          this.log('warning', 'Correções necessárias, mas auto-fix não habilitado. Use --auto-fix para aplicar correções.');
-          process.exit(1);
         }
-
-      } else {
-        // Setup completo
-        result = await this.runSetup();
-      }
 
       // Formatar e salvar saída
       const formatted = this.formatOutput(result, this.options.output);
@@ -462,7 +479,8 @@ Configuração (.env):
 
     } catch (error) {
       const duration = Date.now() - startTime;
-      this.log('error', `Processo falhou após ${DatabaseSetup.formatDuration(duration)}: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      this.log('error', `Processo falhou após ${DatabaseSetup.formatDuration(duration)}: ${errorMessage}`);
       process.exit(1);
     }
   }
@@ -470,10 +488,10 @@ Configuração (.env):
   /**
    * Analisar se precisa de correções
    */
-  analysisNeedsFix(report) {
-    return report.summary.missingTables > 0 || 
-           report.summary.missingIndexes > 0 || 
-           report.summary.missingPolicies > 0 || 
+  analysisNeedsFix(report: any): boolean {
+    return report.summary.missingTables > 0 ||
+           report.summary.missingIndexes > 0 ||
+           report.summary.missingPolicies > 0 ||
            report.summary.missingFunctions > 0 ||
            report.summary.incompleteTables > 0;
   }
