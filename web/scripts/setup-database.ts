@@ -48,7 +48,7 @@ class DatabaseSetupCLI {
     configFile: string;
     timeout: number;
     output: string;
-    outputFile: string | null;
+    outputFile?: string | null;
   };
   private setup: any;
 
@@ -62,7 +62,17 @@ class DatabaseSetupCLI {
    */
   parseArguments() {
     const args = process.argv.slice(2);
-    const options = {
+    const options: {
+      validateOnly: boolean;
+      autoFix: boolean;
+      backup: boolean;
+      rollback: boolean;
+      quiet: boolean;
+      configFile: string;
+      timeout: number;
+      output: string;
+      outputFile?: string | null;
+    } = {
       validateOnly: false,
       autoFix: false,
       backup: true,
@@ -112,7 +122,7 @@ class DatabaseSetupCLI {
           break;
 
         case '--output-file':
-          options.outputFile = (args[i + 1] ?? 'database-setup-report.json') as string;
+          options.outputFile = args[i + 1] ?? 'database-setup-report.json';
           i++; // Pular próximo argumento
           break;
 

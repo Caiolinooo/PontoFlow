@@ -401,7 +401,7 @@ export class DatabaseValidator {
       };
     }
 
-    const isUnique = data.indexdef.includes('UNIQUE');
+    const isUnique = (data as any)?.indexdef?.includes('UNIQUE') || false;
     const isValid = true; // Implementação simplificada
 
     return {

@@ -298,7 +298,7 @@ export class DatabaseSetup {
       const results: any[] = [];
       for (const statement of statements) {
         if (statement.trim()) {
-          const { data, error } = await this.supabase.rpc('exec_sql', { sql_query: statement });
+          const { data, error } = await this.supabase.rpc('exec_sql', { sql_query: statement } as any);
           
           if (error) {
             throw new DatabaseSetupError(
