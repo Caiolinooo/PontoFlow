@@ -119,6 +119,14 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
+### 0.2.9 (2025-10-31)
+- **fix(middleware)**: Configuração de runtime para Node.js
+  - ✅ Middleware agora usa Node.js runtime ao invés de Edge Runtime
+  - ✅ Resolvidos warnings de APIs Node.js não suportadas no Edge Runtime
+  - ✅ bcryptjs e Supabase funcionam corretamente no middleware
+  - ✅ Eliminados warnings sobre process.nextTick, setImmediate, crypto, etc.
+  - ✅ Build do Netlify agora deve completar sem erros
+
 ### 0.2.8 (2025-10-31)
 - **fix(build)**: Correção completa de lazy initialization para Netlify
   - ✅ Implementada lazy initialization em 5 arquivos adicionais de API routes
