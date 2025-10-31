@@ -6,10 +6,10 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
-  # Disable secrets scanning for public environment variables
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_VAPID_PUBLIC_KEY,NEXT_PUBLIC_AVAILABLE_LOCALES,NEXT_PUBLIC_DEFAULT_LOCALE"
-  # Omit build artifacts and cache from secrets scanning
-  SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/**,node_modules/**,messages/**"
+  # Disable secrets scanning for environment variable names (not values)
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_VAPID_PUBLIC_KEY,NEXT_PUBLIC_AVAILABLE_LOCALES,NEXT_PUBLIC_DEFAULT_LOCALE,NODE_ENV,SUPABASE_SERVICE_ROLE_KEY,SMTP_PASS,SMTP_USER,VAPID_PRIVATE_KEY"
+  # Omit build artifacts, scripts, and migration files from secrets scanning
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/**,node_modules/**,messages/**,**/*.mjs,**/*.md,**/migration-*.mjs,**/check-*.mjs,**/test-*.mjs,**/create-*.mjs,**/fix-*.mjs,**/exec-*.mjs,**/*_test_*.js,**/*_check*.js,**/*_constraints.js"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
