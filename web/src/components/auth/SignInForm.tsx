@@ -25,7 +25,7 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
     password: z.string().min(6, { message: tVal('passwordMin', { min: 6 }) }),
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       email: '',
