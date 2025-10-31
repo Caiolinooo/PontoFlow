@@ -1,16 +1,14 @@
 import {NextRequest, NextResponse} from 'next/server';
-import {createClient} from '@supabase/supabase-js';
 import {requireApiAuth} from '@/lib/auth/server';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import {getServiceSupabase} from '@/lib/supabase/server';
 
 export async function GET(_req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
     const user = await requireApiAuth();
     const {id} = await context.params;
+
+    // Use service client to bypass RLS (we handle authorization manually)
+    const supabase = getServiceSupabase();
 
     const {data: ts, error} = await supabase
       .from('timesheets')
@@ -20,12 +18,19 @@ export async function GET(_req: NextRequest, context: {params: Promise<{id: stri
     if (error || !ts) return NextResponse.json({error: error?.message ?? 'not_found'}, {status: 404});
 
     // Ownership: current user must be the employee owner of this timesheet
-    const { data: emp } = await supabase
+    const { data: emp, error: empError } = await supabase
       .from('employees')
       .select('id')
       .eq('tenant_id', ts.tenant_id)
       .eq('profile_id', user.id)
+      .limit(1)
       .maybeSingle();
+
+    if (empError) {
+      console.error('Error fetching employee:', empError);
+      return NextResponse.json({ error: 'database_error' }, { status: 500 });
+    }
+
     if (user.role !== 'ADMIN' && (!emp || ts.employee_id !== emp.id)) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }

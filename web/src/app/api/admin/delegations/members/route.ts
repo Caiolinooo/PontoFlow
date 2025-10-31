@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const user = await requireApiRole(['ADMIN']);
     let tenantId = user.tenant_id as string | undefined;
     if (!tenantId) {
-      const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+      const svc = getServiceSupabase();
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
         tenantId = tenants[0].id;
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
 
     // Ensure tenantId is valid; auto-heal if single tenant exists
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     let { data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle();
     if (!tenantRow) {
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const svcRead = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcRead = getServiceSupabase();
     // Ensure group and employee belong to same tenant (read with service to bypass RLS)
     const [{ data: grp }, { data: emp }] = await Promise.all([
       svcRead.from('groups').select('tenant_id').eq('id', parsed.data.group_id).single(),
@@ -72,7 +72,7 @@ export async function DELETE(req: NextRequest) {
     const user = await requireApiRole(['ADMIN']);
     let tenantId = user.tenant_id as string | undefined;
     if (!tenantId) {
-      const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+      const svc = getServiceSupabase();
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
         tenantId = tenants[0].id;
@@ -86,7 +86,7 @@ export async function DELETE(req: NextRequest) {
     const parsed = MemberSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
 
-    const svcRead = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcRead = getServiceSupabase();
     // Ensure group in same tenant (read with service to bypass RLS)
     const { data: grp } = await svcRead.from('groups').select('tenant_id').eq('id', parsed.data.group_id).single();
     if (!grp) return NextResponse.json({ error: 'group_not_found' }, { status: 404 });

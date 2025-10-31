@@ -1,0 +1,33 @@
+{
+  "name": "@abz/timesheet-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for ABZ Timesheet Manager",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "timesheet",
+    "types",
+    "typescript",
+    "abz"
+  ],
+  "author": "ABZ Group",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abz-group/time-sheet-manager-abz-group"
+  }
+}
+

@@ -43,7 +43,7 @@ export default async function LocaleLayout({
   params: Promise<{locale: string}>;
 }) {
   const {locale} = await params;
-  const messages = await getMessages();
+  const messages = await getMessages({locale});
   // Read theme cookie server-side to avoid flash on first paint
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get('theme')?.value;
@@ -52,16 +52,18 @@ export default async function LocaleLayout({
   // If no cookie, try reading profiles.ui_theme (cross-device)
   if (themeCookie === undefined) {
     try {
-      const { requireApiAuth } = await import('@/lib/auth/server');
-      const user = await requireApiAuth();
-      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('ui_theme')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (prof?.ui_theme === 'dark') isDark = true;
-      if (prof?.ui_theme === 'light') isDark = false;
+      const { getApiUser } = await import('@/lib/auth/server');
+      const user = await getApiUser();
+      if (user) {
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('ui_theme')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (prof?.ui_theme === 'dark') isDark = true;
+        if (prof?.ui_theme === 'light') isDark = false;
+      }
     } catch {}
   }
   return (

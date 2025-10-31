@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireApiRole } from '@/lib/auth/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = getServiceSupabase();
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -33,7 +30,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         .from('manager_group_assignments')
         .select('group_id')
         .eq('tenant_id', ts.tenant_id)
-        .eq('manager_user_id', user.id)
+        .eq('manager_id', user.id)
         .in('group_id', groupIds)
         .limit(1);
       if (!mg || mg.length === 0) return NextResponse.json({ error: 'forbidden' }, { status: 403 });

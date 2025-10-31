@@ -35,7 +35,7 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
   query = query.order('created_at', { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1);
   const { data: users, count } = await query;
 
-  const t = await getTranslations('admin.users');
+  const t = await getTranslations({ locale, namespace: 'admin.users' });
 
   return (
     <div className="space-y-6">

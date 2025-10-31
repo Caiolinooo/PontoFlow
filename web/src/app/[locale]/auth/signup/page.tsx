@@ -19,8 +19,8 @@ export default async function SignUpPage({ params }: { params: Promise<{ locale:
     redirect(`/${locale}/dashboard`);
   }
 
-  const t = await getTranslations('auth');
-  const tApp = await getTranslations('app');
+  const t = await getTranslations({ locale, namespace: 'auth' });
+  const tApp = await getTranslations({ locale, namespace: 'app' });
   const siteTitle = branding.siteTitle || tApp('title');
 
   return (

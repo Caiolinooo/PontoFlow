@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
 import { getServerSupabase } from '@/lib/supabase/server';
 import { getServiceSupabase } from '@/lib/supabase/service';
+import { calculateTimesheetPeriods } from '@/lib/periods/calculator';
+import { TimezoneType } from '@/lib/timezone/utils';
 
 function firstDayOfMonth(isoDate: string): string {
   // Accepts 'YYYY-MM' or 'YYYY-MM-01' or full 'YYYY-MM-DD'
@@ -12,6 +14,54 @@ function firstDayOfMonth(isoDate: string): string {
   return `${y}-${m}-01`;
 }
 
+// Calculate period boundaries based on deadline configuration
+function calculatePeriodBoundaries(
+  tenantTimezone: TimezoneType,
+  deadlineDay: number,
+  targetMonth: string // YYYY-MM format
+): { startDate: string; endDate: string; month: string } {
+  const [year, month] = targetMonth.split('-').map(Number);
+  const targetDate = new Date(year, month - 1, 1);
+  
+  // Get all periods around the target month
+  const periods = calculateTimesheetPeriods(
+    tenantTimezone,
+    deadlineDay,
+    new Date(year, month - 2, 1).toISOString().split('T')[0], // Start 2 months before
+    new Date(year, month + 1, 1).toISOString().split('T')[0]  // End 1 month after
+  );
+  
+  // Find the period that contains the target month
+  const targetPeriod = periods.find(period => {
+    const periodStart = new Date(period.startDate);
+    const periodEnd = new Date(period.endDate);
+    return periodStart <= targetDate && targetDate <= periodEnd;
+  });
+  
+  if (targetPeriod) {
+    return {
+      startDate: targetPeriod.startDate,
+      endDate: targetPeriod.endDate,
+      month: targetPeriod.periodKey
+    };
+  }
+  
+  // Fallback: use the default calculation
+  const now = new Date();
+  const currentPeriod = calculateTimesheetPeriods(
+    tenantTimezone,
+    deadlineDay,
+    new Date(year, month - 1, 1).toISOString().split('T')[0],
+    new Date(year, month + 1, 1).toISOString().split('T')[0]
+  )[0];
+  
+  return {
+    startDate: currentPeriod?.startDate || firstDayOfMonth(targetMonth),
+    endDate: currentPeriod?.endDate || `${targetMonth}-31`,
+    month: currentPeriod?.periodKey || targetMonth
+  };
+}
+
 export async function GET() {
   try {
     const user = await requireApiRole(['ADMIN']);
@@ -20,7 +70,7 @@ export async function GET() {
     // Resolve tenant automatically if there is exactly one; otherwise ask user to choose
     let tenantId = user.tenant_id as string | undefined;
     if (!tenantId) {
-      const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+      const svc = getServiceSupabase();
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
         tenantId = tenants[0].id;
@@ -31,14 +81,65 @@ export async function GET() {
       }
     }
 
-    const { data, error } = await supabase
+    // Get tenant settings including deadline_day and timezone
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('timezone')
+      .eq('id', tenantId)
+      .single();
+
+    const { data: settings } = await supabase
+      .from('tenant_settings')
+      .select('deadline_day')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    const tenantTimezone = tenant?.timezone || 'America/Sao_Paulo';
+    const deadlineDay = settings?.deadline_day ?? 16; // Default to day 16 for ABZ Group
+
+    // Calculate current periods based on tenant deadline configuration
+    const now = new Date();
+    const currentPeriod = calculateTimesheetPeriods(
+      tenantTimezone,
+      deadlineDay,
+      new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0],
+      new Date(now.getFullYear(), now.getMonth() + 3, 1).toISOString().split('T')[0]
+    );
+
+    // Get existing locks from period_locks table
+    const { data: locks, error } = await supabase
       .from('period_locks')
       .select('id, tenant_id, period_month, locked, reason, updated_at, created_at')
       .eq('tenant_id', tenantId)
       .order('period_month', { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json({ locks: data ?? [] });
+
+    // Merge calculated periods with locks to provide complete period information
+    const periodsWithLocks = currentPeriod.map(period => {
+      const lock = locks?.find(l => l.period_month === period.startDate);
+      return {
+        id: lock?.id || null,
+        tenant_id: tenantId,
+        period_month: period.startDate,
+        period_start: period.startDate,
+        period_end: period.endDate,
+        period_label: period.label,
+        locked: lock?.locked || false,
+        reason: lock?.reason || null,
+        updated_at: lock?.updated_at || null,
+        created_at: lock?.created_at || null
+      };
+    });
+
+    return NextResponse.json({
+      periods: periodsWithLocks,
+      actualLocks: locks,
+      tenantSettings: {
+        timezone: tenantTimezone,
+        deadlineDay: deadlineDay
+      }
+    });
   } catch (err) {
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
@@ -50,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     // Resolve tenant automatically if there is exactly one; otherwise ask user to choose
     let tenantId = user.tenant_id as string | undefined;
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     if (!tenantId) {
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
@@ -66,15 +167,34 @@ export async function POST(req: NextRequest) {
     const raw = (body?.period_month as string) ?? '';
     const locked = Boolean(body?.locked);
     const reason = (body?.reason as string) ?? null;
-    const month = firstDayOfMonth(raw);
-
+    
+    // Get tenant settings for deadline configuration
     const supabase = await getServerSupabase();
-    // Upsert lock for tenant+month
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('timezone')
+      .eq('id', tenantId)
+      .single();
+
+    const { data: settings } = await supabase
+      .from('tenant_settings')
+      .select('deadline_day')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    const tenantTimezone = tenant?.timezone || 'America/Sao_Paulo';
+    const deadlineDay = settings?.deadline_day ?? 16;
+
+    // Calculate actual period boundaries based on deadline configuration
+    const targetMonth = raw || new Date().toISOString().slice(0, 7); // Use current month if not provided
+    const periodBoundaries = calculatePeriodBoundaries(tenantTimezone, deadlineDay, targetMonth);
+
+    // Upsert lock for tenant+period using actual period boundaries
     const { data: existing } = await supabase
       .from('period_locks')
       .select('id')
       .eq('tenant_id', tenantId)
-      .eq('period_month', month)
+      .eq('period_month', periodBoundaries.startDate)
       .maybeSingle();
 
     if (existing?.id) {
@@ -86,11 +206,23 @@ export async function POST(req: NextRequest) {
     } else {
       const { error } = await supabase
         .from('period_locks')
-        .insert({ tenant_id: tenantId, period_month: month, locked, reason });
+        .insert({
+          tenant_id: tenantId,
+          period_month: periodBoundaries.startDate,
+          locked,
+          reason
+        });
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      period: periodBoundaries,
+      settings: {
+        timezone: tenantTimezone,
+        deadlineDay: deadlineDay
+      }
+    });
   } catch (err) {
     if (err instanceof Error && (err.message === 'Unauthorized' || err.message === 'Forbidden')) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

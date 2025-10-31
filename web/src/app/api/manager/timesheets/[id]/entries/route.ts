@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit/logger';
@@ -8,7 +8,7 @@ import { dispatchNotification } from '@/lib/notifications/dispatcher';
 
 const Schema = z.object({
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  tipo: z.enum(['embarque', 'desembarque', 'translado', 'onshore', 'offshore', 'folga']),
+  environment_id: z.string().uuid(),
   hora_ini: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   hora_fim: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   observacao: z.string().max(1000).nullable().optional(),
@@ -38,7 +38,7 @@ async function ensureManagerAccess(supabase: any, user: any, timesheetId: string
     .from('manager_group_assignments')
     .select('group_id')
     .eq('tenant_id', ts.tenant_id)
-    .eq('manager_user_id', user.id)
+    .eq('manager_id', user.id)
     .in('group_id', groupIds)
     .limit(1);
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const parsed = Schema.safeParse(json);
     if (!parsed.success) return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
 
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
     const { ts, error } = await ensureManagerAccess(supabase, user, id);
     if (error === 'not_found') return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if (error === 'forbidden') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
@@ -71,13 +71,25 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       action = 'manager_edit_closed_period';
     }
 
+    // Get environment to extract slug for backward compatibility with 'tipo' field
+    const { data: environment, error: envError } = await supabase
+      .from('environments')
+      .select('slug')
+      .eq('id', parsed.data.environment_id)
+      .single();
+
+    if (envError || !environment) {
+      return NextResponse.json({ error: 'environment_not_found' }, { status: 400 });
+    }
+
     const ins = await supabase
       .from('timesheet_entries')
       .insert({
         tenant_id: ts!.tenant_id,
         timesheet_id: id,
         data: parsed.data.data,
-        tipo: parsed.data.tipo,
+        tipo: environment.slug, // For backward compatibility
+        environment_id: parsed.data.environment_id,
         hora_ini: parsed.data.hora_ini ?? null,
         hora_fim: parsed.data.hora_fim ?? null,
         observacao: parsed.data.observacao ?? null
@@ -96,7 +108,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       newValues: {
         timesheet_id: id,
         data: parsed.data.data,
-        tipo: parsed.data.tipo,
+        tipo: environment.slug,
         hora_ini: parsed.data.hora_ini ?? null,
         hora_fim: parsed.data.hora_fim ?? null,
         justification: eff.locked ? parsed.data.justification ?? '' : undefined

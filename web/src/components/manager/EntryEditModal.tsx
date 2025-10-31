@@ -5,7 +5,8 @@ import Modal from '@/components/ui/Modal';
 export type ManagerEntry = {
   id: string;
   data: string;
-  tipo: 'embarque' | 'desembarque' | 'translado' | 'onshore' | 'offshore' | 'folga' | string;
+  environment_id?: string | null;
+  tipo?: string | null;
   hora_ini?: string | null;
   hora_fim?: string | null;
   observacao?: string | null;

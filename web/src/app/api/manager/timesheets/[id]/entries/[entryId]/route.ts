@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit/logger';
@@ -8,7 +8,7 @@ import { dispatchNotification } from '@/lib/notifications/dispatcher';
 
 const PatchSchema = z.object({
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  tipo: z.enum(['embarque', 'desembarque', 'translado', 'onshore', 'offshore', 'folga']).optional(),
+  environment_id: z.string().uuid().optional(),
   hora_ini: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   hora_fim: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   observacao: z.string().max(1000).nullable().optional(),
@@ -36,7 +36,7 @@ async function ensureManagerAccess(supabase: any, user: any, timesheetId: string
     .from('manager_group_assignments')
     .select('group_id')
     .eq('tenant_id', ts.tenant_id)
-    .eq('manager_user_id', user.id)
+    .eq('manager_id', user.id)
     .in('group_id', groupIds)
     .limit(1);
   if (!mg || mg.length === 0) return { error: 'forbidden' as const };
@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const parsed = PatchSchema.safeParse(json);
     if (!parsed.success) return NextResponse.json({ error: 'invalid_body', issues: parsed.error.issues }, { status: 400 });
 
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
     const { ts, error } = await ensureManagerAccess(supabase, user, id);
     if (error === 'not_found') return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if (error === 'forbidden') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
@@ -68,15 +68,32 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       action = 'manager_edit_closed_period';
     }
 
+    // Build update object
+    const updateData: any = {
+      hora_ini: parsed.data.hora_ini ?? null,
+      hora_fim: parsed.data.hora_fim ?? null,
+      observacao: parsed.data.observacao ?? null,
+    };
+
+    // Add optional fields if provided
+    if (parsed.data.data) updateData.data = parsed.data.data;
+
+    // If environment_id is being updated, also update tipo for backward compatibility
+    if (parsed.data.environment_id) {
+      const { data: environment } = await supabase
+        .from('environments')
+        .select('slug')
+        .eq('id', parsed.data.environment_id)
+        .single();
+      if (environment) {
+        updateData.tipo = environment.slug;
+        updateData.environment_id = parsed.data.environment_id;
+      }
+    }
+
     const { error: upErr } = await supabase
       .from('timesheet_entries')
-      .update({
-        data: parsed.data.data,
-        tipo: parsed.data.tipo,
-        hora_ini: parsed.data.hora_ini ?? null,
-        hora_fim: parsed.data.hora_fim ?? null,
-        observacao: parsed.data.observacao ?? null,
-      })
+      .update(updateData)
       .eq('id', entryId)
       .eq('timesheet_id', id);
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 400 });
@@ -137,7 +154,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const user = await requireApiRole(['ADMIN','MANAGER','MANAGER_TIMESHEET']);
     const { id, entryId } = await context.params;
 
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
     const { ts, error } = await ensureManagerAccess(supabase, user, id);
     if (error === 'not_found') return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if (error === 'forbidden') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
@@ -145,9 +162,11 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const monthKey = `${new Date(ts!.periodo_ini).getFullYear()}-${String(new Date(ts!.periodo_ini).getMonth()+1).padStart(2,'0')}-01`;
     const eff = await getEffectivePeriodLock(supabase, ts!.tenant_id, ts!.employee_id, monthKey);
 
+    // Get justification from request body
+    const json = await req.json().catch(() => ({}));
+    const just = (json?.justification || '').toString();
+
     if (eff.locked && user.role !== 'ADMIN') {
-      const json = await req.json().catch(() => ({}));
-      const just = (json?.justification || '').toString();
       if (!just || just.trim().length < 10) {
         return NextResponse.json({ error: 'justification_required' }, { status: 400 });
       }
@@ -190,6 +209,19 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
           });
         }
       } catch {}
+    }
+
+    // Create annotation if justification was provided
+    if (just && just.trim().length >= 10) {
+      await supabase
+        .from('timesheet_annotations')
+        .insert({
+          timesheet_id: id,
+          entry_id: entryId,
+          message: `Lançamento excluído. Justificativa: ${just}`,
+          tenant_id: ts!.tenant_id,
+          created_by: user.id
+        });
     }
 
     const { error: delErr } = await supabase

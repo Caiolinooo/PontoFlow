@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 export async function GET() {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
 
   // List users with their permissions (per tenant)
   const [{ data: users }, { data: perms }] = await Promise.all([

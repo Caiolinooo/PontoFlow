@@ -1,0 +1,59 @@
+name: Cron - Notificações e Travamento de Períodos
+
+on:
+  schedule:
+    # Executa diariamente às 9h UTC (6h BRT) - Notificações
+    - cron: '0 9 * * *'
+    # Executa diariamente às 2h UTC (23h BRT do dia anterior) - Travamento
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Permite execução manual
+
+jobs:
+  send-notifications:
+    name: Enviar Notificações de Deadline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar lembretes de deadline
+        run: |
+          echo "🔔 Enviando notificações de deadline..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            ${{ secrets.APP_URL }}/api/cron/deadline-reminders \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Erro ao enviar notificações"
+            exit 1
+          fi
+          
+          echo "✅ Notificações enviadas com sucesso"
+
+  lock-periods:
+    name: Travar Períodos Vencidos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Travar períodos
+        run: |
+          echo "🔒 Travando períodos vencidos..."
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            ${{ secrets.APP_URL }}/api/cron/lock-periods \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Erro ao travar períodos"
+            exit 1
+          fi
+          
+          echo "✅ Períodos travados com sucesso"
+

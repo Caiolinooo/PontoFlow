@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
-import { getServiceSupabase } from '@/lib/supabase/service';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 // GET /api/admin/periods/environments?environment_id=... -> list locks for an environment
 export async function GET(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const url = new URL(req.url);
   const environmentId = (url.searchParams.get('environment_id') || '').trim();
   if (!environmentId) return NextResponse.json({ error: 'environment_id_required' }, { status: 400 });
 
   let tenantId = user.tenant_id as string | undefined;
   if (!tenantId) {
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
       tenantId = tenants[0].id;
@@ -37,7 +36,7 @@ export async function GET(req: NextRequest) {
 // POST { environment_id, period_month, locked, reason? }
 export async function POST(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const body = await req.json().catch(() => ({}));
   const environment_id = (body?.environment_id as string | undefined)?.trim();
   const period_month = (body?.period_month as string | undefined)?.trim();
@@ -48,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   let tenantId = user.tenant_id as string | undefined;
   if (!tenantId) {
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
       tenantId = tenants[0].id;

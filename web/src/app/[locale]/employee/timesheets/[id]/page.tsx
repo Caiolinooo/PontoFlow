@@ -1,69 +1,92 @@
-import {getMessages} from 'next-intl/server';
-import {NextIntlClientProvider} from 'next-intl';
-import TimesheetEditor from '@/components/employee/TimesheetEditor';
-import FullBleed from '@/components/layout/FullBleed';
+import { requireAuth } from '@/lib/auth/server';
+import { getServerSupabase, getServiceSupabase } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import TimesheetCalendar from '@/components/employee/TimesheetCalendar';
 
-async function getData(id: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/employee/timesheets/${id}`, {cache:'no-store'});
-  if (!res.ok) throw new Error('Failed to load');
-  return res.json();
-}
+export default async function TimesheetByIdPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
+  const { locale, id } = await params;
+  const user = await requireAuth(locale);
 
-function firstDayOfNextMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth()+1, 1); }
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
 
-export default async function Page({params}: {params: Promise<{locale: string; id: string}>}) {
-  const {locale, id} = await params;
-  const messages = await getMessages();
-  const dict = messages as Record<string, string | undefined>;
-  const t = (k: string) => dict[k] ?? k;
-  const data = await getData(id);
+  // Resolve employee record for current user
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('id, tenant_id')
+    .eq('tenant_id', user.tenant_id as string)
+    .eq('profile_id', user.id)
+    .maybeSingle();
 
-  const periodoIni = new Date(data.timesheet.periodo_ini);
-  const blocked = new Date() >= firstDayOfNextMonth(periodoIni);
+  if (!emp) {
+    redirect(`/${locale}/employee/bootstrap`);
+  }
+
+  // Load requested timesheet
+  const { data: timesheet } = await supabase
+    .from('timesheets')
+    .select('id, employee_id, status, periodo_ini, periodo_fim')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!timesheet) {
+    // If timesheet does not exist, go back to main timesheets page
+    redirect(`/${locale}/employee/timesheets`);
+  }
+
+  // Enforce ownership for employees
+  if (timesheet.employee_id !== emp.id) {
+    redirect(`/${locale}/employee/timesheets`);
+  }
+
+  // Get entries for this timesheet
+  const { data: entries } = await supabase
+    .from('timesheet_entries')
+    .select('*')
+    .eq('timesheet_id', timesheet.id)
+    .order('data', { ascending: true });
+
+  // Get tenant info (including work_mode)
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('work_schedule, work_mode, settings')
+    .eq('id', emp.tenant_id)
+    .single();
+
+  // Get work schedule for employee (same resolution logic as current page)
+  const { data: workScheduleData } = await supabase
+    .from('employee_work_schedules')
+    .select('work_schedule, days_on, days_off, start_date')
+    .eq('employee_id', emp.id)
+    .lte('start_date', timesheet.periodo_ini)
+    .or(`end_date.is.null,end_date.gte.${timesheet.periodo_ini}`)
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let workSchedule = workScheduleData;
+  if (!workSchedule && tenant?.work_schedule) {
+    workSchedule = {
+      work_schedule: tenant.work_schedule,
+      days_on: null,
+      days_off: null,
+      start_date: timesheet.periodo_ini,
+    } as any;
+  }
 
   return (
-    <html lang={locale}>
-      <body>
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-xl font-semibold">{t('employee.editor.title')}</h1>
-              <p className="text-sm text-gray-600">{t('employee.editor.subtitle')}</p>
-            </div>
-            <FullBleed>
-              <div className="px-4 sm:px-6 lg:px-8">
-                <TimesheetEditor
-                  timesheetId={data.timesheet.id}
-                  periodo_ini={data.timesheet.periodo_ini}
-                  blocked={blocked}
-                  entries={data.entries}
-                  annotations={data.annotations}
-                  fullHeight
-                  labels={{
-                    title: t('employee.editor.sectionTitle'),
-                    submit: t('employee.editor.submit'),
-                    blocked: t('employee.editor.blocked'),
-                    date: t('employee.editor.date'),
-                    type: t('employee.editor.type'),
-                    start: t('employee.editor.start'),
-                    end: t('employee.editor.end'),
-                    note: t('employee.editor.note'),
-                    add: t('employee.editor.addEntry'),
-                    delete: t('employee.editor.delete'),
-                    annotations: t('employee.editor.annotations'),
-                    embarque: t('employee.editor.embarque'),
-                    desembarque: t('employee.editor.desembarque'),
-                    translado: t('employee.editor.translado'),
-                    onshore: t('employee.editor.onshore'),
-                    offshore: t('employee.editor.offshore'),
-                    folga: t('employee.editor.folga')
-                  }}
-                />
-              </div>
-            </FullBleed>
-          </div>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <div className="max-w-[1600px] mx-auto px-2 sm:px-4">
+      <TimesheetCalendar
+        timesheetId={timesheet.id}
+        employeeId={emp.id}
+        periodo_ini={timesheet.periodo_ini}
+        periodo_fim={timesheet.periodo_fim}
+        status={timesheet.status}
+        initialEntries={entries ?? []}
+        locale={locale}
+        workSchedule={workSchedule}
+        tenantWorkMode={tenant?.work_mode || 'standard'}
+      />
+    </div>
   );
 }
+

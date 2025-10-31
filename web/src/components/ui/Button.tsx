@@ -2,33 +2,82 @@
 
 import React from 'react';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'success';
+type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
+  size?: Size;
   loading?: boolean;
+  fullWidth?: boolean;
+  icon?: React.ReactNode;
+  iconPosition?: 'left' | 'right';
 };
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm hover:shadow-md',
-  secondary: 'bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm hover:shadow-md',
-  danger: 'bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm hover:shadow-md',
-  ghost: 'bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)]',
+  primary: 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm',
+  secondary: 'bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm',
+  danger: 'bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm',
+  success: 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 shadow-sm',
+  ghost: 'bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50',
+  outline: 'bg-transparent border-2 border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50',
 };
 
-export default function Button({ variant = 'primary', loading, className = '', children, ...rest }: Props) {
+const sizes: Record<Size, string> = {
+  xs: 'px-2 py-1 text-xs',
+  sm: 'px-3 py-1.5 text-xs',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-6 py-2.5 text-base',
+  xl: 'px-8 py-3 text-lg',
+};
+
+export default function Button({
+  variant = 'primary',
+  size = 'md',
+  loading,
+  fullWidth,
+  icon,
+  iconPosition = 'left',
+  className = '',
+  children,
+  ...rest
+}: Props) {
   return (
     <button
       {...rest}
-      className={`inline-flex items-center justify-center px-5 py-2.5 rounded-md font-semibold text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] active:scale-[0.98] ${variants[variant]} ${className}`}
+      disabled={loading || rest.disabled}
+      aria-busy={loading}
+      aria-disabled={loading || rest.disabled}
+      className={`
+        inline-flex items-center justify-center gap-2 rounded-lg font-medium
+        transition-all duration-200
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2
+        disabled:cursor-not-allowed active:scale-95
+        ${variants[variant]}
+        ${sizes[size]}
+        ${fullWidth ? 'w-full' : ''}
+        ${className}
+      `}
     >
       {loading && (
-        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg
+          className="animate-spin h-4 w-4"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
         </svg>
       )}
+      {!loading && icon && iconPosition === 'left' && (
+        <span aria-hidden="true">{icon}</span>
+      )}
       {children}
+      {!loading && icon && iconPosition === 'right' && (
+        <span aria-hidden="true">{icon}</span>
+      )}
     </button>
   );
 }

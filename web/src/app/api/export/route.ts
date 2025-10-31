@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 /**
  * Phase 15: Export Endpoint
- * 
+ *
  * GET /api/export?format=json|csv&period=2025-10
- * 
+ *
  * Exports timesheet data with full tenant isolation.
  * Supports JSON (normalized) and CSV (quick-use) formats.
  */
 
 export async function GET(req: NextRequest) {
   const user = await requireApiAuth();
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getServiceSupabase();
 
   try {
     const url = new URL(req.url);
@@ -69,7 +66,7 @@ export async function GET(req: NextRequest) {
       entries = (entriesData as Entry[]) || [];
     }
 
-    // Fetch approvals
+    // Fetch approvals (optional - table may not exist in all environments)
     let approvals: Approval[] = [];
     if (timesheetIds.length > 0) {
       const { data: approvalsData, error: approvalsError } = await supabase
@@ -77,7 +74,8 @@ export async function GET(req: NextRequest) {
         .select('*')
         .in('timesheet_id', timesheetIds);
 
-      if (approvalsError) {
+      // Only fail if it's not a "table doesn't exist" error
+      if (approvalsError && !approvalsError.message.includes('does not exist')) {
         return NextResponse.json({ error: approvalsError.message }, { status: 400 });
       }
 

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     // Resolver tenant (auto-heal se houver apenas um)
     let tenantId = user.tenant_id as string | undefined;
-    const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svc = getServiceSupabase();
     if (!tenantId) {
       const { data: tenants } = await svc.from('tenants').select('id').limit(2);
       if (tenants && tenants.length === 1) {
@@ -26,8 +26,10 @@ export async function GET(req: NextRequest) {
     const q = (searchParams.get('q') || '').trim();
     const limitRaw = parseInt(searchParams.get('limit') || '20', 10);
     const limit = Math.max(1, Math.min(isNaN(limitRaw) ? 20 : limitRaw, 100));
+    const offsetRaw = parseInt(searchParams.get('offset') || '0', 10);
+    const offset = Math.max(0, isNaN(offsetRaw) ? 0 : offsetRaw);
 
-    const svcRead = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+    const svcRead = getServiceSupabase();
 
     if (q) {
       // 1) Buscar perfis pelo termo
@@ -45,7 +47,7 @@ export async function GET(req: NextRequest) {
         .select('id, profile_id')
         .eq('tenant_id', tenantId)
         .in('profile_id', ids)
-        .limit(limit);
+        .range(offset, offset + limit - 1);
       if (eErr) return NextResponse.json({ error: eErr.message }, { status: 400 });
 
       const items = (emps ?? []).map(e => {
@@ -61,7 +63,7 @@ export async function GET(req: NextRequest) {
       .from('employees')
       .select('id, profile_id')
       .eq('tenant_id', tenantId)
-      .limit(limit);
+      .range(offset, offset + limit - 1);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
     const profileIds = (emps ?? []).map(e => e.profile_id);

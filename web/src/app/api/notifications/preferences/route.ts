@@ -27,7 +27,15 @@ export async function GET() {
       .eq('user_id', user.id)
       .single();
 
+    // PGRST116 = no rows returned (user has no preferences yet)
     if (error && error.code !== 'PGRST116') {
+      console.error('[notifications/preferences] Database error:', error);
+      // Return default preferences instead of error if table doesn't exist
+      if (error.code === '42P01') {
+        // Table doesn't exist
+        console.warn('[notifications/preferences] Table notification_preferences does not exist, returning defaults');
+        return NextResponse.json({ preferences: defaultPrefs }, { status: 200 });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -48,10 +56,12 @@ export async function GET() {
       { status: 200 }
     );
   } catch (err) {
+    console.error('[notifications/preferences] Error:', err);
     if (err instanceof Error && err.message === 'Unauthorized') {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
-    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    // Return default preferences instead of error
+    return NextResponse.json({ preferences: defaultPrefs }, { status: 200 });
   }
 }
 

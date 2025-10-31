@@ -25,7 +25,7 @@ export default async function EditUserPage({
     notFound();
   }
 
-  const t = await getTranslations('admin.users');
+  const t = await getTranslations({ locale, namespace: 'admin.users' });
 
   return (
     <div className="space-y-6">

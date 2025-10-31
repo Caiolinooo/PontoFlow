@@ -41,15 +41,22 @@ export default function LanguageSwitcher() {
   })();
 
   return (
-    <select
-      className="border rounded px-2 py-1 text-sm"
-      onChange={onChange}
-      value={current}
-      aria-label="Select language"
-    >
-      <option value="pt-BR">Português (BR)</option>
-      <option value="en-GB">English (UK)</option>
-    </select>
+    <div className="relative inline-block">
+      <select
+        className="appearance-none bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-1.5 pr-8 text-sm text-[var(--surface-foreground)] hover:bg-[var(--surface)]/80 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent font-medium"
+        onChange={onChange}
+        value={current}
+        aria-label="Selecionar idioma"
+      >
+        <option value="pt-BR">🇧🇷 PT</option>
+        <option value="en-GB">🇬🇧 EN</option>
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[var(--surface-foreground)] opacity-60">
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
   );
 }
 

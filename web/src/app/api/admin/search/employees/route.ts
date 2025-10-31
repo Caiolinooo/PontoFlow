@@ -5,13 +5,15 @@ import { getServerSupabase } from '@/lib/supabase/server';
 // GET /api/admin/search/employees?q=...&limit=20
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireApiRole(['ADMIN']);
+    const user = await requireApiRole(['ADMIN', 'MANAGER', 'MANAGER_TIMESHEET']);
     if (!user.tenant_id) return NextResponse.json({ error: 'missing_tenant' }, { status: 400 });
 
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get('q') || '').trim();
     const limitRaw = parseInt(searchParams.get('limit') || '20', 10);
     const limit = Math.max(1, Math.min(isNaN(limitRaw) ? 20 : limitRaw, 100));
+    const offsetRaw = parseInt(searchParams.get('offset') || '0', 10);
+    const offset = Math.max(0, isNaN(offsetRaw) ? 0 : offsetRaw);
 
     const supabase = await getServerSupabase();
 
@@ -51,8 +53,8 @@ export async function GET(req: NextRequest) {
       .from('employees')
       .select('id, profile_id, name')
       .eq('tenant_id', user.tenant_id as string)
-      .limit(limit)
-      .order('id');
+      .order('id')
+      .range(offset, offset + limit - 1);
 
     if (q) {
       if (baseIds.length > 0) {

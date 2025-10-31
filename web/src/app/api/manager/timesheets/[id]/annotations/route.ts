@@ -56,7 +56,8 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       timesheet_id: id,
       entry_id: a.entry_id ?? null,
       field_path: a.field ?? null,
-      message: a.message
+      message: a.message,
+      created_by: user.id
     }));
     const {error} = await supabase.from('timesheet_annotations').insert(rows);
     if (error) return NextResponse.json({error: error.message}, {status: 400});

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../styles/animations.css";
 
 :root {
   color-scheme: light;
@@ -19,11 +20,11 @@
   --destructive: #dc2626;          /* red-600 */
   --destructive-foreground: #ffffff;
   /* Form/input tokens (Meta-style systemwide) */
-  --input: #0b1220;                 /* deep navy/black-ish field */
-  --input-foreground: #e5e7eb;      /* light text inside fields */
-  --input-border: #334155;          /* slate-700 */
-  --input-placeholder: #94a3b8;     /* slate-400 */
-  --input-label-bg: #000000;        /* floating label tile background */
+  --input: #ffffff;                 /* light theme input background */
+  --input-foreground: #111318;      /* text inside fields */
+  --input-border: #d1d5db;          /* gray-300 */
+  --input-placeholder: #9ca3af;     /* gray-400 */
+  --input-label-bg: #ffffff;        /* floating label tile background */
 
 }
 
@@ -65,9 +66,9 @@ input[type="tel"],
 input[type="number"],
 select,
 textarea {
-  background: var(--input);
-  color: var(--input-foreground);
-  border: 1px solid var(--input-border);
+  background: var(--input) !important;
+  color: var(--input-foreground) !important;
+  border: 1px solid var(--input-border) !important;
   border-radius: 12px;
   padding: 12px 14px;
 }

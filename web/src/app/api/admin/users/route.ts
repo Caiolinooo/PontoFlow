@@ -24,15 +24,42 @@ export async function GET(request: NextRequest) {
   const limitRaw = parseInt(url.searchParams.get('limit') || '50', 10);
   const limit = Math.max(1, Math.min(isNaN(limitRaw) ? 50 : limitRaw, 100));
 
+  // Check if user has tenant_id
+  if (!user.tenant_id) {
+    return NextResponse.json({ error: 'No tenant assigned' }, { status: 400 });
+  }
+
   const supabase = await getServerSupabase();
+
+  // Get all user IDs that have access to this tenant via tenant_user_roles
+  const { data: tenantUsers, error: tenantUsersError } = await supabase
+    .from('tenant_user_roles')
+    .select('user_id')
+    .eq('tenant_id', user.tenant_id);
+
+  if (tenantUsersError) {
+    console.error('Error fetching tenant users:', tenantUsersError);
+    return NextResponse.json({ error: tenantUsersError.message }, { status: 500 });
+  }
+
+  const userIds = (tenantUsers ?? []).map((tu: any) => tu.user_id);
+
+  if (userIds.length === 0) {
+    return NextResponse.json({ users: [] });
+  }
+
+  // Query users_unified filtered by tenant access
   let query = supabase
     .from('users_unified')
     .select('id, email, first_name, last_name, name, role, active, created_at')
+    .in('id', userIds)
     .order('created_at', { ascending: false })
     .limit(limit);
+
   if (q) {
     query = query.or(`email.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%,name.ilike.%${q}%`);
   }
+
   const { data: users, error } = await query;
 
   if (error) {

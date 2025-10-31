@@ -4,6 +4,8 @@ import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
+import NotificationBadge from './notifications/NotificationBadge';
+import NotificationModal from './notifications/NotificationModal';
 import { useState, useEffect } from 'react';
 import type { User } from '@/lib/auth/custom-auth';
 import { branding } from '@/config/branding';
@@ -14,19 +16,31 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [loading, setLoading] = useState(!initialUser);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Extract locale from pathname
   const locale = pathname?.split('/')[1] || 'pt-BR';
 
   useEffect(() => {
     if (initialUser !== undefined) return; // Já temos o usuário do servidor; evita refetch e flicker
-    fetch('/api/auth/session')
+    
+    // Enhanced session check with better error handling
+    fetch('/api/auth/session', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
-        setUser(data.user);
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+          // Debug logging for authentication issues
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Session check failed:', data.message || 'No user data');
+          }
+        }
         setLoading(false);
       })
-      .catch(() => {
+      .catch(error => {
+        console.error('Session check error:', error);
         setUser(null);
         setLoading(false);
       });
@@ -60,26 +74,14 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
             <span className="text-xl font-semibold text-[var(--surface-foreground)]">{siteTitle}</span>
           </a>
 
-          {/* Quick Home (Meta-like) - shown when not already on Dashboard */}
-          {pathname && !new RegExp(`^/${locale}/dashboard(?:/.*)?$`).test(pathname) && (
-            <a
-              href={`/${locale}/dashboard`}
-              className="ml-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-[var(--muted)]/40 text-[var(--surface-foreground)] hover:bg-[var(--muted)]/60 transition-colors"
-              aria-label="Dashboard"
-              title="Dashboard"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
-                <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="hidden sm:inline">Dashboard</span>
-            </a>
-          )}
-
           {/* Minimal Actions: Theme, Language, User */}
           <nav className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3">
               <ThemeToggle />
               <LanguageSwitcher />
+              {user && (
+                <NotificationBadge onClick={() => setShowNotifications(true)} />
+              )}
             </div>
 
             {!loading && (

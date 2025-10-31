@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSelectorModal';
 import { MetaPageHeader } from '@/components/ui/meta/PageHeader';
+import { isMetaUI } from '@/lib/flags';
 
 export default function EmployeesListPage() {
   const t = useTranslations('admin.employees');
@@ -72,16 +73,38 @@ export default function EmployeesListPage() {
 
   return (
     <div className="space-y-6">
-      <MetaPageHeader
-        title={safe('listTitle', 'Employees')}
-        subtitle={safe('listSubtitle', 'Manage employees linked to the tenant.')}
-        breadcrumbs={[
-          { href: `/${locale}/dashboard`, label: 'Dashboard' },
-          { label: 'Admin' },
-          { label: safe('listTitle', 'Employees') },
-        ]}
-        actions={(
-          <>
+      {isMetaUI() ? (
+        <MetaPageHeader
+          title={safe('listTitle', 'Employees')}
+          subtitle={safe('listSubtitle', 'Manage employees linked to the tenant.')}
+          breadcrumbs={[
+            { href: `/${locale}/dashboard`, label: 'Dashboard' },
+            { label: 'Admin' },
+            { label: safe('listTitle', 'Employees') },
+          ]}
+          actions={(
+            <>
+              <button type="button" className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] font-medium hover:bg-[var(--muted)] transition-colors" onClick={async () => {
+                try {
+                  setError(null);
+                  const r = await fetch('/api/admin/me/tenant', { method: 'GET', cache: 'no-store' });
+                  const j = await r.json().catch(() => ({}));
+                  if (!r.ok) throw new Error(j?.error || t('errors.loadTenantsFailed'));
+                  setTenantOptions(j?.tenants || []);
+                  setTenantModalOpen(true);
+                } catch (e: any) { setError(e?.message || t('errors.loadTenantsFailed')); }
+              }}>{t('selectTenant')}</button>
+              <Link href="./new" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition-all">{t('create')}</Link>
+            </>
+          )}
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-[var(--foreground)]">{safe('listTitle', 'Employees')}</h1>
+            <p className="text-sm text-[var(--muted-foreground)] mt-1">{safe('listSubtitle', 'Manage employees linked to the tenant.')}</p>
+          </div>
+          <div className="flex gap-2">
             <button type="button" className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)]" onClick={async () => {
               try {
                 setError(null);
@@ -93,12 +116,12 @@ export default function EmployeesListPage() {
               } catch (e: any) { setError(e?.message || t('errors.loadTenantsFailed')); }
             }}>{t('selectTenant')}</button>
             <Link href="./new" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90">{t('create')}</Link>
-          </>
-        )}
-      />
+          </div>
+        </div>
+      )}
 
       {loading ? (
-        <div className="text-[var(--muted-foreground)]">Carregando...</div>
+        <div className="text-[var(--muted-foreground)]">{safe('loading', 'Loading...')}</div>
       ) : error ? (
         <div className="text-[var(--destructive)]">{error}</div>
       ) : (
@@ -108,8 +131,8 @@ export default function EmployeesListPage() {
               <tr>
                 <th className="text-left px-6 py-3 font-medium">{safe('id', 'ID')}</th>
                 <th className="text-left px-6 py-3 font-medium">{safe('profile', 'Profile')}</th>
-                <th className="text-left px-6 py-3 font-medium">{safe('groups', 'Grupos')}</th>
-                <th className="text-left px-6 py-3 font-medium">Gerentes</th>
+                <th className="text-left px-6 py-3 font-medium">{safe('groups', 'Groups')}</th>
+                <th className="text-left px-6 py-3 font-medium">{safe('managers', 'Managers')}</th>
                 <th className="text-left px-6 py-3 font-medium">{safe('vessel', 'Vessel')}</th>
                 <th className="text-left px-6 py-3 font-medium">{safe('position', 'Position')}</th>
                 <th className="text-left px-6 py-3 font-medium">{safe('costCenter', 'Cost Center')}</th>
@@ -152,12 +175,12 @@ export default function EmployeesListPage() {
                   <td className="px-6 py-3">{r.centro_custo || '-'}</td>
                   <td className="px-6 py-3">
                     <div className="flex gap-2">
-                      <button className="px-2 py-1 rounded-md bg-[var(--muted)] text-[var(--foreground)]" onClick={async () => {
-                        const vesselPrompt = window.prompt('Vessel ID (vazio para limpar):', r.vessel_id || '');
+                      <button className="px-3 py-1.5 rounded-lg bg-[var(--muted)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--muted)]/80 transition-colors" onClick={async () => {
+                        const vesselPrompt = window.prompt(safe('vesselPrompt', 'Vessel ID (empty to clear):'), r.vessel_id || '');
                         if (vesselPrompt === null) return;
-                        const cargoPrompt = window.prompt('Cargo:', r.cargo || '');
+                        const cargoPrompt = window.prompt(safe('cargoPrompt', 'Position:'), r.cargo || '');
                         if (cargoPrompt === null) return;
-                        const ccPrompt = window.prompt('Centro de Custo:', r.centro_custo || '');
+                        const ccPrompt = window.prompt(safe('costCenterPrompt', 'Cost Center:'), r.centro_custo || '');
                         if (ccPrompt === null) return;
                         const vessel_id = vesselPrompt.trim();
                         const cargo = cargoPrompt.trim();
@@ -166,16 +189,16 @@ export default function EmployeesListPage() {
                           method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ vessel_id: vessel_id || null, cargo: cargo || null, centro_custo: centro_custo || null })
                         });
-                        if (!resp.ok) { alert('Falha ao atualizar'); return; }
+                        if (!resp.ok) { alert(safe('updateFailed', 'Failed to update')); return; }
                         setRows(rows.map(x => x.id === r.id ? { ...x, vessel_id: vessel_id || null, cargo: cargo || null, centro_custo: centro_custo || null } : x));
                       }}>{tUsers('edit')}</button>
-                      <button className="px-2 py-1 rounded-md bg-[var(--primary)]/10 text-[var(--primary)]" onClick={() => { setGroupModalEmp(r); setGroupModalOpen(true); }}>Gerenciar grupos</button>
-                      <button className="px-2 py-1 rounded-md bg-[var(--destructive)] text-[var(--destructive-foreground)]" onClick={async () => {
-                        if (!confirm('Excluir funcionário? Esta ação não pode ser desfeita.')) return;
+                      <button className="px-3 py-1.5 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] text-xs font-medium hover:bg-[var(--primary)]/20 transition-colors" onClick={() => { setGroupModalEmp(r); setGroupModalOpen(true); }}>{safe('manageGroups', 'Manage groups')}</button>
+                      <button className="px-3 py-1.5 rounded-lg bg-[var(--destructive)] text-[var(--destructive-foreground)] text-xs font-medium hover:opacity-90 transition-all" onClick={async () => {
+                        if (!confirm(safe('deleteConfirm', 'Delete employee? This action cannot be undone.'))) return;
                         const resp = await fetch(`/api/admin/employees/${r.id}`, { method: 'DELETE' });
-                        if (!resp.ok) { alert('Falha ao excluir'); return; }
+                        if (!resp.ok) { alert(safe('deleteFailed', 'Failed to delete')); return; }
                         setRows(rows.filter(x => x.id !== r.id));
-                      }}>Excluir</button>
+                      }}>{safe('delete', 'Delete')}</button>
                     </div>
                   </td>
                 </tr>
@@ -205,8 +228,8 @@ export default function EmployeesListPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-xl bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-semibold">Grupos de {groupModalEmp.name || groupModalEmp.display_name || groupModalEmp.email || groupModalEmp.profile_id}</h3>
-              <button onClick={() => { setGroupModalOpen(false); setGroupModalEmp(null); setGroupSearch(""); setGroupResults([]); }} className="text-[var(--muted-foreground)]">Fechar</button>
+              <h3 className="text-lg font-semibold">{safe('groupsModal.title', 'Groups for')} {groupModalEmp.name || groupModalEmp.display_name || groupModalEmp.email || groupModalEmp.profile_id}</h3>
+              <button onClick={() => { setGroupModalOpen(false); setGroupModalEmp(null); setGroupSearch(""); setGroupResults([]); }} className="text-[var(--muted-foreground)]">{safe('groupsModal.close', 'Close')}</button>
             </div>
 
             <div className="space-y-2">
@@ -230,7 +253,7 @@ export default function EmployeesListPage() {
                     setGroupResults(items);
                   }, 300);
                 }}
-                placeholder="Buscar grupos..."
+                placeholder={safe('groupsModal.searchPlaceholder', 'Search groups...')}
                 className="w-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded-lg px-3 py-2"
               />
               <div className="max-h-40 overflow-auto rounded-md border border-[var(--border)] divide-y divide-[var(--border)]">
@@ -238,35 +261,35 @@ export default function EmployeesListPage() {
                   {groupResults.map(g => (
                     <li key={g.id} className="flex items-center justify-between px-3 py-2">
                       <span className="text-sm">{g.name}</span>
-                      <button className="text-[var(--primary)]" onClick={async () => {
+                      <button className="text-[var(--primary)] text-sm font-medium hover:opacity-80 transition-opacity" onClick={async () => {
                         const resp = await fetch('/api/admin/delegations/members', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_id: groupModalEmp.id, group_id: g.id }) });
-                        if (!resp.ok) { alert('Falha ao adicionar ao grupo'); return; }
+                        if (!resp.ok) { alert(safe('groupsModal.addFailed', 'Failed to add to group')); return; }
                         setRows(rows.map(x => x.id === groupModalEmp.id ? { ...x, groups: Array.from(new Set([...(x.groups||[]), { id: g.id, name: g.name }])) } : x));
                         setGroupModalEmp((prev: any) => prev ? { ...prev, groups: Array.from(new Set([...(prev.groups||[]), { id: g.id, name: g.name }])) } : prev);
-                      }}>Adicionar</button>
+                      }}>{safe('groupsModal.add', 'Add')}</button>
                     </li>
                   ))}
-                  {groupResults.length === 0 && <li className="px-3 py-2 text-sm text-[var(--muted-foreground)]">Sem resultados</li>}
+                  {groupResults.length === 0 && <li className="px-3 py-2 text-sm text-[var(--muted-foreground)]">{safe('groupsModal.noResults', 'No results')}</li>}
                 </ul>
               </div>
             </div>
 
             <div className="mt-4">
-              <h4 className="text-sm font-medium mb-2">Grupos atuais</h4>
+              <h4 className="text-sm font-medium mb-2">{safe('groupsModal.currentGroups', 'Current groups')}</h4>
               <ul className="divide-y divide-[var(--border)]">
                 {(rows.find(x => x.id === groupModalEmp.id)?.groups || []).map((g: any) => (
                   <li key={g.id} className="flex items-center justify-between py-2">
                     <span className="text-sm">{g.name}</span>
                     <button className="text-[var(--destructive)]" onClick={async () => {
                       const resp = await fetch('/api/admin/delegations/members', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_id: groupModalEmp.id, group_id: g.id }) });
-                      if (!resp.ok) { alert('Falha ao remover do grupo'); return; }
+                      if (!resp.ok) { alert(safe('groupsModal.removeFailed', 'Failed to remove from group')); return; }
                       setRows(rows.map(x => x.id === groupModalEmp.id ? { ...x, groups: (x.groups||[]).filter((it: any) => it.id !== g.id) } : x));
                       setGroupModalEmp((prev: any) => prev ? { ...prev, groups: (prev.groups||[]).filter((it: any) => it.id !== g.id) } : prev);
-                    }}>Remover</button>
+                    }}>{safe('groupsModal.remove', 'Remove')}</button>
                   </li>
                 ))}
                 {((rows.find(x => x.id === groupModalEmp.id)?.groups || []).length === 0) && (
-                  <li className="py-2 text-sm text-[var(--muted-foreground)]">Sem grupos.</li>
+                  <li className="py-2 text-sm text-[var(--muted-foreground)]">{safe('groupsModal.noGroups', 'No groups.')}</li>
                 )}
               </ul>
             </div>

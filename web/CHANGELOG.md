@@ -2,6 +2,23 @@
 <!-- markdownlint-disable MD024 -->
 
 
+## [0.1.7] - 2025-10-24
+
+### Changed
+
+- AdminNav: remove duplicidade com ícone do Dashboard no Header e adicionar subnav contextual (Delegações: Grupos/Associações/Acessos)
+- Dashboard: animações suavizadas (hover:translate, easing e scale mais sutil)
+
+### Fixed
+
+- i18n: corrigido JSON inválido em mensagens pt-BR/en-GB que quebrava a carga de traduções; navegação e Header/AdminNav agora renderizam traduzidos
+- Admin > Delegações > Editar Grupo: ao acessar grupo de outro tenant retorna 409 `wrong_tenant` com botão para trocar de tenant
+
+### Build/Test
+
+- Type-check, testes (Vitest) e build passando após ajustes
+
+
 ## [0.1.6] - 2025-10-24
 
 ### Changed

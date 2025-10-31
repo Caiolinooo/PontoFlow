@@ -82,12 +82,6 @@ export default function NotificationPreferencesPanel() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold mb-4">
-          {t('notifications.preferences') || 'Notification Preferences'}
-        </h2>
-      </div>
-
       {/* Error Message */}
       {(error || loadError || saveError) && (
         <Alert variant="error">{error || loadError || saveError}</Alert>

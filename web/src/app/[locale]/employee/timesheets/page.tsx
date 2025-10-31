@@ -1,168 +1,137 @@
-import { getTranslations } from 'next-intl/server';
-import Link from 'next/link';
 import { requireAuth } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServerSupabase, getServiceSupabase } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import TimesheetCalendar from '@/components/employee/TimesheetCalendar';
+import TenantSelector from '@/components/employee/TenantSelector';
+import { getTranslations } from 'next-intl/server';
 
 export default async function TimesheetsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.myTimesheet' });
   const user = await requireAuth(locale);
 
-  const supabase = await getServerSupabase();
+  // Use service client if available, otherwise server client
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+
+  // Check if user has selected a specific tenant (for multi-tenant support)
+  const cookieStore = await cookies();
+  const selectedTenantId = cookieStore.get('selected_tenant_id')?.value || user.tenant_id as string;
+
   // Resolve employee record for current user
-  const { data: emp } = await supabase
+  // If user has multiple tenants, use the selected one
+  const { data: emp, error: empErr } = await supabase
     .from('employees')
-    .select('id')
-    .eq('tenant_id', user.tenant_id as string)
+    .select('id, tenant_id')
+    .eq('tenant_id', selectedTenantId)
     .eq('profile_id', user.id)
     .maybeSingle();
 
-  const t = await getTranslations('employee.timesheets');
-
-  // If the profile is not linked to an employee, avoid invalid UUID filters
-  if (!emp) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-[var(--foreground)]">{t('title')}</h1>
-            <p className="mt-2 text-[var(--muted-foreground)]">{t('subtitle')}</p>
-          </div>
-        </div>
-        <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-6 flex items-center justify-between">
-          <div className="pr-4">
-            <p className="text-[var(--destructive)] mb-1">{t('errors.employeeNotConfigured')}</p>
-            <p className="text-[var(--muted-foreground)] text-sm">Clique abaixo para criar seu cadastro de colaborador neste tenant.</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href={`/${locale}/employee/bootstrap`}
-              className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors font-semibold"
-            >
-              Criar meu cadastro
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+  if (empErr) {
+    console.error('Error fetching employee:', empErr);
   }
 
-  // Get user's timesheets (only when employee exists)
-  const { data: timesheets, error } = await supabase
-    .from('timesheets')
-    .select('id, periodo_ini, periodo_fim, status')
-    .eq('employee_id', emp.id)
-    .order('periodo_ini', { ascending: false });
+  // If the profile is not linked to an employee, redirect to bootstrap
+  if (!emp) {
+    redirect(`/${locale}/employee/bootstrap`);
+  }
 
-  // Status badge colors (supports pt/en variants)
-  const getStatusColor = (status: string) => {
-    const s = (status || '').toLowerCase();
-    switch (s) {
-      case 'draft':
-      case 'rascunho':
-        return 'bg-slate-500/15 text-slate-500';
-      case 'submitted':
-      case 'enviado':
-        return 'bg-blue-500/15 text-blue-500';
-      case 'approved':
-      case 'aprovado':
-        return 'bg-emerald-500/15 text-emerald-500';
-      case 'rejected':
-      case 'rejeitado':
-        return 'bg-red-500/15 text-red-500';
-      default:
-        return 'bg-slate-500/15 text-slate-500';
+  // Get or create current month timesheet
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const periodo_ini = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const periodo_fim = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+  let { data: timesheet } = await supabase
+    .from('timesheets')
+    .select('id, status, periodo_ini, periodo_fim')
+    .eq('employee_id', emp.id)
+    .eq('periodo_ini', periodo_ini)
+    .maybeSingle();
+
+  if (!timesheet) {
+    // Create timesheet for current month
+    const { data: newTimesheet, error: createErr } = await supabase
+      .from('timesheets')
+      .insert({
+        tenant_id: emp.tenant_id,
+        employee_id: emp.id,
+        periodo_ini,
+        periodo_fim,
+        status: 'draft',
+      })
+      .select('id, status, periodo_ini, periodo_fim')
+      .single();
+
+    if (createErr) {
+      console.error('Error creating timesheet:', createErr);
+      return (
+        <div className="p-6">
+          <div className="bg-red-100 text-red-800 p-4 rounded">
+            {t('errorCreateTimesheet')}
+          </div>
+        </div>
+      );
     }
-  };
+
+    timesheet = newTimesheet;
+  }
+
+  // Get entries for this timesheet
+  const { data: entries } = await supabase
+    .from('timesheet_entries')
+    .select('*')
+    .eq('timesheet_id', timesheet.id)
+    .order('data', { ascending: true });
+
+  // Get work schedule for employee
+  const { data: workScheduleData } = await supabase
+    .from('employee_work_schedules')
+    .select('work_schedule, days_on, days_off, start_date')
+    .eq('employee_id', emp.id)
+    .lte('start_date', periodo_ini)
+    .or(`end_date.is.null,end_date.gte.${periodo_ini}`)
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Get tenant info (including work_mode)
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('work_schedule, work_mode, settings')
+    .eq('id', emp.tenant_id)
+    .single();
+
+  // If no employee-specific schedule, get tenant default
+  let workSchedule = workScheduleData;
+  if (!workSchedule && tenant?.work_schedule) {
+    workSchedule = {
+      work_schedule: tenant.work_schedule,
+      days_on: null,
+      days_off: null,
+      start_date: periodo_ini,
+    };
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[var(--foreground)]">{t('title')}</h1>
-          <p className="mt-2 text-[var(--muted-foreground)]">{t('subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/${locale}/employee/timesheets/new`}
-            className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors font-semibold"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {t('newTimesheet')}
-          </Link>
-          <Link
-            href={`/${locale}/employee/timesheets/current`}
-            className="inline-flex items-center px-4 py-2 bg-[var(--muted)] text-[var(--foreground)] rounded-lg hover:opacity-90 transition-colors font-semibold border border-[var(--border)]"
-          >
-            Abrir mês atual
-          </Link>
-        </div>
-      </div>
+    <div className="max-w-[1600px] mx-auto px-2 sm:px-4">
+      {/* Tenant Selector - only shows if user has multiple tenants */}
+      <TenantSelector currentTenantId={emp.tenant_id} locale={locale} />
 
-      {/* Error */}
-      {error && (
-        <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-4">
-          <p className="text-[var(--destructive)]">{t('errorLoading')}</p>
-        </div>
-      )}
-
-      {/* Empty */}
-      {!timesheets || timesheets.length === 0 ? (
-        <div className="bg-[var(--card)] rounded-xl shadow-sm border border-[var(--border)] p-12 text-center">
-          <svg className="w-16 h-16 mx-auto text-[var(--muted-foreground)] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <h3 className="text-lg font-medium text-[var(--card-foreground)] mb-2">{t('noTimesheets')}</h3>
-          <p className="text-[var(--muted-foreground)] mb-6">{t('noTimesheetsDescription')}</p>
-          <Link
-            href={`/${locale}/employee/timesheets/new`}
-            className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors font-semibold"
-          >
-            {t('createFirst')}
-          </Link>
-        </div>
-      ) : (
-        <div className="bg-[var(--card)] rounded-xl shadow-sm border border-[var(--border)] overflow-hidden">
-          <table className="min-w-full divide-y divide-[var(--border)]">
-            <thead className="bg-[var(--muted)]">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  {/* Use manager period label for now */}
-                  {t('table.date')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  {t('table.status')}
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  {t('table.actions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-[var(--card)] divide-y divide-[var(--border)]">
-              {timesheets.map((s) => (
-                <tr key={s.id} className="hover:bg-[var(--muted)]/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--card-foreground)]">
-                    {new Date(s.periodo_ini).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
-                    <div className="text-xs text-[var(--muted-foreground)]">{s.periodo_ini}  {s.periodo_fim}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(s.status)}`}>
-                      {s.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link href={`/${locale}/employee/timesheets/${s.id}`} className="text-[var(--primary)] hover:opacity-90 transition-colors">
-                      {t('table.view')}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <TimesheetCalendar
+        timesheetId={timesheet.id}
+        employeeId={emp.id}
+        periodo_ini={timesheet.periodo_ini}
+        periodo_fim={timesheet.periodo_fim}
+        status={timesheet.status}
+        initialEntries={entries ?? []}
+        locale={locale}
+        workSchedule={workSchedule}
+        tenantWorkMode={tenant?.work_mode || 'standard'}
+      />
     </div>
   );
 }
+

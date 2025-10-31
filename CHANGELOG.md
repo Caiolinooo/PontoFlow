@@ -1,8 +1,312 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
-The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
+e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
+
+## [0.2.6] - 2025-10-31
+
+### Adicionado
+- **Sistema completo de notificações multi-canal**
+  - Notificações in-app com badge e modal de visualização
+  - Notificações push no navegador via Web Push API
+  - Notificações por email via SMTP configurável
+  - Painel de teste completo com seleção de tipo e canal
+  - Payloads realistas em português para todos os tipos de notificação
+
+- **Gerenciamento de subscrições push**
+  - Subscribe/unsubscribe funcional com persistência no banco
+  - Verificação automática de permissões do navegador
+  - Lógica manual de update/insert para compatibilidade com schema
+  - Endpoint DELETE para unsubscribe
+
+- **Painel de teste de notificações reformulado**
+  - Seleção de tipo de notificação (Aprovada, Rejeitada, Lembrete, Enviada)
+  - Checkboxes para escolher canais de envio (Email e/ou Navegador)
+  - Teste completo multi-canal simultâneo
+  - Teste rápido de email para verificar configuração SMTP
+  - Feedback detalhado de sucesso/erro por canal
+
+- **Configurações do tenant pré-preenchidas**
+  - Carregamento automático das configurações atuais do tenant
+  - Campos pré-populados com dados existentes do banco
+  - Melhor experiência de usuário para edição de configurações
+
+### Corrigido
+- **Schema mismatch nas tabelas de notificações**
+  - Tabela `notifications`: Corrigido uso de `read_at` (timestamp) ao invés de `read` (boolean)
+  - Tabela `notifications`: Removido campo `event` que não existe no schema
+  - Tabela `notifications`: Adicionados campos `action_url` e `priority` conforme schema
+  - Tabela `push_subscriptions`: Removido campo `subscribed_at` inexistente
+
+- **Constraint de push_subscriptions**
+  - Implementada lógica manual de verificação e update/insert
+  - Corrigido erro "no unique or exclusion constraint matching the ON CONFLICT specification"
+  - Hook de unsubscribe atualizado para usar método DELETE correto
+
+- **Permissões de relatórios para MANAGER**
+  - Manager sem grupos agora vê apenas próprio relatório (como USER)
+  - Manager com grupos vê relatórios dos colaboradores dos grupos que gerencia
+  - Lógica aplicada tanto em generate quanto em export
+
+- **Mapeamento de tipo de dia em timesheets**
+  - "Folga" agora mapeia corretamente para "folga" ao invés de "férias"
+
+### Documentação
+- `docs/NOTIFICATIONS-COMPLETE-FIX.md` - Guia completo do sistema de notificações
+- `docs/NOTIFICATIONS-FIX.md` - Detalhes das correções aplicadas
+- `docs/REJECTED-TIMESHEET-NOTIFICATIONS.md` - Sistema de notificações de rejeição
+- `docs/REPORTS-PERMISSIONS-FIX.md` - Correção de permissões de relatórios
+- `docs/ADMIN-SETTINGS-FIX.md` - Correção de configurações do admin
+
+## [0.2.5] - 2025-10-30
+
+### Adicionado
+- **Sistema de notificações para timesheets rejeitados**
+  - Alerta visual no dashboard quando timesheet é rejeitado
+  - Banner no timesheet com motivo da rejeição do gerente
+  - Verificação automática de prazo para reenvio
+  - Permissão de edição habilitada automaticamente para timesheets rejeitados
+  - Mensagens diferenciadas para dentro/fora do prazo de reenvio
+
+- **Traduções completas PT/EN para notificações de rejeição**
+  - Mensagens de alerta traduzidas em português e inglês
+  - Textos de banner traduzidos
+  - Formatação de datas localizada por idioma
+
+### Corrigido
+- **Autenticação com fallback para users_unified**
+  - `getUserFromToken` agora verifica Supabase Auth e tabela `users_unified`
+  - Sessões validadas corretamente para usuários importados/legados
+  - Logs detalhados adicionados para debug de autenticação
+
+## [0.2.4] - 2025-10-27
+
+### Fixed
+- **Notifications API**: Fixed 500 error when `notification_preferences` table doesn't exist
+  - Added graceful error handling with fallback to default preferences
+  - Added error code `42P01` detection (table not found)
+  - Added debug logging for troubleshooting
+  - API now returns default preferences instead of crashing
+- **Notifications Page**: Added missing Portuguese translations
+  - Added `actions.saving` translation
+  - All notification preference labels now properly translated
+  - Removed English fallbacks
+- **Responsive Layout**: Major fix for content being cut off by fixed footer
+  - Removed duplicate `DeveloperFooter` component from all layouts
+  - `DeveloperFooter` now integrated only in `UnifiedBottomNav` (dashboard only)
+  - Adjusted bottom padding across all modules:
+    - Dashboard: `pb-40` (160px) - accommodates developer footer + nav
+    - Other modules: `pb-24` (96px) - accommodates nav only
+  - Dashboard grid now has `pb-16` extra padding for better spacing
+  - All content (including Admin and Settings cards) now fully visible
+  - No more content overlap with fixed bottom navigation
+
+### Changed
+- **Layout Architecture**: Simplified footer structure
+  - All layouts now use consistent padding pattern
+  - Developer footer only shows on dashboard route
+  - Cleaner component hierarchy
+
+### Technical Details
+- Modified files:
+  - `web/src/app/api/notifications/preferences/route.ts`
+  - `web/messages/pt-BR/common.json`
+  - `web/src/app/[locale]/dashboard/layout.tsx`
+  - `web/src/app/[locale]/dashboard/page.tsx`
+  - `web/src/app/[locale]/employee/layout.tsx`
+  - `web/src/app/[locale]/manager/layout.tsx`
+  - `web/src/app/[locale]/admin/layout.tsx`
+  - `web/src/app/[locale]/reports/layout.tsx`
+  - `web/src/app/[locale]/settings/layout.tsx`
+
+## [0.2.3] - 2025-10-27
+
+### Fixed
+- **Developer Information**: Corrected all developer contact details
+  - Instagram: @tal_do_goulart
+  - LinkedIn: https://www.linkedin.com/in/caio-goulart/
+  - Email: Caiovaleriogoulartcorreia@gmail.com
+  - Updated in both `DeveloperFooter` and `UnifiedBottomNav`
+
+### Added
+- **Role-Based Statistics**: Dashboard now shows different stats based on user role
+  - **Admin/Manager**: Horas este mês, Aprovados, Pendentes
+  - **Employee (Offshore)**: Horas este mês, Horas Extras (50%), Dobra (100%)
+  - Compliant with offshore work regulations (CLT Article 74, Portaria MTP 671/2021)
+- **Integrated Footer**: Developer footer now integrated into bottom navigation bar
+  - Only visible on dashboard route
+  - Compact design with all information
+  - Better space utilization
+
+### Changed
+- **Enhanced Dashboard Cards**: Premium styling applied to all module cards
+  - Gradient backgrounds (from-card to-card/80)
+  - Multiple hover effects:
+    - Elevation animation (-translate-y-1)
+    - Enhanced shadows (shadow-2xl)
+    - Animated gradient overlays
+    - Icon rotation (rotate-6) and scaling (scale-110)
+    - Arrow indicator movement
+    - Title color transition to primary
+    - Border color change
+  - Larger icons (w-14 h-14)
+  - Rounded corners (rounded-2xl)
+  - Backdrop blur effects
+  - Smooth transitions (300-700ms)
+
+### Technical Details
+- Modified files:
+  - `web/src/components/DeveloperFooter.tsx`
+  - `web/src/components/UnifiedBottomNav.tsx`
+  - `web/src/app/[locale]/dashboard/page.tsx`
+  - `web/src/app/[locale]/dashboard/layout.tsx`
+
+## [0.2.2] - 2025-10-27
+
+### Added
+- **Developer Footer**: Professional footer with developer information
+  - Copyright notice with current year
+  - Developer name: Caio Valério Goulart Correia
+  - Email: caiovaleriogoulartcorreia@gmail.com
+  - Social links: GitHub, LinkedIn, Instagram
+  - Elegant icons and hover effects
+  - Responsive design for mobile and desktop
+  - Integrated in all layouts
+- **Back to Dashboard Button**: New navigation component
+  - Arrow icon with smooth hover animation
+  - Meta UI inspired design
+  - Automatically hidden on dashboard page
+  - Added to all non-admin layouts
+  - Consistent navigation experience
+- **Image Upload for Branding**: Logo and watermark upload functionality
+  - Logo upload with file picker
+  - Watermark image upload
+  - Base64 encoding for easy storage
+  - Live preview of uploaded images
+  - Support for URL or file upload
+  - Professional file input styling
+  - Integrated in `AdminTenantSettings`
+
+### Changed
+- **Enhanced Dashboard**: Beautiful gradient header and improved cards
+  - Quick stats cards (hours, approved, pending)
+  - Gradient backgrounds
+  - Multiple hover effects (scale, translate, rotate)
+  - Arrow indicators
+  - Backdrop blur effects
+  - Enhanced shadows and borders
+  - Smooth color transitions
+- **Layout Improvements**: Fixed bottom navigation positioning
+  - Added flex-col layout for proper footer placement
+  - Consistent padding (pb-20) for bottom nav clearance
+  - Developer footer above bottom nav
+  - Better content flow and spacing
+
+### Technical Details
+- Created files:
+  - `web/src/components/DeveloperFooter.tsx`
+  - `web/src/components/BackToDashboard.tsx`
+- Modified files:
+  - `web/src/components/admin/AdminTenantSettings.tsx`
+  - `web/src/app/[locale]/dashboard/page.tsx`
+  - All layout files (admin, dashboard, employee, manager, reports, settings)
+
+## [0.2.1] - 2025-10-27
+
+### Added
+- **Unified Bottom Navigation Bar**: Complete UI redesign
+  - Consolidated all navigation into a single bottom bar
+  - Fixed bottom navigation bar with backdrop blur
+  - Logo + site title on the left
+  - Admin menus (when in admin routes) with dropdowns
+  - Theme toggle, language switcher, user info on the right
+  - Tenant switcher (admin only)
+  - Responsive design for mobile and desktop
+- **Context-Aware Navigation**: Smart menu display
+  - Shows admin menus only when in `/admin` routes
+  - Clean bar for employee, manager, dashboard routes
+  - Dropdowns open upward from bottom bar
+  - Active category highlighting
+
+### Removed
+- **Duplicate Navigation Components**: Removed Header and AdminNav from layouts
+  - Cleaner interface with single navigation source
+  - Better use of screen real estate
+  - Consistent experience across all modules
+
+### Changed
+- **Layout Updates**: All layouts now use `UnifiedBottomNav`
+  - Added `pb-16` padding to prevent content overlap
+  - Integrated `TenantSwitcher` into bottom bar
+  - Removed separate Header and AdminNav components
+
+### Technical Details
+- Created files:
+  - `web/src/components/UnifiedBottomNav.tsx`
+- Modified files:
+  - All layout files (admin, dashboard, employee, manager, reports, settings)
+
+## [0.2.0] - 2025-10-27
+
+### Breaking Changes
+- **Settings Page Restructure**: Complete reorganization with tabbed interface
+- **Removed Emojis**: Professional commercial appearance throughout
+- **Generic Sync Configuration**: Removed EmployeeHub-specific references
+  - `EMPLOYEEHUB_SYNC_URL` → `SOURCE_SYSTEM_SYNC_URL`
+  - `TIMESHEET_SYNC_URL` → `TARGET_SYSTEM_SYNC_URL`
+
+### Added
+- **Tabbed Settings Interface**: 3 main sections
+  - **Status do Sistema**: Health check with visual status badges
+  - **Configurações do Sistema**: System config with migration tools
+  - **Configurações da Empresa**: Tenant settings
+- **Enhanced Health Check System**:
+  - Visual status badges for each component
+  - Overall system health indicator
+  - Additional environment variable checks (SMTP, Sync, API)
+  - Improved error messaging and warnings
+  - Better visual organization with cards
+- **Integrated Migration Functionality**:
+  - Export users from current system
+  - Import users from external systems
+  - Test connections before migration
+  - HMAC SHA-256 authentication
+  - JSON download for exports
+  - Detailed operation feedback
+
+### Changed
+- **Professional UI Improvements**:
+  - Removed all emoji icons
+  - Clean, corporate design
+  - Better visual hierarchy
+  - Consistent spacing and typography
+  - Status badges and color-coded feedback
+- **Separated Concerns**: Dedicated components
+  - `AdminSettingsTabs` - Main tabbed interface
+  - `AdminTenantSettings` - Company configuration
+  - `AdminSystemConfig` - System variables and integrations
+  - `AdminHealth` - Enhanced health monitoring
+
+### Removed
+- **AdminDataSync Component**: Integrated into `AdminSystemConfig`
+
+### Technical Details
+- Created files:
+  - `web/src/components/admin/AdminSettingsTabs.tsx`
+  - `web/src/components/admin/AdminTenantSettings.tsx`
+- Modified files:
+  - `web/src/components/admin/AdminHealth.tsx`
+  - `web/src/components/admin/AdminSystemConfig.tsx`
+  - `web/src/app/[locale]/admin/settings/page.tsx`
+- Removed files:
+  - `web/src/components/admin/AdminDataSync.tsx`
+
+### Migration Notes
+- No database changes required
+- Environment variables remain backward compatible
+- Consider updating `.env` files to use new generic variable names
 
 ## [1.0.0] - 2025-10-16
 

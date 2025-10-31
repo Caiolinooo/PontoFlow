@@ -33,10 +33,10 @@ export default function UserRowActions({ userId, locale, editLabel, deleteLabel 
 
   return (
     <div className="whitespace-nowrap text-right text-sm font-medium space-x-2">
-      <Link href={`/${locale}/admin/users/${userId}`} className="text-[var(--primary)] hover:opacity-90 transition-colors">
+      <Link href={`/${locale}/admin/users/${userId}`} className="text-[var(--primary)] hover:opacity-80 transition-opacity">
         {editLabel}
       </Link>
-      <button onClick={handleDelete} disabled={loading} className="text-red-600 hover:text-red-800 transition-colors disabled:opacity-50">
+      <button onClick={handleDelete} disabled={loading} className="text-[var(--destructive)] hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
         {deleteLabel}
       </button>
     </div>

@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
-import { getServiceSupabase } from '@/lib/supabase/service';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 // GET /api/admin/periods/employees?employee_id=...  -> list locks for an employee (12m or all)
 export async function GET(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const url = new URL(req.url);
   const employeeId = (url.searchParams.get('employee_id') || '').trim();
   if (!employeeId) return NextResponse.json({ error: 'employee_id_required' }, { status: 400 });
 
   // Resolve tenant (auto if single, else 409 with tenants list)
   let tenantId = user.tenant_id as string | undefined;
-  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const svc = getServiceSupabase();
   if (!tenantId) {
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
@@ -38,7 +37,7 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/periods/employees  -> upsert lock { employee_id, period_month, locked, reason? }
 export async function POST(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  const supabase = getServiceSupabase();
   const body = await req.json().catch(() => ({}));
   const employee_id = (body?.employee_id as string | undefined)?.trim();
   const period_month = (body?.period_month as string | undefined)?.trim();
@@ -49,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   // Resolve tenant (auto if single, else 409 with tenants list)
   let tenantId = user.tenant_id as string | undefined;
-  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY ? getServiceSupabase() : await getServerSupabase();
+  const svc = getServiceSupabase();
   if (!tenantId) {
     const { data: tenants } = await svc.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {

@@ -27,9 +27,6 @@ const intlMiddleware = createMiddleware(routing);
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // First, handle i18n
-  const intlResponse = intlMiddleware(request);
-
   // Extract locale from pathname (e.g., /pt-BR/dashboard -> pt-BR)
   const localeMatch = pathname.match(/^\/(pt-BR|en-GB)/);
   const locale = localeMatch ? localeMatch[1] : 'pt-BR';
@@ -39,6 +36,16 @@ export async function middleware(request: NextRequest) {
     ? pathname.replace(`/${locale}`, '')
     : pathname;
 
+  // Redirect old timesheet routes to new route
+  if (pathnameWithoutLocale === '/employee/timesheets/current' ||
+      pathnameWithoutLocale.startsWith('/employee/timesheets/new') ||
+      pathnameWithoutLocale.match(/^\/employee\/timesheets\/[a-f0-9-]{36}$/)) {
+    return NextResponse.redirect(new URL(`/${locale}/employee/timesheets`, request.url));
+  }
+
+  // First, handle i18n
+  const intlResponse = intlMiddleware(request);
+
   // Handle root path - redirect based on authentication
   if (pathname === '/' || pathnameWithoutLocale === '' || pathnameWithoutLocale === '/') {
     const token = request.cookies.get('timesheet_session')?.value;
@@ -47,6 +54,18 @@ export async function middleware(request: NextRequest) {
     if (user) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     } else {
+      // Clear invalid token if exists
+      if (token) {
+        const response = NextResponse.redirect(new URL(`/${locale}/auth/signin`, request.url));
+        response.cookies.set('timesheet_session', '', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          expires: new Date(0),
+          path: '/',
+        });
+        return response;
+      }
       return NextResponse.redirect(new URL(`/${locale}/auth/signin`, request.url));
     }
   }
@@ -70,6 +89,20 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const signInUrl = new URL(`/${locale}/auth/signin`, request.url);
       signInUrl.searchParams.set('redirect', pathname);
+      
+      // Clear invalid token if exists
+      if (token) {
+        const response = NextResponse.redirect(signInUrl);
+        response.cookies.set('timesheet_session', '', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          expires: new Date(0),
+          path: '/',
+        });
+        return response;
+      }
+      
       return NextResponse.redirect(signInUrl);
     }
 

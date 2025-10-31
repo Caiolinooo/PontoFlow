@@ -25,6 +25,52 @@
       "reminderDays": "Your timesheet for {period} is pending. Time left: {days} days.",
       "blocked": "Period {period} is closed for editing. Please contact your manager."
     }
+  },
+  "manager": {
+    "pending": {
+      "title": "Pending Timesheets",
+      "subtitle": "Review and approve pending timesheets from your team",
+      "loading": "Loading timesheets...",
+      "error": "Error loading data",
+      "retry": "Try again",
+      "employee": "Employee",
+      "noPending": "No pending timesheets",
+      "noPendingDescription": "All timesheets are up to date. Congratulations!",
+      "review": "Review",
+      "period": "Period",
+      "status": "Status",
+      "actions": "Actions",
+      "counters": {
+        "total": "Total",
+        "pending": "Pending",
+        "draft": "Draft",
+        "submitted": "Submitted",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "statusLabels": {
+        "draft": "Draft",
+        "submitted": "Submitted",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "pendente": "Pending",
+        "rascunho": "Draft",
+        "enviado": "Submitted",
+        "aprovado": "Approved",
+        "recusado": "Rejected"
+      },
+      "filters": {
+        "month": "Month",
+        "apply": "Apply",
+        "clear": "Clear"
+      }
+    }
+  },
+  "errors": {
+    "generic": "Internal error. Please try again."
+  },
+  "messages": {
+    "saved": "Saved:"
   }
 }
 

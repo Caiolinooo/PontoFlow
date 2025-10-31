@@ -102,6 +102,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ auditId: st
       .from('tenant_settings')
       .select('*')
       .eq('tenant_id', user.tenant_id)
+      .limit(1)
       .maybeSingle();
 
     const tpl = settings?.legal_declaration_template || defaultTemplate();

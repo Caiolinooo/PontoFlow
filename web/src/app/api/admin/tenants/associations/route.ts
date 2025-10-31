@@ -23,10 +23,13 @@ export async function GET() {
     for (const p of profiles || []) profilesMap[p.user_id] = { display_name: p.display_name ?? null, email: p.email ?? null };
   }
 
-  const fmt = (arr?: any[]) => (arr || []).map((e) => ({
-    id: e.id as string,
-    label: profilesMap[e.profile_id]?.display_name || profilesMap[e.profile_id]?.email || e.id,
-  }));
+  const fmt = (arr?: any[]) => (arr || []).map((e) => {
+    const name = profilesMap[e.profile_id]?.display_name || profilesMap[e.profile_id]?.email || 'Sem nome';
+    return {
+      id: e.id as string,
+      label: `${name} (${e.id})`,
+    };
+  });
 
   return NextResponse.json({ tenant_id: tenantId, members: fmt(members ?? []), candidates: fmt(candidates ?? []) });
 }
