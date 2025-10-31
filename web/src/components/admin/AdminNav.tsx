@@ -55,6 +55,7 @@ export default function AdminNav({ locale }: { locale?: string }) {
       icon: '🔧',
       items: [
         { href: `/${currentLocale}/admin/audit`, label: t('audit') },
+        { href: `/${currentLocale}/admin/database-setup`, label: t('databaseSetup') },
         { href: `/${currentLocale}/admin/import-export`, label: t('importExport') },
         { href: `/${currentLocale}/admin/settings`, label: t('settings') },
       ],

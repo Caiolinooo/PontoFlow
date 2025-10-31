@@ -6,9 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import FloatingInput from "@/components/ui/FloatingInput";
-import LanguageSelector from "@/components/LanguageSelector";
-import ThemeToggle from "@/components/ThemeToggle";
-import branding from "@/config/branding";
+import LanguageSelector from "@/components/ui/LanguageSelector";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import { branding } from "@/config/branding";
 
 type FormValues = {
   password: string;

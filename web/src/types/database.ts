@@ -5,7 +5,7 @@
  * Timesheet Manager - ABZ Group
  */
 
-import { Database } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 // ===============================
 // TIPOS BÁSICOS
