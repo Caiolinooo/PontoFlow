@@ -18,6 +18,10 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON public.passwo
 -- Enable RLS
 ALTER TABLE public.password_reset_tokens ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own reset tokens" ON public.password_reset_tokens;
+DROP POLICY IF EXISTS "Service role can manage all reset tokens" ON public.password_reset_tokens;
+
 -- Policy: Users can only see their own tokens (for security auditing)
 CREATE POLICY "Users can view their own reset tokens"
   ON public.password_reset_tokens
