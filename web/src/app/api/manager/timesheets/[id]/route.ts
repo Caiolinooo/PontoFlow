@@ -2,12 +2,11 @@ import {NextRequest, NextResponse} from 'next/server';
 import {requireApiAuth} from '@/lib/auth/server';
 import {getServiceSupabase} from '@/lib/supabase/server';
 
-const supabase = getServiceSupabase();
-
 export async function GET(_req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
     await requireApiAuth();
     const {id} = await context.params;
+    const supabase = getServiceSupabase();
 
     // Fetch basic timesheet and rely on RLS for access control
     const {data: ts, error} = await supabase

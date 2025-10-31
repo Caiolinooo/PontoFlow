@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
 
-const supabase = getServiceSupabase();
-
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireApiRole(['ADMIN','MANAGER','MANAGER_TIMESHEET']);
     const { id } = await ctx.params;
+    const supabase = getServiceSupabase();
 
     // Ensure timesheet is accessible (reuse minimal check)
     const { data: ts } = await supabase

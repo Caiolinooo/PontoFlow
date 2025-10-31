@@ -2,16 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anon) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  return createClient(url, anon);
+}
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const body = await req.json();
-    
+    const supabase = getSupabase();
+
     const { notification_ids, mark_all_read } = body;
 
     if (mark_all_read) {

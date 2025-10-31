@@ -4,8 +4,6 @@ import { getServiceSupabase } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { logAudit } from '@/lib/audit/logger';
 
-const supabase = getServiceSupabase();
-
 const Body = z.object({
   accepted: z.boolean().optional().default(true),
   note: z.string().max(1000).optional(),
@@ -15,6 +13,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ auditId: s
   try {
     const user = await requireApiAuth();
     const { auditId } = await ctx.params;
+    const supabase = getServiceSupabase();
 
     const { data: audit } = await supabase
       .from('audit_log')
