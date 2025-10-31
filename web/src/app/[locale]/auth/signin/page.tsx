@@ -32,31 +32,34 @@ export default async function SignInPage({
   const siteTitle = branding.siteTitle || tApp('title');
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-600 to-indigo-500 flex items-center justify-center p-4">
-      <div className="absolute top-4 right-4 flex items-center gap-3">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center p-4">
+      <div className="absolute top-4 right-4 flex items-center gap-3 z-10">
         <LanguageSelector />
         <ThemeToggle />
       </div>
-      <div className="bg-white dark:bg-[var(--card)] rounded-2xl shadow-2xl w-full max-w-md p-8">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-8 sm:p-10">
         {/* Logo */}
         <div className="text-center mb-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={branding.logoUrl} alt={branding.companyName} className="w-16 h-16 mx-auto mb-4 object-contain" />
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-[var(--foreground)] mb-2">{siteTitle}</h1>
-          <p className="text-[var(--muted-foreground)]">{t('signIn.subtitle')}</p>
+          <img src={branding.logoUrl} alt={branding.companyName} className="w-20 h-20 mx-auto mb-4 object-contain drop-shadow-lg" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{siteTitle}</h1>
+          <p className="text-gray-600 dark:text-gray-400">{t('signIn.subtitle')}</p>
         </div>
 
         <SignInForm redirectTo={redirectTo} />
 
-        <div className="mt-6 text-center text-sm text-[var(--muted-foreground)] space-y-2">
-          <div>
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center space-y-3">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             <span>{t('signIn.noAccount')} </span>
-            <a className="text-[var(--primary)] hover:opacity-90 font-medium transition-colors" href={`/${locale}/auth/signup`}>
+            <a className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors" href={`/${locale}/auth/signup`}>
               {t('signIn.signUp')}
             </a>
           </div>
           <div>
-            <a className="text-[var(--primary)] hover:opacity-90 font-medium transition-colors" href={`/${locale}/auth/reset`}>
+            <a className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors inline-flex items-center gap-1" href={`/${locale}/auth/reset`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
               {t('signIn.forgotPassword')}
             </a>
           </div>

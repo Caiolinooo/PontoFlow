@@ -67,39 +67,55 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <FloatingInput
-        id="email"
-        type="email"
-        label={t('email')}
-        {...register('email')}
-        error={errors.email ? String(errors.email.message) : null}
-      />
-      <FloatingInput
-        id="password"
-        type="password"
-        label={t('password')}
-        {...register('password')}
-        error={errors.password ? String(errors.password.message) : null}
-      />
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="space-y-4">
+        <FloatingInput
+          id="email"
+          type="email"
+          label={t('email')}
+          {...register('email')}
+          error={errors.email ? String(errors.email.message) : null}
+        />
+        <FloatingInput
+          id="password"
+          type="password"
+          label={t('password')}
+          {...register('password')}
+          error={errors.password ? String(errors.password.message) : null}
+        />
+      </div>
+
       {error && (
-        <Alert variant="error">{error}</Alert>
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 animate-in fade-in duration-300">
+          <p className="text-red-800 dark:text-red-200 text-sm flex items-center gap-2">
+            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            {error}
+          </p>
+        </div>
       )}
+
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-[var(--primary)] text-[var(--primary-foreground)] font-medium py-2.5 rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
       >
         {loading ? (
           <>
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
             </svg>
             {t('signingIn')}
           </>
         ) : (
-          t('signInButton')
+          <>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            {t('signInButton')}
+          </>
         )}
       </button>
     </form>

@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
     const password_hash = await bcrypt.hash(password, 10);
 
     // Create user in users_unified
+    // Note: 'name' is a generated column (first_name || ' ' || last_name), so we don't insert it
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newUser, error: createError } = await (supabase as any)
       .from('users_unified')
@@ -61,7 +62,6 @@ export async function POST(request: NextRequest) {
         password_hash,
         first_name,
         last_name,
-        name: `${first_name} ${last_name}`,
         phone_number: phone_number || null,
         position: position || null,
         department: department || null,
