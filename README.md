@@ -119,6 +119,26 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
+### 0.2.8 (2025-10-31)
+- **fix(build)**: Correção completa de lazy initialization para Netlify
+  - ✅ Implementada lazy initialization em 5 arquivos adicionais de API routes
+  - ✅ `/api/employee/audit/[auditId]/acknowledge/route.ts`
+  - ✅ `/api/manager/timesheets/[id]/ack-status/route.ts`
+  - ✅ `/api/manager/timesheets/[id]/route.ts`
+  - ✅ `/api/employee/audit/pending/route.ts`
+  - ✅ `/api/notifications/mark-read/route.ts`
+  - ✅ Resolvido erro "Missing NEXT_PUBLIC_SUPABASE_URL" durante coleta de dados no Netlify
+  - ✅ Todos os clientes Supabase agora são criados em runtime, não em build time
+
+### 0.2.7 (2025-10-31)
+- **fix(build)**: Correção de lazy initialization para Netlify
+  - ✅ Implementada lazy initialization em 4 arquivos de API routes
+  - ✅ `/api/admin/me/tenant/route.ts`
+  - ✅ `/api/notifications/subscribe/route.ts`
+  - ✅ `/api/notifications/unsubscribe/route.ts`
+  - ✅ `/api/notifications/preferences/route.ts`
+  - ✅ Resolvido erro "supabaseUrl is required" durante coleta de dados no Netlify
+
 ### 0.2.6 (2025-10-31)
 - **feat(notifications)**: Sistema completo de notificações multi-canal
   - ✅ Notificações in-app com badge e modal
