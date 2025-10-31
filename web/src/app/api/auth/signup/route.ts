@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from '@/lib/supabase/client';
 import bcrypt from 'bcryptjs';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +23,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const supabase = getSupabase();
 
     // Check if email already exists
     const { data: existingUser, error: checkError } = await supabase
@@ -56,7 +53,8 @@ export async function POST(request: NextRequest) {
     const password_hash = await bcrypt.hash(password, 10);
 
     // Create user in users_unified
-    const { data: newUser, error: createError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newUser, error: createError } = await (supabase as any)
       .from('users_unified')
       .insert({
         email,

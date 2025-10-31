@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabase } from '@/lib/supabase/client';
 
 interface NotificationPayload {
   user_id: string;
@@ -48,6 +43,8 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString()
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = getSupabase() as any;
     const { data, error } = await supabase
       .from('notifications')
       .insert([notification])

@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabase } from '@/lib/supabase/client';
 
 export async function DELETE(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const { searchParams } = new URL(req.url);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = getSupabase() as any;
     
     const notificationId = searchParams.get('id');
     const deleteAll = searchParams.get('all') === 'true';
