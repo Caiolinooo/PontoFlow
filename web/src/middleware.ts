@@ -137,6 +137,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/(pt-BR|en-GB)/:path*']
+  matcher: ['/', '/(pt-BR|en-GB)/:path*'],
+  runtime: 'nodejs'
 };
 
