@@ -20,9 +20,11 @@ The configuration system in the Time Sheet Manager project is **comprehensively 
 
 **Fix Applied:** Corrected the environment variables:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://arzvmingdtntiejcvucs.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyenZpbmdkdG50dGllamN2dWNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5NDY3MjksImV4cCI6MjA2MDUyMjcyOX0.tP8qVpSW4t8WcBQVHwYmWaJC0XJWZnNLJQKSzFCxk3Y
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
+
+**Note:** Actual values are stored in `.env.local` (not committed to git).
 
 **Status:** ✅ FIXED - Environment configuration corrected and server auto-reloaded.
 

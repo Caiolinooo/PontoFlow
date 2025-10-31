@@ -1,0 +1,16 @@
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "web/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+  # Disable secrets scanning for public environment variables
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_VAPID_PUBLIC_KEY,NEXT_PUBLIC_AVAILABLE_LOCALES,NEXT_PUBLIC_DEFAULT_LOCALE"
+  # Omit build artifacts and cache from secrets scanning
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/**,node_modules/**,messages/**"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
