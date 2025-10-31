@@ -127,80 +127,45 @@ export default function SignUpForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* Personal Information */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Personal Information</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FloatingInput id="firstName" label={t('firstName')} required {...register('firstName')} error={errors.firstName ? String(errors.firstName.message) : null} />
-          <FloatingInput id="lastName" label={t('lastName')} required {...register('lastName')} error={errors.lastName ? String(errors.lastName.message) : null} />
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Name Fields */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FloatingInput id="firstName" label={t('firstName')} required {...register('firstName')} value={watch('firstName')} error={errors.firstName ? String(errors.firstName.message) : null} />
+        <FloatingInput id="lastName" label={t('lastName')} required {...register('lastName')} value={watch('lastName')} error={errors.lastName ? String(errors.lastName.message) : null} />
       </div>
 
-      {/* Contact Information */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Contact Information</h3>
-        <FloatingInput id="email" type="email" label={t('email')} required {...register('email')} error={errors.email ? String(errors.email.message) : null} />
-        <FloatingInput id="phoneNumber" type="tel" label={t('phoneNumber')} {...register('phoneNumber')} error={errors.phoneNumber ? String(errors.phoneNumber.message) : null} />
+      {/* Email */}
+      <FloatingInput id="email" type="email" label={t('email')} required {...register('email')} value={watch('email')} error={errors.email ? String(errors.email.message) : null} />
+
+      {/* Phone (Optional) */}
+      <FloatingInput id="phoneNumber" type="tel" label={t('phoneNumber')} {...register('phoneNumber')} value={watch('phoneNumber')} error={errors.phoneNumber ? String(errors.phoneNumber.message) : null} />
+
+      {/* Position and Department (Optional) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FloatingInput id="position" label={t('position')} {...register('position')} value={watch('position')} error={errors.position ? String(errors.position.message) : null} />
+        <FloatingInput id="department" label={t('department')} {...register('department')} value={watch('department')} error={errors.department ? String(errors.department.message) : null} />
       </div>
 
-      {/* Professional Information (Optional) */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Professional Information <span className="text-xs font-normal text-gray-500">(Optional)</span></h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FloatingInput id="position" label={t('position')} {...register('position')} error={errors.position ? String(errors.position.message) : null} />
-          <FloatingInput id="department" label={t('department')} {...register('department')} error={errors.department ? String(errors.department.message) : null} />
-        </div>
-      </div>
+      {/* Password Fields */}
+      <FloatingInput id="password" type="password" label={t('password')} required {...register('password')} value={watch('password')} error={errors.password ? String(errors.password.message) : null} />
+      <FloatingInput id="confirmPassword" type="password" label={t('confirmPassword')} required {...register('confirmPassword')} value={watch('confirmPassword')} error={errors.confirmPassword ? String(errors.confirmPassword.message) : null} />
 
-      {/* Security */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Security</h3>
-        <FloatingInput id="password" type="password" label={t('password')} required {...register('password')} error={errors.password ? String(errors.password.message) : null} />
-        <FloatingInput id="confirmPassword" type="password" label={t('confirmPassword')} required {...register('confirmPassword')} error={errors.confirmPassword ? String(errors.confirmPassword.message) : null} />
-
-        {/* Password Requirements */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-          <p className="text-xs text-blue-800 dark:text-blue-200 font-medium mb-2">Password must contain:</p>
-          <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-            <li className="flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              At least 8 characters
-            </li>
-            <li className="flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              One uppercase letter (A-Z)
-            </li>
-            <li className="flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              One lowercase letter (a-z)
-            </li>
-            <li className="flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              One number (0-9)
-            </li>
-            <li className="flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              One special character (!@#$%^&*)
-            </li>
-          </ul>
-        </div>
+      {/* Password Requirements */}
+      <div className="bg-[var(--muted)] border border-[var(--border)] rounded-lg p-3">
+        <p className="text-xs text-[var(--foreground)] font-medium mb-1.5">Password must contain:</p>
+        <ul className="text-xs text-[var(--muted-foreground)] space-y-0.5">
+          <li>• At least 8 characters</li>
+          <li>• One uppercase letter (A-Z)</li>
+          <li>• One lowercase letter (a-z)</li>
+          <li>• One number (0-9)</li>
+          <li>• One special character (!@#$%^&*)</li>
+        </ul>
       </div>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 animate-in fade-in duration-300">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
           <p className="text-red-800 dark:text-red-200 text-sm flex items-center gap-2">
-            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
             {error}
@@ -211,7 +176,7 @@ export default function SignUpForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+        className="w-full bg-[var(--primary)] hover:opacity-90 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {loading ? (
           <>

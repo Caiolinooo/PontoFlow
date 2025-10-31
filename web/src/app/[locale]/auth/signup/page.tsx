@@ -24,28 +24,28 @@ export default async function SignUpPage({ params }: { params: Promise<{ locale:
   const siteTitle = branding.siteTitle || tApp('title');
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center p-4 overflow-y-auto">
       <div className="absolute top-4 right-4 flex items-center gap-3 z-10">
         <LanguageSelector />
         <ThemeToggle />
       </div>
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl p-6 sm:p-8 md:p-10 my-8 max-h-[95vh] overflow-y-auto">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl p-6 sm:p-8 my-8">
         {/* Logo */}
         <div className="text-center mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={branding.logoUrl} alt={branding.companyName} className="w-16 h-16 mx-auto mb-4 object-contain" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">{siteTitle}</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">{t('signUp.subtitle')}</p>
+          <img src={branding.logoUrl} alt={branding.companyName} className="w-14 h-14 mx-auto mb-3 object-contain" />
+          <h1 className="text-2xl font-bold text-[var(--foreground)] mb-1">{siteTitle}</h1>
+          <p className="text-[var(--muted-foreground)] text-sm">{t('signUp.subtitle')}</p>
         </div>
 
         {/* Form */}
         <SignUpForm />
 
         {/* Footer */}
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="mt-6 pt-6 border-t border-[var(--border)] text-center">
+          <p className="text-sm text-[var(--muted-foreground)]">
             {t('signUp.hasAccount')}{' '}
-            <a href={`/${locale}/auth/signin`} className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+            <a href={`/${locale}/auth/signin`} className="font-semibold text-[var(--primary)] hover:underline transition-all">
               {t('signUp.signInLink')}
             </a>
           </p>

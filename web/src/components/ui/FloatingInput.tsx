@@ -8,22 +8,24 @@ export interface FloatingInputProps extends InputHTMLAttributes<HTMLInputElement
 // Meta-like floating label input
 // Usage: <FloatingInput id="email" label="E-mail" type="email" {...register('email')} />
 const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
-  ({ id, label, error, className = "", ...props }, ref) => {
+  ({ id, label, error, className = "", value, ...props }, ref) => {
+    const hasValue = value !== undefined && value !== null && value !== '';
+
     return (
       <div className="relative">
         <input
           id={id}
           ref={ref}
-          placeholder=" "
+          value={value}
           className={[
             "peer block w-full rounded-lg",
             "bg-[var(--input)] text-[var(--foreground)]",
-            "border-2 border-gray-300 dark:border-gray-600",
+            "border-2 border-[var(--border)]",
             "px-4 pt-6 pb-2",
             "focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)]",
             "disabled:opacity-60 disabled:cursor-not-allowed",
             "transition-all duration-200",
-            error ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "",
+            error ? "border-red-500 dark:border-red-400 focus:border-red-500 focus:ring-red-500" : "",
             className,
           ].join(" ")}
           {...props}
@@ -31,13 +33,11 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
         <label
           htmlFor={id}
           className={[
-            "absolute left-4 top-2",
-            "text-xs font-medium",
-            "text-gray-600 dark:text-gray-400",
-            "transition-all duration-200",
-            "pointer-events-none",
-            "peer-placeholder-shown:text-base peer-placeholder-shown:top-4",
-            "peer-focus:text-xs peer-focus:top-2",
+            "absolute left-4 transition-all duration-200 pointer-events-none",
+            "bg-[var(--input)] px-1",
+            hasValue || props.placeholder ? "top-0 -translate-y-1/2 text-xs" : "top-1/2 -translate-y-1/2 text-base",
+            "text-[var(--muted-foreground)]",
+            "peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs",
             "peer-focus:text-[var(--primary)]",
             error ? "text-red-600 dark:text-red-400" : "",
           ].join(" ")}

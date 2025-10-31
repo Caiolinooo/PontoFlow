@@ -67,28 +67,28 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-4">
-        <FloatingInput
-          id="email"
-          type="email"
-          label={t('email')}
-          {...register('email')}
-          error={errors.email ? String(errors.email.message) : null}
-        />
-        <FloatingInput
-          id="password"
-          type="password"
-          label={t('password')}
-          {...register('password')}
-          error={errors.password ? String(errors.password.message) : null}
-        />
-      </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <FloatingInput
+        id="email"
+        type="email"
+        label={t('email')}
+        {...register('email')}
+        value={watch('email')}
+        error={errors.email ? String(errors.email.message) : null}
+      />
+      <FloatingInput
+        id="password"
+        type="password"
+        label={t('password')}
+        {...register('password')}
+        value={watch('password')}
+        error={errors.password ? String(errors.password.message) : null}
+      />
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 animate-in fade-in duration-300">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
           <p className="text-red-800 dark:text-red-200 text-sm flex items-center gap-2">
-            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
             {error}
@@ -99,7 +99,7 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+        className="w-full bg-[var(--primary)] hover:opacity-90 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {loading ? (
           <>
