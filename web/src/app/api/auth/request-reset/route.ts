@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import { sendEmail } from '@/lib/notifications/email-service';
 import { passwordResetEmail } from '@/lib/notifications/templates/password-reset';
-import branding from '@/config/branding';
+import { branding } from '@/config/branding';
 
 /**
  * Request a password reset link
