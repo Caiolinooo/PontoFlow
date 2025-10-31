@@ -139,6 +139,22 @@
       "sending": "Sending...",
       "successMessage": "If the email exists, we'll send a reset link.",
       "backToSignIn": "Back to sign in"
+    },
+    "resetPassword": {
+      "title": "New Password",
+      "subtitle": "Create a new password for your account",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "resetButton": "Reset Password",
+      "resetting": "Resetting...",
+      "success": "Password reset successfully! Redirecting...",
+      "invalidToken": "Invalid or expired link",
+      "requirements": "Password must contain:",
+      "req1": "At least 8 characters",
+      "req2": "One uppercase letter (A-Z)",
+      "req3": "One lowercase letter (a-z)",
+      "req4": "One number (0-9)",
+      "req5": "One special character (!@#$%^&*)"
     }
   },
   "actions": {

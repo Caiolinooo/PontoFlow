@@ -139,6 +139,22 @@
       "sending": "Enviando...",
       "successMessage": "Se o e-mail existir, enviaremos um link de redefinição.",
       "backToSignIn": "Voltar ao login"
+    },
+    "resetPassword": {
+      "title": "Nova Senha",
+      "subtitle": "Crie uma nova senha para sua conta",
+      "newPassword": "Nova Senha",
+      "confirmPassword": "Confirmar Senha",
+      "resetButton": "Redefinir Senha",
+      "resetting": "Redefinindo...",
+      "success": "Senha redefinida com sucesso! Redirecionando...",
+      "invalidToken": "Link inválido ou expirado",
+      "requirements": "A senha deve conter:",
+      "req1": "No mínimo 8 caracteres",
+      "req2": "Uma letra maiúscula (A-Z)",
+      "req3": "Uma letra minúscula (a-z)",
+      "req4": "Um número (0-9)",
+      "req5": "Um caractere especial (!@#$%^&*)"
     }
   },
   "actions": {
