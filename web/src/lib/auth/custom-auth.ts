@@ -18,27 +18,67 @@ function fromBase64(str: string): string {
   return Buffer.from(str, 'base64').toString('utf-8');
 }
 
-// Client for regular operations (anon key)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Lazy initialization to avoid build-time errors
+let _supabase: ReturnType<typeof createClient> | null = null;
+let _supabaseAdmin: ReturnType<typeof createClient> | null = null;
 
-// Admin client for auth operations (service role key)
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('[AUTH] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not set!');
+// Client for regular operations (anon key)
+function getSupabase() {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !key) {
+      throw new Error('Missing Supabase environment variables');
+    }
+
+    _supabase = createClient(url, key);
+  }
+  return _supabase;
 }
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
+// Admin client for auth operations (service role key)
+function getSupabaseAdmin() {
+  if (!_supabaseAdmin) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url) {
+      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
     }
+
+    if (!serviceKey) {
+      console.error('[AUTH] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not set!');
+      throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
+    }
+
+    _supabaseAdmin = createClient(url, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
   }
-);
+  return _supabaseAdmin;
+}
+
+// Interface for users_unified table
+interface UnifiedUser {
+  id: string;
+  email: string;
+  password_hash: string;
+  first_name?: string;
+  last_name?: string;
+  name?: string;
+  role?: string;
+  active: boolean;
+  tenant_id?: string;
+  phone_number?: string;
+  position?: string;
+  department?: string;
+  drive_photo_url?: string;
+  [key: string]: unknown;
+}
 
 export interface User {
   id: string;
@@ -73,6 +113,9 @@ export async function signInWithCredentials(
     const normalizedEmail = email.trim().toLowerCase();
     console.log('[AUTH] Attempting login for:', normalizedEmail);
 
+    const supabase = getSupabase();
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Try Supabase Auth first
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
@@ -84,17 +127,19 @@ export async function signInWithCredentials(
       console.log('[AUTH] Trying users_unified table fallback...');
 
       // Fallback: Try users_unified table
-      const { data: unifiedUser, error: unifiedError } = await supabaseAdmin
+      const { data: unifiedUserData, error: unifiedError } = await supabaseAdmin
         .from('users_unified')
         .select('*')
         .eq('email', normalizedEmail)
         .eq('active', true)
         .single();
 
-      if (unifiedError || !unifiedUser) {
+      if (unifiedError || !unifiedUserData) {
         console.log('[AUTH] users_unified lookup failed:', unifiedError?.message);
         return { error: 'Credenciais inválidas' };
       }
+
+      const unifiedUser = unifiedUserData as UnifiedUser;
 
       // Verify password using bcrypt
       const bcrypt = await import('bcryptjs');
@@ -108,9 +153,12 @@ export async function signInWithCredentials(
       console.log('[AUTH] users_unified authentication successful for:', unifiedUser.email);
 
       // Get additional data for unified user
-      let profile = null;
-      let tenantRole = null;
-      let employee = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let profile: any = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let tenantRole: any = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let employee: any = null;
 
       try {
         const { data: profileData } = await supabase
@@ -196,10 +244,13 @@ export async function signInWithCredentials(
     };
 
     // Get profile data separately (if exists)
-    let profile = null;
-    let tenantRole = null;
-    let employee = null;
-    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let profile: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let tenantRole: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let employee: any = null;
+
     try {
       const { data: profileData } = await supabase
         .from('profiles')
@@ -322,6 +373,9 @@ export async function getUserFromToken(token: string): Promise<User | null> {
 
     console.log('[getUserFromToken] Looking up user ID:', userId);
 
+    const supabase = getSupabase();
+    const supabaseAdmin = getSupabaseAdmin();
+
     // Try Supabase Auth first
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
 
@@ -330,24 +384,29 @@ export async function getUserFromToken(token: string): Promise<User | null> {
       console.log('[getUserFromToken] Trying users_unified table fallback...');
 
       // Fallback: Try users_unified table
-      const { data: unifiedUser, error: unifiedError } = await supabaseAdmin
+      const { data: unifiedUserData, error: unifiedError } = await supabaseAdmin
         .from('users_unified')
         .select('*')
         .eq('id', userId)
         .eq('active', true)
         .single();
 
-      if (unifiedError || !unifiedUser) {
+      if (unifiedError || !unifiedUserData) {
         console.error('[getUserFromToken] User not found in users_unified. UserID:', userId, 'Error:', unifiedError?.message);
         return null;
       }
 
+      const unifiedUser = unifiedUserData as UnifiedUser;
+
       console.log('[getUserFromToken] User found in users_unified:', unifiedUser.email);
 
       // Get additional data for unified user
-      let profile = null;
-      let tenantRole = null;
-      let employee = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let profile: any = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let tenantRole: any = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let employee: any = null;
 
       try {
         const { data: profileData } = await supabase
@@ -422,10 +481,13 @@ export async function getUserFromToken(token: string): Promise<User | null> {
     const authEmail = authUser.user.email || '';
 
     // Secondary source: Custom application tables (if they exist)
-    let profile = null;
-    let tenantRole = null;
-    let employee = null;
-    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let profile: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let tenantRole: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let employee: any = null;
+
     try {
       const { data: profileData } = await supabase
         .from('profiles')
