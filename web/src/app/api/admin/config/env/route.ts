@@ -10,6 +10,83 @@ function upsertEnv(content: string, key: string, value: string) {
   return content.trimEnd() + `\n${line}\n`;
 }
 
+/**
+ * Mask sensitive values for display
+ */
+function maskValue(value: string | undefined): string | null {
+  if (!value) return null;
+  if (value.length <= 8) return '••••••••';
+  return value.substring(0, 4) + '••••••••' + value.substring(value.length - 4);
+}
+
+/**
+ * GET endpoint to retrieve current configuration status
+ */
+export async function GET() {
+  try {
+    await requireApiRole(['ADMIN']);
+
+    const config = {
+      database: {
+        provider: 'supabase',
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL || null,
+        urlConfigured: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: maskValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+        anonKeyConfigured: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        serviceKey: maskValue(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        serviceKeyConfigured: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      },
+      email: {
+        provider: process.env.EMAIL_PROVIDER || 'smtp',
+        smtp: {
+          host: process.env.SMTP_HOST || null,
+          hostConfigured: !!process.env.SMTP_HOST,
+          port: process.env.SMTP_PORT || '587',
+          portConfigured: !!process.env.SMTP_PORT,
+          user: process.env.SMTP_USER || null,
+          userConfigured: !!process.env.SMTP_USER,
+          pass: maskValue(process.env.SMTP_PASS),
+          passConfigured: !!process.env.SMTP_PASS,
+          from: process.env.MAIL_FROM || null,
+          fromConfigured: !!process.env.MAIL_FROM,
+        },
+        oauth2: {
+          tenantId: maskValue(process.env.AZURE_TENANT_ID),
+          tenantIdConfigured: !!process.env.AZURE_TENANT_ID,
+          clientId: maskValue(process.env.AZURE_CLIENT_ID),
+          clientIdConfigured: !!process.env.AZURE_CLIENT_ID,
+          clientSecret: maskValue(process.env.AZURE_CLIENT_SECRET),
+          clientSecretConfigured: !!process.env.AZURE_CLIENT_SECRET,
+        }
+      },
+      sync: {
+        secret: maskValue(process.env.ADMIN_SYNC_SECRET),
+        secretConfigured: !!process.env.ADMIN_SYNC_SECRET,
+        sourceUrl: process.env.SOURCE_SYSTEM_SYNC_URL || null,
+        sourceUrlConfigured: !!process.env.SOURCE_SYSTEM_SYNC_URL,
+        targetUrl: process.env.TARGET_SYSTEM_SYNC_URL || null,
+        targetUrlConfigured: !!process.env.TARGET_SYSTEM_SYNC_URL,
+      },
+      endpoints: {
+        apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || null,
+        apiBaseUrlConfigured: !!process.env.NEXT_PUBLIC_API_BASE_URL,
+        webhookUrl: process.env.WEBHOOK_URL || null,
+        webhookUrlConfigured: !!process.env.WEBHOOK_URL,
+      }
+    };
+
+    return NextResponse.json({ config });
+  } catch (e: any) {
+    if (e instanceof Error && (e.message === 'Unauthorized' || e.message === 'Forbidden')) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({
+      error: e?.message || 'internal_error',
+      details: e?.stack
+    }, { status: 500 });
+  }
+}
+
 export async function PUT(req: NextRequest) {
   try {
     await requireApiRole(['ADMIN']);

@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/server';
 import Link from 'next/link';
 import UserRowActions from '@/components/admin/UserRowActions';
 import { getServerSupabase } from '@/lib/supabase/server';
+import UsersPageClient from '@/components/admin/UsersPageClient';
 
 export default async function AdminUsersPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>>; }) {
   const { locale } = await params;
@@ -35,6 +36,14 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
   query = query.order('created_at', { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1);
   const { data: users, count } = await query;
 
+  // Get pending invitations
+  const { data: invitations } = await supabase
+    .from('user_invitations')
+    .select('*, invited_by_user:users_unified!invited_by(first_name, last_name)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(10);
+
   const t = await getTranslations({ locale, namespace: 'admin.users' });
 
   return (
@@ -44,16 +53,49 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
           <h1 className="text-3xl font-bold text-[var(--foreground)]">{t('title')}</h1>
           <p className="mt-2 text-[var(--muted-foreground)]">{t('subtitle')}</p>
         </div>
-        <Link
-          href={`/${locale}/admin/users/new`}
-          className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          {t('newUser')}
-        </Link>
+        <UsersPageClient
+          locale={locale}
+          newUserLabel={t('newUser')}
+          inviteUserLabel="📧 Convidar Usuário"
+        />
       </div>
+
+      {/* Pending Invitations */}
+      {invitations && invitations.length > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+              📬 Convites Pendentes ({invitations.length})
+            </h3>
+            <Link
+              href={`/${locale}/admin/users/invitations`}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Ver todos
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {invitations.slice(0, 3).map((inv: any) => (
+              <div key={inv.id} className="bg-white dark:bg-gray-800 rounded-lg p-3 flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {inv.first_name} {inv.last_name}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{inv.email}</p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                    {inv.role}
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Expira em {new Date(inv.expires_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <form method="get" className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 flex flex-wrap gap-3">

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 
 type DatabaseProvider = 'supabase' | 'postgres' | 'mysql';
@@ -10,11 +10,19 @@ export default function AdminSystemConfig() {
   const t = useTranslations('adminSettings.systemConfig');
   const [activeTab, setActiveTab] = useState<'database' | 'email' | 'sync' | 'migration' | 'endpoints'>('database');
 
+  // Loading state
+  const [loading, setLoading] = useState(true);
+
   // Database config
   const [dbProvider, setDbProvider] = useState<DatabaseProvider>('supabase');
   const [supabaseUrl, setSupabaseUrl] = useState('');
   const [supabaseAnon, setSupabaseAnon] = useState('');
   const [supabaseService, setSupabaseService] = useState('');
+  const [dbConfigured, setDbConfigured] = useState({
+    url: false,
+    anon: false,
+    service: false
+  });
 
   // Email config
   const [emailProvider, setEmailProvider] = useState<EmailProvider>('gmail');
@@ -23,16 +31,33 @@ export default function AdminSystemConfig() {
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPass, setSmtpPass] = useState('');
   const [mailFrom, setMailFrom] = useState('');
+  const [emailConfigured, setEmailConfigured] = useState({
+    host: false,
+    port: false,
+    user: false,
+    pass: false,
+    from: false
+  });
 
   // OAuth2 config (Exchange)
   const [azureTenantId, setAzureTenantId] = useState('');
   const [azureClientId, setAzureClientId] = useState('');
   const [azureClientSecret, setAzureClientSecret] = useState('');
+  const [oauth2Configured, setOauth2Configured] = useState({
+    tenantId: false,
+    clientId: false,
+    clientSecret: false
+  });
 
   // Sync config
   const [syncSecret, setSyncSecret] = useState('');
   const [sourceSystemUrl, setSourceSystemUrl] = useState('');
   const [targetSystemUrl, setTargetSystemUrl] = useState('');
+  const [syncConfigured, setSyncConfigured] = useState({
+    secret: false,
+    sourceUrl: false,
+    targetUrl: false
+  });
 
   // Migration
   const [operation, setOperation] = useState<SyncOperation>('export');
@@ -45,6 +70,10 @@ export default function AdminSystemConfig() {
   // Endpoints config
   const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [endpointsConfigured, setEndpointsConfigured] = useState({
+    apiBaseUrl: false,
+    webhookUrl: false
+  });
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -55,6 +84,94 @@ export default function AdminSystemConfig() {
   const [emailTestError, setEmailTestError] = useState<string | null>(null);
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [sendTestEmail, setSendTestEmail] = useState(false);
+
+  // Load current configuration on mount
+  useEffect(() => {
+    loadCurrentConfig();
+  }, []);
+
+  const loadCurrentConfig = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/admin/config/env');
+      if (!response.ok) {
+        throw new Error('Falha ao carregar configurações');
+      }
+
+      const { config } = await response.json();
+
+      // Database config
+      if (config.database) {
+        setSupabaseUrl(config.database.url || '');
+        setSupabaseAnon(config.database.anonKey || '');
+        setSupabaseService(config.database.serviceKey || '');
+        setDbConfigured({
+          url: config.database.urlConfigured,
+          anon: config.database.anonKeyConfigured,
+          service: config.database.serviceKeyConfigured
+        });
+      }
+
+      // Email config
+      if (config.email) {
+        const provider = config.email.provider === 'oauth2' ? 'exchange-oauth2' : 'gmail';
+        setEmailProvider(provider);
+
+        if (config.email.smtp) {
+          setSmtpHost(config.email.smtp.host || '');
+          setSmtpPort(config.email.smtp.port || '587');
+          setSmtpUser(config.email.smtp.user || '');
+          setSmtpPass(config.email.smtp.pass || '');
+          setMailFrom(config.email.smtp.from || '');
+          setEmailConfigured({
+            host: config.email.smtp.hostConfigured,
+            port: config.email.smtp.portConfigured,
+            user: config.email.smtp.userConfigured,
+            pass: config.email.smtp.passConfigured,
+            from: config.email.smtp.fromConfigured
+          });
+        }
+
+        if (config.email.oauth2) {
+          setAzureTenantId(config.email.oauth2.tenantId || '');
+          setAzureClientId(config.email.oauth2.clientId || '');
+          setAzureClientSecret(config.email.oauth2.clientSecret || '');
+          setOauth2Configured({
+            tenantId: config.email.oauth2.tenantIdConfigured,
+            clientId: config.email.oauth2.clientIdConfigured,
+            clientSecret: config.email.oauth2.clientSecretConfigured
+          });
+        }
+      }
+
+      // Sync config
+      if (config.sync) {
+        setSyncSecret(config.sync.secret || '');
+        setSourceSystemUrl(config.sync.sourceUrl || '');
+        setTargetSystemUrl(config.sync.targetUrl || '');
+        setSyncConfigured({
+          secret: config.sync.secretConfigured,
+          sourceUrl: config.sync.sourceUrlConfigured,
+          targetUrl: config.sync.targetUrlConfigured
+        });
+      }
+
+      // Endpoints config
+      if (config.endpoints) {
+        setApiBaseUrl(config.endpoints.apiBaseUrl || '');
+        setWebhookUrl(config.endpoints.webhookUrl || '');
+        setEndpointsConfigured({
+          apiBaseUrl: config.endpoints.apiBaseUrlConfigured,
+          webhookUrl: config.endpoints.webhookUrlConfigured
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao carregar configurações:', error);
+      setMessage({ type: 'error', text: `Erro ao carregar configurações: ${error.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveConfig = async () => {
     setSaving(true);
@@ -313,6 +430,28 @@ export default function AdminSystemConfig() {
     { id: 'endpoints' as const, label: t('endpoints.title') },
   ];
 
+  // Helper component to show configuration status
+  const ConfigStatus = ({ configured }: { configured: boolean }) => (
+    <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
+      configured
+        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+    }`}>
+      {configured ? '✓ Configurado' : '⚠ Não configurado'}
+    </span>
+  );
+
+  if (loading) {
+    return (
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)]"></div>
+          <span className="ml-3 text-[var(--muted-foreground)]">Carregando configurações...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
       <div className="p-6 border-b border-[var(--border)]">
@@ -367,7 +506,10 @@ export default function AdminSystemConfig() {
             {dbProvider === 'supabase' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">NEXT_PUBLIC_SUPABASE_URL</label>
+                  <label className="block text-sm font-medium mb-1">
+                    NEXT_PUBLIC_SUPABASE_URL
+                    <ConfigStatus configured={dbConfigured.url} />
+                  </label>
                   <input
                     type="text"
                     value={supabaseUrl}
@@ -377,7 +519,10 @@ export default function AdminSystemConfig() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</label>
+                  <label className="block text-sm font-medium mb-1">
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY
+                    <ConfigStatus configured={dbConfigured.anon} />
+                  </label>
                   <input
                     type="password"
                     value={supabaseAnon}
@@ -387,7 +532,10 @@ export default function AdminSystemConfig() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">SUPABASE_SERVICE_ROLE_KEY</label>
+                  <label className="block text-sm font-medium mb-1">
+                    SUPABASE_SERVICE_ROLE_KEY
+                    <ConfigStatus configured={dbConfigured.service} />
+                  </label>
                   <input
                     type="password"
                     value={supabaseService}
@@ -433,7 +581,10 @@ export default function AdminSystemConfig() {
               <div className="space-y-3">
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">SMTP_HOST <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium mb-1">
+                      SMTP_HOST <span className="text-red-500">*</span>
+                      <ConfigStatus configured={emailConfigured.host} />
+                    </label>
                     <input
                       type="text"
                       value={smtpHost}
@@ -442,12 +593,15 @@ export default function AdminSystemConfig() {
                       className="w-full rounded border p-2 bg-[var(--input)]"
                       required
                     />
-                    {!smtpHost && (
+                    {!emailConfigured.host && !smtpHost && (
                       <p className="text-xs text-red-500 mt-1">Host é obrigatório</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">SMTP_PORT <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium mb-1">
+                      SMTP_PORT <span className="text-red-500">*</span>
+                      <ConfigStatus configured={emailConfigured.port} />
+                    </label>
                     <input
                       type="number"
                       value={smtpPort}
@@ -464,7 +618,10 @@ export default function AdminSystemConfig() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">SMTP_USER <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium mb-1">
+                    SMTP_USER <span className="text-red-500">*</span>
+                    <ConfigStatus configured={emailConfigured.user} />
+                  </label>
                   <input
                     type="email"
                     value={smtpUser}
@@ -473,12 +630,15 @@ export default function AdminSystemConfig() {
                     className="w-full rounded border p-2 bg-[var(--input)]"
                     required
                   />
-                  {!smtpUser && (
+                  {!emailConfigured.user && !smtpUser && (
                     <p className="text-xs text-red-500 mt-1">Usuário é obrigatório</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">SMTP_PASS <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium mb-1">
+                    SMTP_PASS <span className="text-red-500">*</span>
+                    <ConfigStatus configured={emailConfigured.pass} />
+                  </label>
                   <input
                     type="password"
                     value={smtpPass}
@@ -487,7 +647,7 @@ export default function AdminSystemConfig() {
                     className="w-full rounded border p-2 bg-[var(--input)]"
                     required
                   />
-                  {!smtpPass && (
+                  {!emailConfigured.pass && !smtpPass && (
                     <p className="text-xs text-red-500 mt-1">Senha é obrigatória</p>
                   )}
                   {emailProvider === 'gmail' && (
@@ -497,7 +657,10 @@ export default function AdminSystemConfig() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">MAIL_FROM <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium mb-1">
+                    MAIL_FROM <span className="text-red-500">*</span>
+                    <ConfigStatus configured={emailConfigured.from} />
+                  </label>
                   <input
                     type="text"
                     value={mailFrom}
@@ -530,7 +693,10 @@ export default function AdminSystemConfig() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">AZURE_TENANT_ID</label>
+                  <label className="block text-sm font-medium mb-1">
+                    AZURE_TENANT_ID
+                    <ConfigStatus configured={oauth2Configured.tenantId} />
+                  </label>
                   <input
                     type="text"
                     value={azureTenantId}
@@ -544,7 +710,10 @@ export default function AdminSystemConfig() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">AZURE_CLIENT_ID</label>
+                  <label className="block text-sm font-medium mb-1">
+                    AZURE_CLIENT_ID
+                    <ConfigStatus configured={oauth2Configured.clientId} />
+                  </label>
                   <input
                     type="text"
                     value={azureClientId}
@@ -558,7 +727,10 @@ export default function AdminSystemConfig() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">AZURE_CLIENT_SECRET</label>
+                  <label className="block text-sm font-medium mb-1">
+                    AZURE_CLIENT_SECRET
+                    <ConfigStatus configured={oauth2Configured.clientSecret} />
+                  </label>
                   <input
                     type="password"
                     value={azureClientSecret}
@@ -572,7 +744,10 @@ export default function AdminSystemConfig() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">MAIL_FROM</label>
+                  <label className="block text-sm font-medium mb-1">
+                    MAIL_FROM
+                    <ConfigStatus configured={emailConfigured.from} />
+                  </label>
                   <input
                     type="text"
                     value={mailFrom}
@@ -704,7 +879,10 @@ export default function AdminSystemConfig() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">ADMIN_SYNC_SECRET</label>
+              <label className="block text-sm font-medium mb-1">
+                ADMIN_SYNC_SECRET
+                <ConfigStatus configured={syncConfigured.secret} />
+              </label>
               <div className="flex gap-2">
                 <input
                   type="password"
@@ -727,7 +905,10 @@ export default function AdminSystemConfig() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">SOURCE_SYSTEM_SYNC_URL</label>
+              <label className="block text-sm font-medium mb-1">
+                SOURCE_SYSTEM_SYNC_URL
+                <ConfigStatus configured={syncConfigured.sourceUrl} />
+              </label>
               <input
                 type="text"
                 value={sourceSystemUrl}
@@ -741,7 +922,10 @@ export default function AdminSystemConfig() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">TARGET_SYSTEM_SYNC_URL</label>
+              <label className="block text-sm font-medium mb-1">
+                TARGET_SYSTEM_SYNC_URL
+                <ConfigStatus configured={syncConfigured.targetUrl} />
+              </label>
               <input
                 type="text"
                 value={targetSystemUrl}
@@ -908,7 +1092,10 @@ export default function AdminSystemConfig() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">NEXT_PUBLIC_API_BASE_URL</label>
+              <label className="block text-sm font-medium mb-1">
+                NEXT_PUBLIC_API_BASE_URL
+                <ConfigStatus configured={endpointsConfigured.apiBaseUrl} />
+              </label>
               <input
                 type="text"
                 value={apiBaseUrl}
@@ -922,7 +1109,10 @@ export default function AdminSystemConfig() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">WEBHOOK_URL</label>
+              <label className="block text-sm font-medium mb-1">
+                WEBHOOK_URL
+                <ConfigStatus configured={endpointsConfigured.webhookUrl} />
+              </label>
               <input
                 type="text"
                 value={webhookUrl}
