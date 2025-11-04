@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import InviteUserModal from './InviteUserModal';
+import ManageInvitationsModal from './ManageInvitationsModal';
 
 interface UsersPageClientProps {
   locale: string;
@@ -30,7 +30,7 @@ export default function UsersPageClient({ locale, newUserLabel, inviteUserLabel 
           </svg>
           {inviteUserLabel}
         </button>
-        
+
         <Link
           href={`/${locale}/admin/users/new`}
           className="inline-flex items-center px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors"
@@ -42,10 +42,11 @@ export default function UsersPageClient({ locale, newUserLabel, inviteUserLabel 
         </Link>
       </div>
 
-      <InviteUserModal
+      <ManageInvitationsModal
         open={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onSuccess={handleInviteSuccess}
+        locale={locale}
       />
     </>
   );

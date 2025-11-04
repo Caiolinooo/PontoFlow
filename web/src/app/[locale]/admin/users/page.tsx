@@ -56,7 +56,7 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
         <UsersPageClient
           locale={locale}
           newUserLabel={t('newUser')}
-          inviteUserLabel="📧 Convidar Usuário"
+          inviteUserLabel="Gerenciar Convites"
         />
       </div>
 

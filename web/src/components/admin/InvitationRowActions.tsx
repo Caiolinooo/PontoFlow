@@ -7,13 +7,15 @@ interface InvitationRowActionsProps {
   status: string;
   token: string;
   locale: string;
+  onAction?: () => void;
 }
 
-export default function InvitationRowActions({ 
-  invitationId, 
-  status, 
-  token, 
-  locale 
+export default function InvitationRowActions({
+  invitationId,
+  status,
+  token,
+  locale,
+  onAction
 }: InvitationRowActionsProps) {
   const [loading, setLoading] = useState(false);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
@@ -33,7 +35,11 @@ export default function InvitationRowActions({
         alert(data.error || 'Erro ao reenviar convite');
       } else {
         alert('Convite reenviado com sucesso!');
-        window.location.reload();
+        if (onAction) {
+          onAction();
+        } else {
+          window.location.reload();
+        }
       }
     } catch (error) {
       alert('Erro ao reenviar convite');
@@ -57,7 +63,11 @@ export default function InvitationRowActions({
         alert(data.error || 'Erro ao cancelar convite');
       } else {
         alert('Convite cancelado com sucesso!');
-        window.location.reload();
+        if (onAction) {
+          onAction();
+        } else {
+          window.location.reload();
+        }
       }
     } catch (error) {
       alert('Erro ao cancelar convite');
