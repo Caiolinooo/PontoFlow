@@ -156,6 +156,7 @@ export async function POST(request: NextRequest) {
     const password_hash = await bcrypt.hash(password, 10);
 
     // Create user
+    // Note: 'name' is a generated column (first_name || ' ' || last_name), so we don't insert it
     const { data: newUser, error: createError } = await supabase
       .from('users_unified')
       .insert({
@@ -163,7 +164,6 @@ export async function POST(request: NextRequest) {
         password_hash,
         first_name: invitation.first_name,
         last_name: invitation.last_name,
-        name: `${invitation.first_name} ${invitation.last_name}`,
         phone_number: phone_number || invitation.phone_number || null,
         position: position || invitation.position || null,
         department: department || invitation.department || null,
