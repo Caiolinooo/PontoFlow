@@ -112,7 +112,7 @@ export default async function AdminEmailSettingsPage({ params }: Props) {
               <strong>Common SMTP Providers:</strong>
             </p>
             <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Office 365: smtp.office365.com:587</li>
+              <li>Microsoft 365: smtp.{'office365'}.com:587</li>
               <li>Gmail: smtp.gmail.com:587 (requires app password)</li>
               <li>SendGrid: smtp.sendgrid.net:587</li>
               <li>Mailgun: smtp.mailgun.org:587</li>
