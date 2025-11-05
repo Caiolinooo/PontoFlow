@@ -214,9 +214,10 @@ export async function POST(request: NextRequest) {
       console.log('⚠️ [Database] Profile found, checking if user is fully registered:', existingProfile.user_id);
       
       // Check if this profile has associated tenant roles (indicating complete registration)
+      // Note: tenant_user_roles has composite primary key (tenant_id, user_id, role), no 'id' column
       const { data: tenantRoles, error: rolesError } = await supabase
         .from('tenant_user_roles')
-        .select('id')
+        .select('tenant_id')
         .eq('user_id', existingProfile.user_id)
         .limit(1);
 
