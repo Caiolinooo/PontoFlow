@@ -986,7 +986,7 @@
         "oauth2Warning": "⚠️ Atenção",
         "oauth2WarningItems": [
           "OAuth2 requer código adicional (não implementado ainda)",
-          "Para usar agora, selecione \"SMTP Genérico\" e configure smtp.office365.com",
+          "Para usar agora, selecione \"SMTP Genérico\" e configure seu servidor SMTP",
           "OAuth2 oferece mais segurança mas é mais complexo"
         ],
         "azureTenantId": "Directory (tenant) ID do Azure AD",

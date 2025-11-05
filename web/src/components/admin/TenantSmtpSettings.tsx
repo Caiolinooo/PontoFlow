@@ -174,7 +174,7 @@ export default function TenantSmtpSettings({ tenantId, tenantName }: TenantSmtpS
                 type="text"
                 value={config.host}
                 onChange={(e) => setConfig({ ...config, host: e.target.value })}
-                placeholder="smtp.office365.com"
+                placeholder="smtp.example.com"
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2"
                 required
               />

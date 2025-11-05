@@ -118,6 +118,9 @@ export default async function AdminEmailSettingsPage({ params }: Props) {
               <li>Mailgun: smtp.mailgun.org:587</li>
               <li>Amazon SES: email-smtp.region.amazonaws.com:587</li>
             </ul>
+            <p className="text-xs text-[var(--muted-foreground)] mt-2">
+              Note: These are common SMTP server addresses. Use your actual SMTP server configuration.
+            </p>
             <p>
               <strong>Testing:</strong> Always test your SMTP configuration after saving to ensure
               emails are being delivered correctly.

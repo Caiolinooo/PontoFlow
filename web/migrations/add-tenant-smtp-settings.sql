@@ -9,7 +9,7 @@
 -- {
 --   "smtp": {
 --     "enabled": true,
---     "host": "smtp.office365.com",
+--     "host": "smtp.example.com",
 --     "port": 587,
 --     "user": "noreply@tenant-domain.com",
 --     "password_encrypted": "encrypted_password_here",
@@ -79,7 +79,7 @@ WHERE (settings->'smtp'->>'enabled')::boolean = true;
 --   '{smtp}',
 --   '{
 --     "enabled": true,
---     "host": "smtp.office365.com",
+--     "host": "smtp.example.com",
 --     "port": 587,
 --     "user": "noreply@example.com",
 --     "password_encrypted": "encrypted_password_here",

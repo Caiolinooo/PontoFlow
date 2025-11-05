@@ -7,7 +7,7 @@
 --   "email": {
 --     "provider": "smtp|gmail|exchange-oauth2|sendgrid|ses",
 --     "smtp": {
---       "host": "smtp.office365.com",
+--       "host": "smtp.example.com",
 --       "port": 587,
 --       "user": "email@domain.com",
 --       "password_encrypted": "...",

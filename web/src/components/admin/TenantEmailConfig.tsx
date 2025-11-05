@@ -332,7 +332,7 @@ export default function TenantEmailConfig() {
                   smtp: { ...emailConfig.smtp!, host: e.target.value }
                 })}
                 className="w-full px-3 py-2 border border-[var(--border)] rounded-lg bg-[var(--background)] text-[var(--foreground)]"
-                placeholder="smtp.office365.com"
+                placeholder="smtp.example.com"
               />
             </div>
             <div>
