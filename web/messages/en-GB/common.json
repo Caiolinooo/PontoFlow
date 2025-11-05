@@ -16,6 +16,12 @@
       "overtime50": "Overtime (50%)",
       "overtime100": "Double Time (100%)"
     },
+    "pendingStatus": {
+      "totalPending": "Total Pending",
+      "overdue": "Overdue",
+      "current": "Current",
+      "daysRemaining": "Days Remaining"
+    },
     "modules": {
       "myTimesheet": {
         "title": "My Timesheet",
@@ -383,6 +389,8 @@
     "scopeByEmployeeDesc": "Group and consolidate data by employee",
     "scopeByVessel": "By Vessel",
     "scopeByVesselDesc": "Group and consolidate data by vessel",
+    "myTimesheets": "My Timesheets",
+    "myTimesheetsDesc": "View your own timesheet records",
     "reportTitleAllTimesheets": "All Timesheets",
     "reportTitlePending": "Pending Items",
     "reportTitleApproved": "Approved Timesheets",
@@ -412,6 +420,7 @@
     "lastNameTooShort": "Last name is too short"
   },
   "admin": {
+    "currentTenant": "Current Tenant",
     "users": {
       "title": "User Management",
       "subtitle": "Manage all system users",
@@ -455,7 +464,8 @@
       "searchPlaceholder": "Search by name or email",
       "anyRole": "Any role",
       "anyStatus": "Any status",
-      "filter": "Filter"
+      "filter": "Filter",
+      "viewAll": "View all"
     },
     "delegations": {
       "title": "Delegations (Groups)",
@@ -482,7 +492,9 @@
       "selectTenant": "Select tenant",
       "loadFailed": "Failed to load groups",
       "unexpectedError": "Unexpected error",
-      "loadTenantsFailed": "Failed to load tenants"
+      "loadTenantsFailed": "Failed to load tenants",
+      "loading": "Loading...",
+      "setTenantFailed": "Failed to set tenant"
     },
     "employees": {
       "newEmployeeTitle": "New Employee",
@@ -569,6 +581,14 @@
       "actions": "Actions",
       "edit": "Edit",
       "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel",
+      "editTenant": "Edit Tenant",
+      "namePlaceholder": "Enter tenant name",
+      "slugPlaceholder": "Enter slug (e.g., my-company)",
+      "slugInvalid": "Slug must contain only lowercase letters, numbers, and hyphens",
+      "deleteConfirmTitle": "Confirm Deletion",
+      "deleteConfirmMessage": "Are you sure you want to delete the tenant \"{name}\"? This action cannot be undone.",
       "namePrompt": "Name:",
       "slugPrompt": "Slug:",
       "deleteConfirm": "Delete tenant? This action cannot be undone.",
@@ -594,6 +614,9 @@
       "locked": "Locked",
       "unlocked": "Open",
       "reason": "Reason",
+      "period": "Period",
+      "status": "Status",
+      "action": "Action",
       "overridesByEnvironment": "Overrides by Environment",
       "overridesByEnvironmentDesc": "Specific locks by environment (override tenant).",
       "searchEnvironment": "Search environment",
@@ -703,7 +726,19 @@
       "date": "Date",
       "time": "Time",
       "noApprovalsFound": "No approvals recorded.",
-      "noEntriesFound": "No entries recorded."
+      "noEntriesFound": "No entries recorded.",
+      "statusLabels": {
+        "aprovado": "Approved",
+        "recusado": "Rejected",
+        "enviado": "Submitted"
+      },
+      "entryTypes": {
+        "embarque": "Boarding",
+        "offshore": "Offshore",
+        "translado": "Transfer",
+        "ferias": "Vacation",
+        "folga": "Day Off"
+      }
     },
     "importExport": {
       "title": "Import/Export",
@@ -887,7 +922,8 @@
     "tabs": {
       "health": "System Status",
       "system": "System Settings",
-      "tenant": "Company Settings"
+      "tenant": "Company Settings",
+      "userSync": "User Synchronization"
     },
     "health": {
       "title": "System Status",
@@ -1051,6 +1087,22 @@
       "apiBaseUrl": "API base URL (optional, default: same origin)",
       "webhookUrl": "URL to receive system event webhooks"
     },
+    "userSync": {
+      "title": "User Synchronization",
+      "description": "Control automatic user synchronization to users_unified table (ABZ Panel integration)",
+      "enableSync": "Enable sync to users_unified",
+      "syncEnabledInfo": "New users will be automatically synced to users_unified",
+      "syncDisabledInfo": "Sync disabled - only auth.users and profiles will be used",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enabledSuccess": "Synchronization enabled successfully",
+      "disabledSuccess": "Synchronization disabled successfully",
+      "updateError": "Error updating sync configuration",
+      "infoTitle": "Important Information",
+      "infoLine1": "ABZ Group: Keep ENABLED for ABZ Panel integration",
+      "infoLine2": "Future Clients: DISABLE to use only Supabase Auth",
+      "infoLine3": "Changes apply immediately and affect new users"
+    },
     "tenantSettings": {
       "title": "Company Settings",
       "subtitle": "Company information, branding and document templates",
@@ -1113,5 +1165,184 @@
     },
     "saveSuccess": "Settings saved successfully!",
     "saveError": "Error saving settings"
+  },
+  "invitations": {
+    "title": "Manage Invitations",
+    "manageButton": "Manage Invitations",
+    "tabs": {
+      "create": "Create New Invitation",
+      "manage": "Manage Invitations"
+    },
+    "form": {
+      "title": "Invite New User",
+      "subtitle": "Fill in the details of the user you want to invite",
+      "email": "Email",
+      "emailPlaceholder": "user@example.com",
+      "emailHelp": "The invitation will be sent to this email",
+      "firstName": "First Name",
+      "firstNamePlaceholder": "John",
+      "lastName": "Last Name",
+      "lastNamePlaceholder": "Smith",
+      "phone": "Phone",
+      "phonePlaceholder": "+44 20 1234 5678",
+      "phoneOptional": "(optional)",
+      "position": "Position",
+      "positionPlaceholder": "Developer",
+      "positionOptional": "(optional)",
+      "department": "Department",
+      "departmentPlaceholder": "IT",
+      "departmentOptional": "(optional)",
+      "role": "Role",
+      "roleHelp": "Select the user's role in the system",
+      "roles": {
+        "USER": "User",
+        "MANAGER_TIMESHEET": "Timesheet Manager",
+        "MANAGER": "Manager",
+        "ADMIN": "Administrator"
+      },
+      "roleDescriptions": {
+        "USER": "Basic access to view and manage own timesheets",
+        "MANAGER_TIMESHEET": "Can approve timesheets and manage user groups",
+        "MANAGER": "Full access to manage users, groups and settings",
+        "ADMIN": "Complete system access, including advanced settings"
+      },
+      "noTenants": "No tenants available",
+      "noGroupsForTenants": "No groups available for selected tenants",
+      "selectTenantFirst": "Select a tenant to see available groups",
+      "managedGroupsDescription": "Select the groups this manager will manage",
+      "tenants": "Tenants",
+      "tenantsHelp": "Select the tenants the user will have access to",
+      "groups": "Delegation Groups",
+      "groupsHelp": "Select the groups the user will belong to",
+      "groupsEmpty": "No groups available. Select a tenant first.",
+      "managedGroups": "Managed Groups",
+      "managedGroupsHelp": "Select the groups this manager will supervise",
+      "managedGroupsEmpty": "No groups available to manage",
+      "submit": "Send Invitation",
+      "submitting": "Sending...",
+      "cancel": "Cancel",
+      "validation": {
+        "checking": "Checking availability...",
+        "available": "Email available",
+        "unavailable": "This email is already in use",
+        "invalid": "Invalid email",
+        "required": "Required field"
+      }
+    },
+    "list": {
+      "title": "Sent Invitations",
+      "subtitle": "Manage pending invitations and view history",
+      "pendingInvitations": "Pending Invitations",
+      "filter": {
+        "all": "All",
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "expired": "Expired",
+        "cancelled": "Cancelled"
+      },
+      "table": {
+        "email": "Email",
+        "name": "Name",
+        "role": "Role",
+        "status": "Status",
+        "invitedBy": "Invited by",
+        "invitedAt": "Invitation Date",
+        "expiresAt": "Expires at",
+        "actions": "Actions"
+      },
+      "status": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "expired": "Expired",
+        "cancelled": "Cancelled"
+      },
+      "warnings": {
+        "expiresIn": "Expires in {hours}h",
+        "expired": "Expired"
+      },
+      "empty": "No invitations found",
+      "loading": "Loading invitations...",
+      "pagination": {
+        "showing": "Showing {start} to {end} of {total} invitations",
+        "previous": "Previous",
+        "next": "Next"
+      }
+    },
+    "actions": {
+      "resend": "Resend",
+      "cancel": "Cancel",
+      "copyLink": "Copy Link",
+      "resending": "Resending...",
+      "cancelling": "Cancelling..."
+    },
+    "messages": {
+      "success": "Invitation sent successfully!",
+      "resendSuccess": "Invitation resent successfully!",
+      "cancelSuccess": "Invitation cancelled successfully!",
+      "linkCopied": "Link copied to clipboard!",
+      "error": "Error processing invitation",
+      "resendError": "Error resending invitation",
+      "cancelError": "Error cancelling invitation",
+      "loadError": "Error loading invitations"
+    },
+    "confirmations": {
+      "cancel": "Are you sure you want to cancel this invitation?",
+      "resend": "Do you want to resend the invitation to {email}?"
+    },
+    "errors": {
+      "emailExists": "This email is already registered in the system",
+      "pendingInvitation": "There is already a pending invitation for this email",
+      "invalidEmail": "Invalid email",
+      "requiredFields": "Required fields: email, first name, last name and role",
+      "managerGroupsOnly": "Only managers can have managed groups",
+      "unauthorized": "Not authenticated",
+      "forbidden": "No permission",
+      "serverError": "Internal server error",
+      "networkError": "Connection error. Check your internet.",
+      "submitError": "Error sending invitation. Please try again."
+    },
+    "suggestions": {
+      "emailExists": "Check if the user has already been registered. You can search by email in the user list.",
+      "pendingInvitation": "Cancel the previous invitation in the invitation list before creating a new one.",
+      "invalidEmail": "Check if the email is in the correct format (example@domain.com).",
+      "requiredFields": "Fill in all required fields marked with *.",
+      "managerGroupsOnly": "Only users with 'Manager' or 'Timesheet Manager' role can have managed groups. Change the role or uncheck the managed groups.",
+      "unauthorized": "Your session has expired. Please reload the page and log in again.",
+      "forbidden": "You do not have permission to create invitations. Contact a system administrator.",
+      "serverError": "A server error occurred. Try again in a few moments. If the problem persists, contact technical support."
+    },
+    "wizard": {
+      "step1": {
+        "label": "Basic Information",
+        "description": "Personal details",
+        "title": "User Basic Information"
+      },
+      "step2": {
+        "label": "Role",
+        "description": "Permissions",
+        "title": "Select User Role",
+        "subtitle": "Choose the level of access the user will have in the system"
+      },
+      "step3": {
+        "label": "Tenants & Groups",
+        "description": "Access",
+        "title": "Configure Tenant and Group Access",
+        "contextTenant": "Current tenant pre-selected",
+        "filteredGroups": "Filtered by {count} tenant(s)"
+      },
+      "step4": {
+        "label": "Review",
+        "description": "Confirm",
+        "title": "Review and Confirm Invitation",
+        "subtitle": "Check all information before sending the invitation",
+        "noSelection": "No selection",
+        "confirmTitle": "Ready to send?",
+        "confirmMessage": "An invitation email will be sent to the provided address with instructions to create the account."
+      },
+      "next": "Next",
+      "back": "Back",
+      "edit": "Edit",
+      "stepIndicator": "Step {current} of {total}"
+    }
   }
 }

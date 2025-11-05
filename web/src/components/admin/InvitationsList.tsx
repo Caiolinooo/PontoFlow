@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import InvitationRowActions from './InvitationRowActions';
 
 interface Invitation {
@@ -26,6 +27,7 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
+  const t = useTranslations('invitations');
 
   useEffect(() => {
     loadInvitations();
@@ -36,15 +38,15 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
     setError(null);
 
     try {
-      const url = filter === 'all' 
+      const url = filter === 'all'
         ? '/api/admin/invitations'
         : `/api/admin/invitations?status=${filter}`;
-      
+
       const response = await fetch(url);
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        setError(data.error || 'Erro ao carregar convites');
+        setError(data.error || t('messages.loadError'));
         setLoading(false);
         return;
       }
@@ -52,7 +54,7 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
       setInvitations(data.invitations || []);
     } catch (err) {
       console.error('Error loading invitations:', err);
-      setError('Erro ao carregar convites. Verifique sua conexão.');
+      setError(t('messages.loadError'));
     } finally {
       setLoading(false);
     }
@@ -71,33 +73,20 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
       cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
     };
 
-    const labels = {
-      pending: 'Pendente',
-      accepted: 'Aceito',
-      expired: 'Expirado',
-      cancelled: 'Cancelado',
-    };
-
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${badges[status as keyof typeof badges] || badges.pending}`}>
-        {labels[status as keyof typeof labels] || status}
+        {t(`list.status.${status}` as any)}
       </span>
     );
   };
 
   const getRoleName = (role: string) => {
-    const roles: Record<string, string> = {
-      USER: 'Usuário',
-      MANAGER_TIMESHEET: 'Gerente de Timesheet',
-      MANAGER: 'Gerente',
-      ADMIN: 'Administrador',
-    };
-    return roles[role] || role;
+    return t(`form.roles.${role}` as any);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
+    return date.toLocaleString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -116,69 +105,68 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
   return (
     <div className="flex flex-col h-full">
       {/* Filters */}
-      <div className="p-6 border-b border-[var(--border)] flex-shrink-0">
+      <div className="p-6 border-b border-[var(--border)] flex-shrink-0 bg-[var(--muted)]">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-[var(--foreground)]">Filtrar por:</span>
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === 'all'
-                ? 'bg-purple-600 text-white'
-                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--muted)]/80'
+                ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm'
+                : 'bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)]'
             }`}
           >
-            Todos
+            {t('list.filter.all')}
           </button>
           <button
             onClick={() => setFilter('pending')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === 'pending'
-                ? 'bg-yellow-600 text-white'
-                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--muted)]/80'
+                ? 'bg-yellow-500 text-white shadow-sm'
+                : 'bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)]'
             }`}
           >
-            Pendentes
+            {t('list.filter.pending')}
           </button>
           <button
             onClick={() => setFilter('accepted')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === 'accepted'
-                ? 'bg-green-600 text-white'
-                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--muted)]/80'
+                ? 'bg-green-600 text-white shadow-sm'
+                : 'bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)]'
             }`}
           >
-            Aceitos
+            {t('list.filter.accepted')}
           </button>
           <button
             onClick={() => setFilter('expired')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === 'expired'
-                ? 'bg-gray-600 text-white'
-                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--muted)]/80'
+                ? 'bg-gray-600 text-white shadow-sm'
+                : 'bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)]'
             }`}
           >
-            Expirados
+            {t('list.filter.expired')}
           </button>
           <button
             onClick={() => setFilter('cancelled')}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === 'cancelled'
-                ? 'bg-red-600 text-white'
-                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--muted)]/80'
+                ? 'bg-[var(--destructive)] text-[var(--destructive-foreground)] shadow-sm'
+                : 'bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] hover:bg-[var(--muted)]'
             }`}
           >
-            Cancelados
+            {t('list.filter.cancelled')}
           </button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 p-6 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-[var(--muted-foreground)]">Carregando convites...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mx-auto mb-4"></div>
+              <p className="text-[var(--muted-foreground)]">{t('list.loading')}</p>
             </div>
           </div>
         ) : error ? (
@@ -186,9 +174,9 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
             <p className="text-red-800 dark:text-red-200 font-medium">{error}</p>
             <button
               onClick={loadInvitations}
-              className="mt-2 text-sm text-red-600 dark:text-red-400 hover:underline"
+              className="mt-2 text-sm text-red-600 dark:text-red-400 hover:underline font-medium"
             >
-              Tentar novamente
+              {t('actions.resend')}
             </button>
           </div>
         ) : invitations.length === 0 ? (
@@ -197,7 +185,7 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
               <svg className="w-16 h-16 text-[var(--muted-foreground)] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              <p className="text-[var(--muted-foreground)] text-lg">Nenhum convite encontrado</p>
+              <p className="text-[var(--foreground)] text-lg font-medium">{t('list.empty')}</p>
               <p className="text-[var(--muted-foreground)] text-sm mt-1">
                 {filter === 'all' ? 'Crie um novo convite para começar' : `Nenhum convite ${filter}`}
               </p>
@@ -208,7 +196,7 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
             {invitations.map((invitation) => (
               <div
                 key={invitation.id}
-                className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-4 hover:shadow-md transition-shadow"
+                className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-4 hover:shadow-md hover:border-[var(--primary)] transition-all"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -221,21 +209,21 @@ export default function InvitationsList({ locale, onUpdate }: InvitationsListPro
                     
                     <div className="space-y-1 text-sm">
                       <p className="text-[var(--muted-foreground)]">
-                        <span className="font-medium">Email:</span> {invitation.email}
+                        <span className="font-medium">{t('list.table.email')}:</span> {invitation.email}
                       </p>
                       <p className="text-[var(--muted-foreground)]">
-                        <span className="font-medium">Função:</span> {getRoleName(invitation.role)}
+                        <span className="font-medium">{t('list.table.role')}:</span> {getRoleName(invitation.role)}
                       </p>
                       <p className="text-[var(--muted-foreground)]">
-                        <span className="font-medium">Convidado por:</span> {invitation.invited_by_name}
+                        <span className="font-medium">{t('list.table.invitedBy')}:</span> {invitation.invited_by_name}
                       </p>
                       <p className="text-[var(--muted-foreground)]">
-                        <span className="font-medium">Enviado em:</span> {formatDate(invitation.invited_at)}
+                        <span className="font-medium">{t('list.table.invitedAt')}:</span> {formatDate(invitation.invited_at)}
                       </p>
                       {invitation.status === 'pending' && (
                         <p className={`${isExpiringSoon(invitation.expires_at) ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-[var(--muted-foreground)]'}`}>
-                          <span className="font-medium">Expira em:</span> {formatDate(invitation.expires_at)}
-                          {isExpiringSoon(invitation.expires_at) && ' ⚠️ Expira em breve!'}
+                          <span className="font-medium">{t('list.table.expiresAt')}:</span> {formatDate(invitation.expires_at)}
+                          {isExpiringSoon(invitation.expires_at) && ` ⚠️ ${t('list.warnings.expiresIn', { hours: Math.floor((new Date(invitation.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60)) })}`}
                         </p>
                       )}
                     </div>

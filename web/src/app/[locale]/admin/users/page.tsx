@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { requireRole } from '@/lib/auth/server';
 import Link from 'next/link';
 import UserRowActions from '@/components/admin/UserRowActions';
+import Avatar from '@/components/ui/Avatar';
 import { getServerSupabase } from '@/lib/supabase/server';
 import UsersPageClient from '@/components/admin/UsersPageClient';
 
@@ -45,6 +46,7 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
     .limit(10);
 
   const t = await getTranslations({ locale, namespace: 'admin.users' });
+  const tInvitations = await getTranslations({ locale, namespace: 'invitations' });
 
   return (
     <div className="space-y-6">
@@ -56,7 +58,7 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
         <UsersPageClient
           locale={locale}
           newUserLabel={t('newUser')}
-          inviteUserLabel="Gerenciar Convites"
+          inviteUserLabel={tInvitations('manageButton')}
         />
       </div>
 
@@ -65,13 +67,13 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-              📬 Convites Pendentes ({invitations.length})
+              📬 {tInvitations('list.pendingInvitations')} ({invitations.length})
             </h3>
             <Link
               href={`/${locale}/admin/users/invitations`}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Ver todos
+              {t('viewAll')}
             </Link>
           </div>
           <div className="space-y-2">
@@ -85,10 +87,10 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
                 </div>
                 <div className="text-right">
                   <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                    {inv.role}
+                    {tInvitations(`form.roles.${inv.role}` as any)}
                   </span>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Expira em {new Date(inv.expires_at).toLocaleDateString('pt-BR')}
+                    {tInvitations('list.table.expiresAt')}: {new Date(inv.expires_at).toLocaleDateString(locale)}
                   </p>
                 </div>
               </div>
@@ -108,10 +110,10 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
         />
         <select name="role" defaultValue={role} className="border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded-lg px-3 py-2">
           <option value="">{t('anyRole')}</option>
-          <option value="USER">USER</option>
-          <option value="MANAGER_TIMESHEET">MANAGER_TIMESHEET</option>
-          <option value="MANAGER">MANAGER</option>
-          <option value="ADMIN">ADMIN</option>
+          <option value="USER">{tInvitations('form.roles.USER')}</option>
+          <option value="MANAGER_TIMESHEET">{tInvitations('form.roles.MANAGER_TIMESHEET')}</option>
+          <option value="MANAGER">{tInvitations('form.roles.MANAGER')}</option>
+          <option value="ADMIN">{tInvitations('form.roles.ADMIN')}</option>
         </select>
         <select name="status" defaultValue={status} className="border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded-lg px-3 py-2">
           <option value="">{t('anyStatus')}</option>
@@ -147,20 +149,12 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
                 <tr key={user.id} className="hover:bg-[var(--muted)]/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {user.drive_photo_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={user.drive_photo_url}
-                          alt={user.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--primary)]/10">
-                          <span className="text-[var(--primary)] font-medium">
-                            {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
-                          </span>
-                        </div>
-                      )}
+                      <Avatar
+                        src={user.drive_photo_url}
+                        alt={user.name}
+                        initials={`${user.first_name?.charAt(0) || ''}${user.last_name?.charAt(0) || ''}`}
+                        size="md"
+                      />
                       <div className="ml-3">
                         <div className="text-sm font-medium text-[var(--card-foreground)]">{user.first_name} {user.last_name}</div>
                         <div className="text-sm text-[var(--muted-foreground)]">{user.position || '-'}</div>
@@ -174,7 +168,7 @@ export default async function AdminUsersPage({ params, searchParams }: { params:
                       (user.role === 'MANAGER' || user.role === 'MANAGER_TIMESHEET') ? 'bg-blue-500/15 text-blue-500' :
                       'bg-slate-500/15 text-slate-500'
                     }`}>
-                      {user.role}
+                      {tInvitations(`form.roles.${user.role}` as any)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--card-foreground)]">{user.department || '-'}</td>

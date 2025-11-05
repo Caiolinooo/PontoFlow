@@ -340,24 +340,24 @@ export default function EmployeePendingStatus() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-[var(--card)] rounded-lg p-3 text-center border border-[var(--border)]">
           <div className="text-2xl font-bold text-[var(--foreground)]">{summary.totalPending}</div>
-          <div className="text-xs text-[var(--muted-foreground)]">Total Pendente</div>
+          <div className="text-xs text-[var(--muted-foreground)]">{t('pendingStatus.totalPending')}</div>
         </div>
         <div className="bg-[var(--card)] rounded-lg p-3 text-center border border-[var(--border)]">
           <div className="text-2xl font-bold text-red-500">{summary.overdueCount}</div>
-          <div className="text-xs text-[var(--muted-foreground)]">Vencidos</div>
+          <div className="text-xs text-[var(--muted-foreground)]">{t('pendingStatus.overdue')}</div>
         </div>
         <div className="bg-[var(--card)] rounded-lg p-3 text-center border border-[var(--border)]">
           <div className="text-2xl font-bold text-orange-500">{currentMonth.completionPercentage}%</div>
-          <div className="text-xs text-[var(--muted-foreground)]">Atual</div>
+          <div className="text-xs text-[var(--muted-foreground)]">{t('pendingStatus.current')}</div>
         </div>
         <div className="bg-[var(--card)] rounded-lg p-3 text-center border border-[var(--border)]">
           <div className={`text-2xl font-bold ${
-            summary.daysUntilNextDeadline <= 1 ? 'text-red-500' : 
+            summary.daysUntilNextDeadline <= 1 ? 'text-red-500' :
             summary.daysUntilNextDeadline <= 7 ? 'text-orange-500' : 'text-green-500'
           }`}>
             {summary.daysUntilNextDeadline}
           </div>
-          <div className="text-xs text-[var(--muted-foreground)]">Dias Restantes</div>
+          <div className="text-xs text-[var(--muted-foreground)]">{t('pendingStatus.daysRemaining')}</div>
         </div>
       </div>
     </div>

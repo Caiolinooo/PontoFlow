@@ -4,10 +4,13 @@ import { getServiceSupabase } from '@/lib/supabase/server';
 import { reportToCSV } from '@/lib/reports/generator';
 import { generateReportPDF } from '@/lib/reports/pdf-generator';
 import { generateReportExcel } from '@/lib/reports/excel-generator';
+import { validateReportParameters, validateReportsAccess, logAccessControl } from '@/lib/access-control';
 
 export async function GET(req: NextRequest) {
+  let user: any = null;
+  
   try {
-    const user = await requireApiAuth();
+    user = await requireApiAuth();
     const supabase = getServiceSupabase();
 
     console.log('[REPORTS-EXPORT] User:', { id: user.id, email: user.email, tenant_id: user.tenant_id, role: user.role });
@@ -21,6 +24,7 @@ export async function GET(req: NextRequest) {
     const employeeId = searchParams.get('employeeId');
     const reportType = searchParams.get('type') || 'summary';
     const locale = (searchParams.get('locale') || 'pt-BR') as 'pt-BR' | 'en-GB';
+    const reportScope = searchParams.get('scope') || 'timesheets';
 
     // Check if user has tenant_id
     if (!user.tenant_id) {
@@ -28,113 +32,69 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Usuário não possui tenant_id configurado' }, { status: 400 });
     }
 
-    // Role-based access control - same as generate endpoint
-    let allowedEmployeeIds: string[] | undefined = undefined;
-    let requestedEmployeeId: string | undefined = employeeId || undefined;
+    // Validate and sanitize input parameters
+    const validation = validateReportParameters({
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      status: status || undefined,
+      employeeId: employeeId || undefined,
+      type: reportType,
+      scope: reportScope,
+      format: format
+    });
 
-    if (user.role === 'USER') {
-      // User (collaborator) can only export their own timesheets
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('employee_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile?.employee_id) {
-        return NextResponse.json({ error: 'Colaborador não encontrado' }, { status: 404 });
-      }
-
-      requestedEmployeeId = profile.employee_id;
-      console.log('[REPORTS-EXPORT] USER access - own timesheets only. Employee ID:', requestedEmployeeId);
-    } else if (user.role === 'MANAGER' || user.role === 'MANAGER_TIMESHEET') {
-      // Manager can export their team's timesheets (employees in groups they manage)
-
-      // 1. Get groups managed by this manager
-      const { data: managerGroups, error: managerGroupsError } = await supabase
-        .from('manager_group_assignments')
-        .select('group_id')
-        .eq('tenant_id', user.tenant_id)
-        .eq('manager_id', user.id);
-
-      if (managerGroupsError) {
-        console.error('[REPORTS-EXPORT] Error fetching manager groups:', managerGroupsError);
-        return NextResponse.json({ error: 'Erro ao buscar grupos do gerente' }, { status: 500 });
-      }
-
-      const groupIds = (managerGroups || []).map(g => g.group_id);
-
-      if (groupIds.length === 0) {
-        console.log('[REPORTS-EXPORT] MANAGER has no assigned groups - exporting own timesheets only');
-        // Manager has no groups assigned - export their own timesheets (like a USER)
-
-        // Get manager's employee profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('employee_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (!profile?.employee_id) {
-          console.log('[REPORTS-EXPORT] MANAGER has no employee profile');
-          return NextResponse.json({ error: 'Perfil de colaborador não encontrado' }, { status: 404 });
+    if (!validation.valid) {
+      console.error('[REPORTS-EXPORT] Parameter validation failed:', validation.error);
+      
+      await logAccessControl({
+        userId: user.id,
+        userRole: user.role,
+        action: 'report_export',
+        resource: 'timesheet_reports',
+        scope: reportScope,
+        success: false,
+        details: {
+          error: 'parameter_validation_failed',
+          invalidParams: validation.error
         }
-
-        // Set to export only manager's own timesheets
-        requestedEmployeeId = profile.employee_id;
-        console.log('[REPORTS-EXPORT] MANAGER exporting own timesheets. Employee ID:', requestedEmployeeId);
-        // Don't set allowedEmployeeIds - will use requestedEmployeeId filter directly
-      } else {
-        // Manager has groups - get employees from those groups
-        console.log('[REPORTS-EXPORT] MANAGER manages groups:', groupIds);
-
-        // 2. Get employees in those groups
-        const { data: groupMembers, error: groupMembersError } = await supabase
-          .from('employee_group_members')
-          .select('employee_id')
-          .eq('tenant_id', user.tenant_id)
-          .in('group_id', groupIds);
-
-        if (groupMembersError) {
-          console.error('[REPORTS-EXPORT] Error fetching group members:', groupMembersError);
-          return NextResponse.json({ error: 'Erro ao buscar membros dos grupos' }, { status: 500 });
-        }
-
-        allowedEmployeeIds = [...new Set((groupMembers || []).map(m => m.employee_id))];
-
-        if (allowedEmployeeIds.length === 0) {
-          console.log('[REPORTS-EXPORT] MANAGER groups have no employees - exporting own timesheets only');
-          // Manager's groups have no employees - export their own timesheets
-
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('employee_id')
-            .eq('user_id', user.id)
-            .single();
-
-          if (!profile?.employee_id) {
-            console.log('[REPORTS-EXPORT] MANAGER has no employee profile');
-            return NextResponse.json({ error: 'Perfil de colaborador não encontrado' }, { status: 404 });
-          }
-
-          requestedEmployeeId = profile.employee_id;
-          console.log('[REPORTS-EXPORT] MANAGER exporting own timesheets. Employee ID:', requestedEmployeeId);
-          // Don't set allowedEmployeeIds
-        } else {
-          console.log('[REPORTS-EXPORT] MANAGER can access employees:', allowedEmployeeIds);
-
-          // If a specific employee was requested, verify manager has access to them
-          if (requestedEmployeeId) {
-            if (!allowedEmployeeIds.includes(requestedEmployeeId)) {
-              console.log('[REPORTS-EXPORT] MANAGER does not have access to requested employee:', requestedEmployeeId);
-              return NextResponse.json({ error: 'Acesso negado a este colaborador' }, { status: 403 });
-            }
-          }
-        }
-      }
-    } else if (user.role === 'ADMIN' || user.role === 'TENANT_ADMIN') {
-      // Admin has access to everything in the tenant
-      console.log('[REPORTS-EXPORT] ADMIN access - all tenant timesheets');
+      });
+      
+      return NextResponse.json({ error: `Parâmetros inválidos: ${validation.error}` }, { status: 400 });
     }
+
+    // Apply hierarchical access control
+    const accessResult = await validateReportsAccess(
+      user.id,
+      user.role,
+      user.tenant_id,
+      validation.sanitized.employeeId,
+      reportScope
+    );
+
+    if (!accessResult.allowed) {
+      console.error('[REPORTS-EXPORT] Access denied:', accessResult.error);
+      
+      await logAccessControl({
+        userId: user.id,
+        userRole: user.role,
+        action: 'report_export',
+        resource: 'timesheet_reports',
+        scope: reportScope,
+        success: false,
+        employeeId: validation.sanitized.employeeId,
+        details: {
+          error: 'access_denied',
+          reason: accessResult.error,
+          requestedEmployeeId: validation.sanitized.employeeId,
+          exportFormat: format
+        }
+      });
+      
+      return NextResponse.json({ error: accessResult.error }, { status: 403 });
+    }
+
+    let allowedEmployeeIds: string[] | undefined = accessResult.allowedEmployeeIds;
+    let requestedEmployeeId: string | undefined = accessResult.employeeId;
 
     // Build query for timesheets
     let query = supabase
@@ -288,6 +248,26 @@ export async function GET(req: NextRequest) {
       locale,
     };
 
+    // Log successful export
+    await logAccessControl({
+      userId: user.id,
+      userRole: user.role,
+      action: 'report_export',
+      resource: 'timesheet_reports',
+      scope: reportScope,
+      success: true,
+      employeeId: requestedEmployeeId,
+      details: {
+        reportType: reportType,
+        exportFormat: format,
+        totalTimesheets: normalizedTimesheets.length,
+        employeeId: requestedEmployeeId,
+        dateRange: validation.sanitized.startDate && validation.sanitized.endDate ?
+          `${validation.sanitized.startDate} to ${validation.sanitized.endDate}` : 'all',
+        statusFilter: validation.sanitized.status || 'all'
+      }
+    });
+
     // Format and return based on requested format
     if (format === 'csv') {
       const csv = reportToCSV(reportData as any);
@@ -329,6 +309,22 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('[REPORTS-EXPORT] Error exporting report:', err);
+    
+    // Log failed export
+    await logAccessControl({
+      userId: user?.id || 'unknown',
+      userRole: user?.role || 'unknown',
+      action: 'report_export',
+      resource: 'timesheet_reports',
+      scope: (new URL(req.url)).searchParams.get('scope') || 'timesheets',
+      success: false,
+      details: {
+        error: 'internal_error',
+        message: err instanceof Error ? err.message : 'Unknown error',
+        exportFormat: (new URL(req.url)).searchParams.get('format')
+      }
+    });
+    
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }

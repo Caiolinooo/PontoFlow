@@ -6,17 +6,16 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 
-const schema = z.object({
-  email: z.string().email({ message: 'E-mail inválido' }),
-  first_name: z.string().min(2, { message: 'Nome muito curto' }),
-  last_name: z.string().min(2, { message: 'Sobrenome muito curto' }),
-  phone_number: z.string().optional(),
-  position: z.string().optional(),
-  department: z.string().optional(),
-  role: z.enum(['USER', 'MANAGER_TIMESHEET', 'MANAGER', 'ADMIN']),
-});
-
-type FormValues = z.infer<typeof schema>;
+// Schema will be created dynamically with translations
+type FormValues = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number?: string;
+  position?: string;
+  department?: string;
+  role: 'USER' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'ADMIN';
+};
 
 interface InviteUserFormProps {
   onSuccess: () => void;
@@ -29,15 +28,26 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
   const [success, setSuccess] = useState(false);
   const [emailValidating, setEmailValidating] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
-  
+
   // Tenant and group selection
   const [tenants, setTenants] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedManagedGroups, setSelectedManagedGroups] = useState<string[]>([]);
-  
-  const t = useTranslations('admin.users');
+
+  const t = useTranslations('invitations');
+
+  // Create schema with translated error messages
+  const schema = z.object({
+    email: z.string().email({ message: t('form.validation.invalid') }),
+    first_name: z.string().min(2, { message: t('form.validation.required') }),
+    last_name: z.string().min(2, { message: t('form.validation.required') }),
+    phone_number: z.string().optional(),
+    position: z.string().optional(),
+    department: z.string().optional(),
+    role: z.enum(['USER', 'MANAGER_TIMESHEET', 'MANAGER', 'ADMIN']),
+  });
 
   const { register, handleSubmit, formState: { errors }, watch, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -67,11 +77,11 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
       try {
         const response = await fetch(`/api/admin/users/check-email?email=${encodeURIComponent(emailValue)}`);
         const data = await response.json();
-        
+
         if (data.exists) {
-          setEmailError('Este email já está cadastrado no sistema');
+          setEmailError(t('errors.emailExists'));
         } else if (data.hasPendingInvitation) {
-          setEmailError('Já existe um convite pendente para este email');
+          setEmailError(t('errors.pendingInvitation'));
         } else {
           setEmailError(null);
         }
@@ -84,11 +94,11 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
 
     const timeoutId = setTimeout(validateEmail, 500);
     return () => clearTimeout(timeoutId);
-  }, [emailValue]);
+  }, [emailValue, t]);
 
   // Helper function to parse and format error messages
   const parseErrorMessage = (data: any, status: number): string => {
-    let errorMessage = 'Erro ao enviar convite';
+    let errorMessage = t('messages.error');
     let errorDetails = '';
 
     if (typeof data.error === 'string' && data.error) {
@@ -102,22 +112,28 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
     switch (status) {
       case 400:
         if (errorMessage.includes('already exists') || errorMessage.includes('já está cadastrado')) {
-          errorDetails = '\n\n💡 Sugestão: Verifique se o usuário já foi cadastrado anteriormente.';
+          errorDetails = '\n\n💡 ' + t('suggestions.emailExists');
         } else if (errorMessage.includes('convite pendente') || errorMessage.includes('pending invitation')) {
-          errorDetails = '\n\n💡 Sugestão: Já existe um convite pendente para este email. Cancele o convite anterior antes de criar um novo.';
+          errorDetails = '\n\n💡 ' + t('suggestions.pendingInvitation');
+        } else if (errorMessage.includes('obrigatórios') || errorMessage.includes('required')) {
+          errorDetails = '\n\n💡 ' + t('suggestions.requiredFields');
+        } else if (errorMessage.includes('Email inválido') || errorMessage.includes('invalid email')) {
+          errorDetails = '\n\n💡 ' + t('suggestions.invalidEmail');
+        } else if (errorMessage.includes('gerentes') || errorMessage.includes('manager')) {
+          errorDetails = '\n\n💡 ' + t('suggestions.managerGroupsOnly');
         }
         break;
       case 401:
-        errorMessage = 'Sessão expirada';
-        errorDetails = '\n\n💡 Sugestão: Sua sessão expirou. Por favor, recarregue a página e faça login novamente.';
+        errorMessage = t('errors.unauthorized');
+        errorDetails = '\n\n💡 ' + t('suggestions.unauthorized');
         break;
       case 403:
-        errorMessage = 'Sem permissão';
-        errorDetails = '\n\n💡 Sugestão: Você não tem permissão para criar convites.';
+        errorMessage = t('errors.forbidden');
+        errorDetails = '\n\n💡 ' + t('suggestions.forbidden');
         break;
       case 500:
-        errorMessage = 'Erro interno do servidor';
-        errorDetails = '\n\n💡 Sugestão: Ocorreu um erro no servidor. Tente novamente em alguns instantes.';
+        errorMessage = t('errors.serverError');
+        errorDetails = '\n\n💡 ' + t('suggestions.serverError');
         break;
     }
 
@@ -209,19 +225,19 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
       }, 1500);
     } catch (err) {
       console.error('Unexpected error:', err);
-      setError('Erro ao enviar convite. Verifique sua conexão e tente novamente.');
+      setError(t('errors.networkError'));
       setLoading(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
-      <div className="p-6 space-y-6 overflow-y-auto flex-1">
+      <div className="p-6 space-y-6 flex-1">
         {/* Success Message */}
         {success && (
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
             <p className="text-green-800 dark:text-green-200 font-medium">
-              ✅ Convite enviado com sucesso!
+              ✅ {t('messages.success')}
             </p>
           </div>
         )}
@@ -234,7 +250,7 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <p className="text-red-800 dark:text-red-200 font-medium mb-1">Erro ao enviar convite</p>
+                <p className="text-red-800 dark:text-red-200 font-medium mb-1">{t('messages.error')}</p>
                 <div className="text-sm text-red-700 dark:text-red-300 whitespace-pre-line">
                   {error}
                 </div>
@@ -245,20 +261,20 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
 
         {/* Basic Information */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-[var(--card-foreground)]">Informações Básicas</h3>
-          
+          <h3 className="text-lg font-semibold text-[var(--card-foreground)]">{t('form.title')}</h3>
+
           <div>
             <label className="block text-sm font-medium mb-1 text-[var(--card-foreground)]">
-              Email <span className="text-red-500">*</span>
+              {t('form.email')} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               {...register('email')}
               className={`w-full rounded-lg border ${emailError ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--background)] text-[var(--foreground)] px-3 py-2`}
-              placeholder="usuario@exemplo.com"
+              placeholder={t('form.emailPlaceholder')}
             />
             {emailValidating && (
-              <p className="text-blue-500 text-sm mt-1">Verificando email...</p>
+              <p className="text-blue-500 text-sm mt-1">{t('form.validation.checking')}</p>
             )}
             {emailError && (
               <p className="text-red-500 text-sm mt-1">{emailError}</p>
@@ -271,13 +287,13 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-[var(--card-foreground)]">
-                Nome <span className="text-red-500">*</span>
+                {t('form.firstName')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 {...register('first_name')}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2"
-                placeholder="João"
+                placeholder={t('form.firstNamePlaceholder')}
               />
               {errors.first_name && (
                 <p className="text-red-500 text-sm mt-1">{errors.first_name.message}</p>
@@ -286,13 +302,13 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
 
             <div>
               <label className="block text-sm font-medium mb-1 text-[var(--card-foreground)]">
-                Sobrenome <span className="text-red-500">*</span>
+                {t('form.lastName')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 {...register('last_name')}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2"
-                placeholder="Silva"
+                placeholder={t('form.lastNamePlaceholder')}
               />
               {errors.last_name && (
                 <p className="text-red-500 text-sm mt-1">{errors.last_name.message}</p>
@@ -303,60 +319,60 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1 text-[var(--card-foreground)]">
-                Telefone
+                {t('form.phone')} <span className="text-gray-400 text-xs">{t('form.phoneOptional')}</span>
               </label>
               <input
                 type="tel"
                 {...register('phone_number')}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2"
-                placeholder="+55 11 99999-9999"
+                placeholder={t('form.phonePlaceholder')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1 text-[var(--card-foreground)]">
-                Cargo
+                {t('form.position')} <span className="text-gray-400 text-xs">{t('form.positionOptional')}</span>
               </label>
               <input
                 type="text"
                 {...register('position')}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2"
-                placeholder="Desenvolvedor"
+                placeholder={t('form.positionPlaceholder')}
               />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1 text-[var(--card-foreground)]">
-              Departamento
+              {t('form.department')} <span className="text-gray-400 text-xs">{t('form.departmentOptional')}</span>
             </label>
             <input
               type="text"
               {...register('department')}
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2"
-              placeholder="TI"
+              placeholder={t('form.departmentPlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1 text-[var(--card-foreground)]">
-              Função <span className="text-red-500">*</span>
+              {t('form.role')} <span className="text-red-500">*</span>
             </label>
             <select
               {...register('role')}
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-3 py-2"
             >
-              <option value="USER">Usuário</option>
-              <option value="MANAGER_TIMESHEET">Gerente de Timesheet</option>
-              <option value="MANAGER">Gerente</option>
-              <option value="ADMIN">Administrador</option>
+              <option value="USER">{t('form.roles.USER')}</option>
+              <option value="MANAGER_TIMESHEET">{t('form.roles.MANAGER_TIMESHEET')}</option>
+              <option value="MANAGER">{t('form.roles.MANAGER')}</option>
+              <option value="ADMIN">{t('form.roles.ADMIN')}</option>
             </select>
           </div>
         </div>
 
         {/* Tenant Selection */}
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-[var(--card-foreground)]">Tenants</h3>
+          <h3 className="text-lg font-semibold text-[var(--card-foreground)]">{t('form.tenants')}</h3>
           {tenants.length > 0 ? (
             <div className="border border-[var(--border)] rounded-lg p-3 max-h-32 overflow-y-auto">
               {tenants.map((tenant) => (
@@ -378,20 +394,21 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[var(--muted-foreground)] italic">Nenhum tenant disponível</p>
+            <p className="text-sm text-[var(--muted-foreground)] italic">{t('form.groupsEmpty')}</p>
           )}
         </div>
 
         {/* Group Selection */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-[var(--card-foreground)]">Grupos</h3>
+            <h3 className="text-lg font-semibold text-[var(--card-foreground)]">{t('form.groups')}</h3>
             {selectedTenants.length > 0 && (
               <span className="text-xs text-[var(--muted-foreground)]">
-                Filtrado por {selectedTenants.length} tenant(s)
+                {selectedTenants.length} tenant(s)
               </span>
             )}
           </div>
+          <p className="text-xs text-[var(--muted-foreground)]">{t('form.groupsHelp')}</p>
           {filteredGroups.length > 0 ? (
             <div className="border border-[var(--border)] rounded-lg p-3 max-h-32 overflow-y-auto">
               {filteredGroups.map((group) => (
@@ -414,9 +431,7 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
             </div>
           ) : (
             <p className="text-sm text-[var(--muted-foreground)] italic">
-              {selectedTenants.length > 0
-                ? 'Nenhum grupo disponível para os tenants selecionados'
-                : 'Selecione um tenant para ver os grupos disponíveis'}
+              {t('form.groupsEmpty')}
             </p>
           )}
         </div>
@@ -428,10 +443,10 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
               <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">Grupos Gerenciados</h3>
+              <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">{t('form.managedGroups')}</h3>
             </div>
             <p className="text-sm text-purple-700 dark:text-purple-300">
-              Selecione os grupos que este gerente irá gerenciar
+              {t('form.managedGroupsHelp')}
             </p>
             {filteredGroups.length > 0 ? (
               <div className="border border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 rounded-lg p-3 max-h-32 overflow-y-auto">
@@ -455,9 +470,7 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
               </div>
             ) : (
               <p className="text-sm text-purple-700 dark:text-purple-300 italic">
-                {selectedTenants.length > 0
-                  ? 'Nenhum grupo disponível para os tenants selecionados'
-                  : 'Selecione um tenant para ver os grupos disponíveis'}
+                {t('form.managedGroupsEmpty')}
               </p>
             )}
           </div>
@@ -472,14 +485,14 @@ export default function InviteUserForm({ onSuccess, onCancel }: InviteUserFormPr
           disabled={loading}
           className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors disabled:opacity-50"
         >
-          Cancelar
+          {t('form.cancel')}
         </button>
         <button
           type="submit"
           disabled={loading || emailValidating || !!emailError}
           className="px-6 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
         >
-          {loading ? 'Enviando...' : 'Enviar Convite'}
+          {loading ? t('form.submitting') : t('form.submit')}
         </button>
       </div>
     </form>

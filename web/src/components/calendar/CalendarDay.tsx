@@ -59,7 +59,7 @@ const CalendarDay = memo(function CalendarDay({
       </div>
 
       <div className="space-y-0.5 flex-1 overflow-hidden">
-        {entries.slice(0, 2).map((entry) => {
+        {entries.slice(0, 5).map((entry) => {
           const envColor = getEnvironmentColor(entry.environment_id);
           const envName = getEnvironmentName(entry.environment_id);
           return (
@@ -79,9 +79,9 @@ const CalendarDay = memo(function CalendarDay({
             </div>
           );
         })}
-        {entries.length > 2 && (
+        {entries.length > 5 && (
           <div className="text-[8px] sm:text-[10px] text-[var(--muted-foreground)] font-semibold text-center">
-            +{entries.length - 2}
+            +{entries.length - 5}
           </div>
         )}
       </div>

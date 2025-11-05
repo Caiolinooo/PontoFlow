@@ -4,8 +4,9 @@ import { useTranslations } from 'next-intl';
 import AdminHealth from './AdminHealth';
 import AdminSystemConfig from './AdminSystemConfig';
 import AdminTenantSettings from './AdminTenantSettings';
+import UserSyncSettings from './UserSyncSettings';
 
-type TabId = 'health' | 'system' | 'tenant';
+type TabId = 'health' | 'system' | 'tenant' | 'userSync';
 
 interface AdminSettingsTabsProps {
   locale: string;
@@ -22,6 +23,7 @@ export default function AdminSettingsTabs({ locale, tenant, settings }: AdminSet
     { id: 'health' as const, label: t('health') },
     { id: 'system' as const, label: t('system') },
     { id: 'tenant' as const, label: t('tenant') },
+    { id: 'userSync' as const, label: t('userSync') },
   ];
 
   return (
@@ -65,6 +67,10 @@ export default function AdminSettingsTabs({ locale, tenant, settings }: AdminSet
 
         {activeTab === 'tenant' && (
           <AdminTenantSettings locale={locale} settings={settings} />
+        )}
+
+        {activeTab === 'userSync' && (
+          <UserSyncSettings locale={locale} />
         )}
       </div>
     </div>

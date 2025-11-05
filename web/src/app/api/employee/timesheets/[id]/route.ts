@@ -35,10 +35,24 @@ export async function GET(_req: NextRequest, context: {params: Promise<{id: stri
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
+    console.log(`🔍 [GET /api/employee/timesheets/${id}] Fetching entries...`);
+
     const [entriesRes, annotationsRes] = await Promise.all([
-      supabase.from('timesheet_entries').select('*').eq('timesheet_id', id).order('data', {ascending: true}),
+      supabase.from('timesheet_entries').select('*').eq('timesheet_id', id).order('data', {ascending: true}).order('hora_ini', {ascending: true, nullsFirst: false}),
       supabase.from('timesheet_annotations').select('id, entry_id, field_path, message, created_at').eq('timesheet_id', id).order('created_at', {ascending: true})
     ]);
+
+    if (entriesRes.error) {
+      console.error('❌ [Database] Error fetching entries:', entriesRes.error);
+    } else {
+      console.log(`✅ [Database] Found ${entriesRes.data?.length || 0} entries`);
+      // Log entries grouped by date
+      const entriesByDate = (entriesRes.data || []).reduce((acc: Record<string, number>, entry: any) => {
+        acc[entry.data] = (acc[entry.data] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('📊 [Database] Entries by date:', entriesByDate);
+    }
 
     return NextResponse.json({
       timesheet: ts,

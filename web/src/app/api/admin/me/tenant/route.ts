@@ -20,7 +20,7 @@ function getSupabaseAdmin() {
   });
 }
 
-// GET: retorna tenant atual do usuário e lista de tenants (id, name)
+// GET: retorna tenant atual do usuário, lista de tenants (id, name), e role do usuário
 export async function GET() {
   try {
     const user = await requireApiRole(['ADMIN']);
@@ -32,7 +32,14 @@ export async function GET() {
     // Get all tenants
     const { data: tenants } = await supabase.from('tenants').select('id, name').order('name');
 
-    return NextResponse.json({ current_tenant_id, tenants: tenants ?? [] });
+    // Return user role for admin access logic
+    return NextResponse.json({
+      current_tenant_id,
+      tenants: tenants ?? [],
+      user_role: user.role,
+      user_id: user.id,
+      user_email: user.email
+    });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

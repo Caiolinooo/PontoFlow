@@ -14,7 +14,11 @@ interface AvailablePeriod {
   isCurrent: boolean;
 }
 
-export default function ReportsClient() {
+interface ReportsClientProps {
+  userRole: 'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER' | 'TENANT_ADMIN';
+}
+
+export default function ReportsClient({ userRole }: ReportsClientProps) {
   const t = useTranslations();
   const locale = useLocale();
   const [report, setReport] = React.useState<SummaryReport | DetailedReport | null>(null);
@@ -25,6 +29,15 @@ export default function ReportsClient() {
   const [availableYears, setAvailableYears] = React.useState<number[]>([]);
   const [availablePeriods, setAvailablePeriods] = React.useState<AvailablePeriod[]>([]);
   const [currentPeriod, setCurrentPeriod] = React.useState<AvailablePeriod | null>(null);
+
+  // Check if user is a regular user (not manager/admin)
+  const isRegularUser = userRole === 'USER';
+
+  // Business logic: Additional restrictions for different roles
+  const canAccessByEmployeeReports = userRole !== 'USER'; // Only managers/admins can view by-employee reports
+  const canAccessByVesselReports = userRole !== 'USER'; // Only managers/admins can view by-vessel reports
+  const canAccessIndividualEmployeeFiltering = userRole !== 'USER'; // Prevent regular users from accessing individual colleague filtering
+  const canAccessAdvancedFilters = userRole === 'ADMIN'; // Only admins can access some advanced filters
 
   // Fetch available periods on mount
   React.useEffect(() => {
@@ -193,75 +206,132 @@ export default function ReportsClient() {
         {/* Report Scope */}
         <div>
           <h3 className="font-medium mb-3 text-[var(--foreground)]">{labels.reportScope || 'Report Scope'}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {/* Column 1 - General & Status Scopes */}
+          {isRegularUser ? (
+            // Regular users only see "My Timesheets" option - business logic restriction
             <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  value="timesheets"
-                  checked={reportScope === 'timesheets'}
-                  onChange={(e) => setReportScope(e.target.value as any)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">{labels.scopeTimesheets || 'All Timesheets'}</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  value="pending"
-                  checked={reportScope === 'pending'}
-                  onChange={(e) => setReportScope(e.target.value as any)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">{labels.scopePending || 'Pending Items'}</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  value="approved"
-                  checked={reportScope === 'approved'}
-                  onChange={(e) => setReportScope(e.target.value as any)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">{labels.scopeApproved || 'Approved Only'}</span>
-              </label>
+              <div className="bg-[var(--muted)]/30 border border-[var(--border)] rounded-lg p-4">
+                <p className="text-sm text-[var(--foreground)] font-medium mb-1">
+                  {t('reports.myTimesheets') || 'My Timesheets'}
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {t('reports.myTimesheetsDesc') || 'View your own timesheet records'}
+                </p>
+                <div className="mt-2 text-xs text-[var(--muted-foreground)]">
+                  ⚠️ {t('reports.restrictedAccess') || 'Access restricted to your own records only'}
+                </div>
+              </div>
             </div>
+          ) : (
+            // Managers and admins see available scope options based on their role
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {/* Column 1 - General & Status Scopes - Available to all managers+ */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="timesheets"
+                    checked={reportScope === 'timesheets'}
+                    onChange={(e) => setReportScope(e.target.value as any)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">{labels.scopeTimesheets || 'All Timesheets'}</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="pending"
+                    checked={reportScope === 'pending'}
+                    onChange={(e) => setReportScope(e.target.value as any)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">{labels.scopePending || 'Pending Items'}</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="approved"
+                    checked={reportScope === 'approved'}
+                    onChange={(e) => setReportScope(e.target.value as any)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">{labels.scopeApproved || 'Approved Only'}</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="rejected"
+                    checked={reportScope === 'rejected'}
+                    onChange={(e) => setReportScope(e.target.value as any)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">{labels.scopeRejected || 'Rejected Only'}</span>
+                </label>
+              </div>
 
-            {/* Column 2 - Grouping Scopes */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  value="rejected"
-                  checked={reportScope === 'rejected'}
-                  onChange={(e) => setReportScope(e.target.value as any)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">{labels.scopeRejected || 'Rejected Only'}</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  value="by-employee"
-                  checked={reportScope === 'by-employee'}
-                  onChange={(e) => setReportScope(e.target.value as any)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">{labels.scopeByEmployee || 'By Employee'}</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  value="by-vessel"
-                  checked={reportScope === 'by-vessel'}
-                  onChange={(e) => setReportScope(e.target.value as any)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">{labels.scopeByVessel || 'By Vessel'}</span>
-              </label>
+              {/* Column 2 - Grouping Scopes - Restricted access */}
+              <div className="space-y-2">
+                {canAccessByEmployeeReports ? (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      value="by-employee"
+                      checked={reportScope === 'by-employee'}
+                      onChange={(e) => setReportScope(e.target.value as any)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">{labels.scopeByEmployee || 'By Employee'}</span>
+                    {userRole !== 'ADMIN' && (
+                      <span className="text-xs text-[var(--muted-foreground)]">
+                        ({t('reports.teamOnly') || 'Team only'})
+                      </span>
+                    )}
+                  </label>
+                ) : (
+                  <div className="opacity-50 text-sm">
+                    {labels.scopeByEmployee || 'By Employee'}
+                    <span className="text-xs text-[var(--muted-foreground)] ml-2">
+                      ({t('reports.managerRequired') || 'Manager+ required'})
+                    </span>
+                  </div>
+                )}
+
+                {canAccessByVesselReports ? (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      value="by-vessel"
+                      checked={reportScope === 'by-vessel'}
+                      onChange={(e) => setReportScope(e.target.value as any)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">{labels.scopeByVessel || 'By Vessel'}</span>
+                    {userRole !== 'ADMIN' && (
+                      <span className="text-xs text-[var(--muted-foreground)]">
+                        ({t('reports.teamOnly') || 'Team only'})
+                      </span>
+                    )}
+                  </label>
+                ) : (
+                  <div className="opacity-50 text-sm">
+                    {labels.scopeByVessel || 'By Vessel'}
+                    <span className="text-xs text-[var(--muted-foreground)] ml-2">
+                      ({t('reports.managerRequired') || 'Manager+ required'})
+                    </span>
+                  </div>
+                )}
+
+                {/* Additional advanced scopes for admins only */}
+                {userRole === 'ADMIN' && (
+                  <div className="mt-2 pt-2 border-t border-[var(--border)]">
+                    <p className="text-xs text-[var(--muted-foreground)] mb-1">
+                      {t('reports.adminOnlyScopes') || 'Admin-only scopes'}
+                    </p>
+                    {/* Future: Add admin-specific scopes here */}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -272,6 +342,8 @@ export default function ReportsClient() {
         availableYears={availableYears}
         availablePeriods={availablePeriods}
         currentPeriod={currentPeriod}
+        userRole={userRole}
+        restrictEmployeeSearch={!canAccessIndividualEmployeeFiltering}
       />
 
       {/* Report Table */}

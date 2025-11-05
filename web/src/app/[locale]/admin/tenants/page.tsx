@@ -2,12 +2,22 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import EditModal, { EditField } from '@/components/ui/EditModal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function AdminTenantsPage() {
   const t = useTranslations('admin.tenants');
   const [rows, setRows] = useState<Array<{ id: string; name: string; slug: string; created_at?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<{ id: string; name: string; slug: string } | null>(null);
+
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingTenant, setDeletingTenant] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -23,6 +33,57 @@ export default function AdminTenantsPage() {
       }
     })();
   }, [t]);
+
+  const handleEdit = (tenant: { id: string; name: string; slug: string }) => {
+    setEditingTenant(tenant);
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (values: Record<string, string | number>) => {
+    if (!editingTenant) return;
+
+    const resp = await fetch(`/api/admin/tenants/${editingTenant.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: values.name,
+        slug: values.slug,
+      }),
+    });
+
+    if (!resp.ok) {
+      throw new Error(t('updateFailed'));
+    }
+
+    // Update local state
+    setRows(rows.map(x =>
+      x.id === editingTenant.id
+        ? { ...x, name: values.name as string, slug: values.slug as string }
+        : x
+    ));
+  };
+
+  const handleDeleteClick = (tenant: { id: string; name: string }) => {
+    setDeletingTenant(tenant);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingTenant) return;
+
+    const resp = await fetch(`/api/admin/tenants/${deletingTenant.id}`, {
+      method: 'DELETE',
+    });
+
+    if (!resp.ok) {
+      throw new Error(t('deleteFailed'));
+    }
+
+    // Update local state
+    setRows(rows.filter(x => x.id !== deletingTenant.id));
+    setDeleteDialogOpen(false);
+    setDeletingTenant(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -64,23 +125,18 @@ export default function AdminTenantsPage() {
                   <td className="px-6 py-3 text-[var(--foreground)]">{tenant.created_at ? new Date(tenant.created_at).toLocaleString() : '—'}</td>
                   <td className="px-6 py-3">
                     <div className="flex gap-2">
-                      <button className="px-2 py-1 rounded-md bg-[var(--muted)] text-[var(--foreground)]" onClick={async () => {
-                        const namePrompt = window.prompt(t('namePrompt'), tenant.name || '');
-                        if (namePrompt === null) return;
-                        const slugPrompt = window.prompt(t('slugPrompt'), tenant.slug || '');
-                        if (slugPrompt === null) return;
-                        const name = namePrompt.trim();
-                        const slug = slugPrompt.trim();
-                        const resp = await fetch(`/api/admin/tenants/${tenant.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name || tenant.name, slug: slug || tenant.slug }) });
-                        if (!resp.ok) { alert(t('updateFailed')); return; }
-                        setRows(rows.map(x => x.id === tenant.id ? { ...x, name: name || tenant.name, slug: slug || tenant.slug } : x));
-                      }}>{t('edit')}</button>
-                      <button className="px-2 py-1 rounded-md bg-[var(--destructive)] text-[var(--destructive-foreground)]" onClick={async () => {
-                        if (!confirm(t('deleteConfirm'))) return;
-                        const resp = await fetch(`/api/admin/tenants/${tenant.id}`, { method: 'DELETE' });
-                        if (!resp.ok) { alert(t('deleteFailed')); return; }
-                        setRows(rows.filter(x => x.id !== tenant.id));
-                      }}>{t('delete')}</button>
+                      <button
+                        className="px-2 py-1 rounded-md bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--muted)]/80 transition-colors"
+                        onClick={() => handleEdit(tenant)}
+                      >
+                        {t('edit')}
+                      </button>
+                      <button
+                        className="px-2 py-1 rounded-md bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90 transition-opacity"
+                        onClick={() => handleDeleteClick(tenant)}
+                      >
+                        {t('delete')}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -93,6 +149,63 @@ export default function AdminTenantsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingTenant && (
+        <EditModal
+          open={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setEditingTenant(null);
+          }}
+          title={t('editTenant')}
+          fields={[
+            {
+              name: 'name',
+              label: t('name'),
+              type: 'text',
+              value: editingTenant.name,
+              required: true,
+              placeholder: t('namePlaceholder'),
+            },
+            {
+              name: 'slug',
+              label: t('slug'),
+              type: 'text',
+              value: editingTenant.slug,
+              required: true,
+              placeholder: t('slugPlaceholder'),
+              validation: (value) => {
+                const slug = value.toString().trim();
+                if (!/^[a-z0-9-]+$/.test(slug)) {
+                  return t('slugInvalid');
+                }
+                return null;
+              },
+            },
+          ]}
+          onSave={handleSaveEdit}
+          saveButtonText={t('save')}
+          cancelButtonText={t('cancel')}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingTenant && (
+        <ConfirmDialog
+          isOpen={deleteDialogOpen}
+          title={t('deleteConfirmTitle')}
+          message={t('deleteConfirmMessage', { name: deletingTenant.name })}
+          confirmText={t('delete')}
+          cancelText={t('cancel')}
+          isDangerous={true}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => {
+            setDeleteDialogOpen(false);
+            setDeletingTenant(null);
+          }}
+        />
       )}
     </div>
   );

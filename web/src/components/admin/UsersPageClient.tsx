@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ManageInvitationsModal from './ManageInvitationsModal';
 
@@ -12,6 +12,29 @@ interface UsersPageClientProps {
 
 export default function UsersPageClient({ locale, newUserLabel, inviteUserLabel }: UsersPageClientProps) {
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [currentTenantId, setCurrentTenantId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loadingTenant, setLoadingTenant] = useState(true);
+
+  // Fetch current tenant context
+  useEffect(() => {
+    const fetchCurrentTenant = async () => {
+      try {
+        const response = await fetch('/api/admin/me/tenant', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentTenantId(data.current_tenant_id || null);
+          setUserRole(data.user_role || null);
+        }
+      } catch (error) {
+        console.error('Error fetching current tenant:', error);
+      } finally {
+        setLoadingTenant(false);
+      }
+    };
+
+    fetchCurrentTenant();
+  }, []);
 
   const handleInviteSuccess = () => {
     // Refresh the page to show updated invitations
@@ -23,7 +46,8 @@ export default function UsersPageClient({ locale, newUserLabel, inviteUserLabel 
       <div className="flex items-center gap-3">
         <button
           onClick={() => setShowInviteModal(true)}
-          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-md"
+          disabled={loadingTenant}
+          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
@@ -47,6 +71,8 @@ export default function UsersPageClient({ locale, newUserLabel, inviteUserLabel 
         onClose={() => setShowInviteModal(false)}
         onSuccess={handleInviteSuccess}
         locale={locale}
+        currentTenantId={currentTenantId}
+        userRole={userRole}
       />
     </>
   );

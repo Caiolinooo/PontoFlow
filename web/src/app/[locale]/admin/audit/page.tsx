@@ -1,9 +1,12 @@
 ﻿"use client";
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useParams } from 'next/navigation';
 
 export default function AuditPage() {
   const t = useTranslations('admin.audit');
+  const params = useParams();
+  const locale = (params.locale as string) || 'pt-BR';
   const [approvals, setApprovals] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,14 +100,14 @@ export default function AuditPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusColors[a.status] || 'bg-gray-100 text-gray-800'}`}>
-                          {a.status}
+                          {t(`statusLabels.${a.status}` as any) || a.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-[var(--foreground)] max-w-xs truncate">
                         {a.mensagem || '-'}
                       </td>
                       <td className="px-4 py-3 text-[var(--muted-foreground)] whitespace-nowrap">
-                        {new Date(a.created_at).toLocaleString('pt-BR', {
+                        {new Date(a.created_at).toLocaleString(locale, {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',
@@ -154,17 +157,17 @@ export default function AuditPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${tipoColors[e.tipo] || 'bg-gray-100 text-gray-800'}`}>
-                          {e.tipo}
+                          {t(`entryTypes.${e.tipo}` as any) || e.tipo}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-[var(--foreground)]">
-                        {new Date(e.data).toLocaleDateString('pt-BR')}
+                        {new Date(e.data).toLocaleDateString(locale)}
                       </td>
                       <td className="px-4 py-3 text-[var(--muted-foreground)]">
                         {e.hora_ini || '-'} {e.hora_fim ? `- ${e.hora_fim}` : ''}
                       </td>
                       <td className="px-4 py-3 text-[var(--muted-foreground)] whitespace-nowrap">
-                        {new Date(e.created_at).toLocaleString('pt-BR', {
+                        {new Date(e.created_at).toLocaleString(locale, {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',

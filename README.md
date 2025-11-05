@@ -119,7 +119,44 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
-### 0.3.0 (2025-10-31) - **VERSÃO ATUAL**
+### 0.4.0 (2025-11-05) - **VERSÃO ATUAL**
+- **feat(invitations)**: Sistema Completo de Convites de Usuários
+  - ✅ Tabela `user_invitations` com estrutura completa para gerenciamento
+  - ✅ Triggers automáticos para sincronização entre `auth.users` e `profiles`
+  - ✅ Sistema de confirmação de email e senha via tokens únicos
+  - ✅ Interface completa em `/admin/users/invitations`
+  - ✅ Formulário de envio com validação e feedback
+  - ✅ Ações de visualização, reenvio e cancelamento
+
+- **feat(migration)**: Migração Automática de Usuários
+  - ✅ Scripts de migração automáticos para corrigir foreign keys
+  - ✅ Sincronização bidirecional entre `auth.users` e `profiles`
+  - ✅ Validação de dados existentes antes da execução
+  - ✅ Rollback automático em caso de erro
+  - ✅ Documentação completa do processo
+
+- **feat(smtp)**: Sistema de Configuração SMTP Consolidado
+  - ✅ Configurações SMTP por tenant com criptografia automática
+  - ✅ Interface visual no painel administrativo
+  - ✅ Templates de email personalizáveis por tenant
+  - ✅ Teste de configuração integrado
+  - ✅ Suporte a múltiplos provedores
+
+- **fix(fk)**: Foreign Key Constraints
+  - ✅ Corrigido relacionamento entre `user_invitations` e `profiles`
+  - ✅ Resolvido erro "violates foreign key constraint"
+  - ✅ Sincronização automática de dados órfãos
+  - ✅ Triggers de prevenção de inconsistências
+
+- **docs**: Documentação Completa
+  - ✅ `EMAIL_DELIVERABILITY_GUIDE.md`
+  - ✅ `FOREIGN_KEY_FIX_SUMMARY.md`
+  - ✅ `INVITATION_FIXES_SUMMARY.md`
+  - ✅ `MULTI_TENANT_IMPROVEMENTS_SUMMARY.md`
+  - ✅ `SMTP_CONSOLIDATION_PLAN.md`
+  - ✅ Múltiplos guias técnicos na pasta `docs/`
+
+### 0.3.0 (2025-10-31)
 - **feat(database)**: Sistema de Validação Automática de Banco de Dados
   - ✅ Validação completa de 17 tabelas multi-tenant com verificação de estrutura
   - ✅ Verificação de 50+ índices de performance otimizados

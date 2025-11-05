@@ -15,6 +15,10 @@ interface EmailLayoutConfig {
   // Branding overrides (multi-tenant)
   companyNameOverride?: string;
   logoUrlOverride?: string;
+  bannerUrlOverride?: string;
+  watermarkUrlOverride?: string;
+  primaryColorOverride?: string;
+  secondaryColorOverride?: string;
 }
 
 const defaultEmailConfig = {
@@ -39,14 +43,35 @@ const i18nDisclaimer: Record<EmailLocale, string> = {
   'en-GB': 'This is an automated email. Please do not reply directly. If you have questions, contact support.'
 };
 
+const i18nUnsubscribe: Record<EmailLocale, string> = {
+  'pt-BR': 'Cancelar inscrição',
+  'en-GB': 'Unsubscribe',
+};
+
 export function emailLayout(config: EmailLayoutConfig): string {
-  const { locale, subject, content, ctaUrl, ctaText, companyNameOverride, logoUrlOverride } = config;
+  const {
+    locale,
+    subject,
+    content,
+    ctaUrl,
+    ctaText,
+    companyNameOverride,
+    logoUrlOverride,
+    bannerUrlOverride,
+    watermarkUrlOverride,
+    primaryColorOverride,
+    secondaryColorOverride
+  } = config;
   const year = new Date().getFullYear();
 
   const emailConfig = {
     ...defaultEmailConfig,
     companyName: companyNameOverride || defaultEmailConfig.companyName,
     logoUrl: logoUrlOverride || defaultEmailConfig.logoUrl,
+    bannerUrl: bannerUrlOverride,
+    watermarkUrl: watermarkUrlOverride,
+    primaryColor: primaryColorOverride || defaultEmailConfig.primaryColor,
+    secondaryColor: secondaryColorOverride || defaultEmailConfig.secondaryColor,
   };
 
   const ctaButton = ctaUrl && ctaText ? `
@@ -62,6 +87,21 @@ export function emailLayout(config: EmailLayoutConfig): string {
         font-size: 16px;
       ">${ctaText}</a>
     </div>
+  ` : '';
+
+  const bannerImage = emailConfig.bannerUrl ? `
+    <div style="width: 100%; max-height: 150px; overflow: hidden;">
+      <img src="${emailConfig.bannerUrl}" alt="Banner" style="width: 100%; height: auto; display: block;">
+    </div>
+  ` : '';
+
+  const watermarkStyle = emailConfig.watermarkUrl ? `
+    background-image: url('${emailConfig.watermarkUrl}');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 40%;
+    background-blend-mode: overlay;
+    opacity: 0.95;
   ` : '';
 
   return `
@@ -147,16 +187,22 @@ export function emailLayout(config: EmailLayoutConfig): string {
     </head>
     <body>
       <div class="email-container">
+        ${bannerImage}
         <div class="email-header">
           <img src="${emailConfig.logoUrl}" alt="${emailConfig.companyName}" class="email-logo">
         </div>
-        <div class="email-body">
+        <div class="email-body" style="${watermarkStyle}">
           ${content}
           ${ctaButton}
         </div>
         <div class="email-footer">
           <p>&copy; ${year} ${emailConfig.companyName}. ${i18nFooter[locale]}</p>
           <p style="color: #999; margin-top: 10px;">${i18nDisclaimer[locale]}</p>
+          <p style="color: #999; margin-top: 10px; font-size: 12px;">
+            <a href="mailto:${emailConfig.companyName.toLowerCase().replace(/\s+/g, '')}@pontoflow.com?subject=Unsubscribe" style="color: #999; text-decoration: underline;">
+              ${i18nUnsubscribe[locale]}
+            </a>
+          </p>
         </div>
       </div>
     </body>

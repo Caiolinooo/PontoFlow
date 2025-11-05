@@ -30,14 +30,28 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     const {id} = await context.params;
     console.log('🔵 Timesheet ID:', id);
 
-    const json = await req.json().catch(() => ({}));
-    console.log('🔵 Request body:', json);
+    // Parse JSON with better error handling
+    let json;
+    try {
+      json = await req.json();
+      console.log('🔵 Request body:', JSON.stringify(json));
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError);
+      console.error('❌ Request headers:', Object.fromEntries(req.headers.entries()));
+      return NextResponse.json({
+        error: 'invalid_json',
+        details: parseError instanceof Error ? parseError.message : 'Failed to parse JSON'
+      }, {status: 400});
+    }
 
     const parsed = Schema.safeParse(json);
     if (!parsed.success) {
       console.error('❌ Invalid body:', parsed.error.issues);
+      console.error('❌ Received JSON:', JSON.stringify(json, null, 2));
       return NextResponse.json({error: 'invalid_body', issues: parsed.error.issues}, {status: 400});
     }
+
+    console.log('✅ Schema validation passed');
 
     const supabase = getServiceSupabase();
 

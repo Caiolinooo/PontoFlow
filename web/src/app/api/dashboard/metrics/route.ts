@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/service';
+import { calculateOvertimeMetrics } from '@/lib/time-display';
 
 // Use BRT timezone (America/Sao_Paulo) for date calculations
 function firstDayOfMonth(d: Date) {
@@ -167,10 +168,12 @@ export async function GET() {
         totalHours = allEntries.reduce((sum: number, entry: any) => sum + (entry.horas || 0), 0);
         
         // Note: We would need to distinguish between regular and overtime hours
-        // For now, we'll use a simple calculation. In a real system, 
+        // For now, we'll use a simple calculation. In a real system,
         // you'd have tipo column to distinguish regular vs overtime
-        overtime50Hours = Math.max(0, totalHours - 160) * 0.5; // 50% overtime after 160h
-        overtime100Hours = Math.max(0, totalHours - 200) * 0.5; // 100% overtime after 200h
+        // FIXED: Use proper calculation that allows negative values
+        const overtime = calculateOvertimeMetrics(totalHours);
+        overtime50Hours = overtime.overtime50;
+        overtime100Hours = overtime.overtime100;
       }
     }
 

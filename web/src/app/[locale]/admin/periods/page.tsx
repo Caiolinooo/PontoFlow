@@ -346,9 +346,9 @@ export default function AdminPeriodsPage() {
           <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
             <tr>
 
-              <th className="text-left px-6 py-3 font-medium">Período</th>
-              <th className="text-left px-6 py-3 font-medium">Status</th>
-              <th className="text-right px-6 py-3 font-medium">Ação</th>
+              <th className="text-left px-6 py-3 font-medium">{t('period')}</th>
+              <th className="text-left px-6 py-3 font-medium">{t('status')}</th>
+              <th className="text-right px-6 py-3 font-medium">{t('action')}</th>
             </tr>
           </thead>
           <tbody>
@@ -427,9 +427,9 @@ export default function AdminPeriodsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Período</th>
-                    <th className="text-left px-3 py-2 font-medium">Status</th>
-                    <th className="text-right px-3 py-2 font-medium">Ação</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('period')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('status')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('action')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -512,9 +512,9 @@ export default function AdminPeriodsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Período</th>
-                    <th className="text-left px-3 py-2 font-medium">Status</th>
-                    <th className="text-right px-3 py-2 font-medium">Ação</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('period')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('status')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('action')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -598,9 +598,9 @@ export default function AdminPeriodsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-[var(--muted)]/40 text-[var(--muted-foreground)]">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium">Período</th>
-                    <th className="text-left px-3 py-2 font-medium">Status</th>
-                    <th className="text-right px-3 py-2 font-medium">Ação</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('period')}</th>
+                    <th className="text-left px-3 py-2 font-medium">{t('status')}</th>
+                    <th className="text-right px-3 py-2 font-medium">{t('action')}</th>
                   </tr>
                 </thead>
                 <tbody>

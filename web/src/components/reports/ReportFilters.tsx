@@ -17,6 +17,8 @@ interface Props {
   availableYears?: number[];
   availablePeriods?: Period[];
   currentPeriod?: Period | null;
+  userRole?: 'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER' | 'TENANT_ADMIN';
+  restrictEmployeeSearch?: boolean;
 }
 
 export default function ReportFiltersComponent({
@@ -25,6 +27,8 @@ export default function ReportFiltersComponent({
   availableYears = [],
   availablePeriods = [],
   currentPeriod = null,
+  userRole = 'USER',
+  restrictEmployeeSearch = false,
 }: Props) {
   const [filters, setFilters] = React.useState<ReportFilters>({});
   const [loading, setLoading] = React.useState(false);
@@ -37,6 +41,10 @@ export default function ReportFiltersComponent({
   const [filteredPeriods, setFilteredPeriods] = React.useState<Period[]>(availablePeriods);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Check if user can access employee search
+  const canAccessEmployeeSearch = !restrictEmployeeSearch && userRole !== 'USER';
+  const isRegularUser = userRole === 'USER';
+
   const handleChange = (key: keyof ReportFilters, value: string) => {
     setFilters(prev => ({
       ...prev,
@@ -45,7 +53,7 @@ export default function ReportFiltersComponent({
   };
 
   const searchEmployees = async (query: string) => {
-    if (!query.trim()) {
+    if (!query.trim() || !canAccessEmployeeSearch) {
       setEmployeeResults([]);
       return;
     }
@@ -53,6 +61,12 @@ export default function ReportFiltersComponent({
     setEmployeeSearching(true);
     try {
       const res = await fetch(`/api/admin/search/employees?q=${encodeURIComponent(query)}&limit=10`);
+      if (!res.ok) {
+        console.error('Employee search failed:', res.status, res.statusText);
+        setEmployeeResults([]);
+        return;
+      }
+      
       const data = await res.json();
       setEmployeeResults(data.items || []);
       setShowEmployeeDropdown(true);
@@ -218,36 +232,55 @@ export default function ReportFiltersComponent({
         <div className="relative">
           <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
             {labels.employee || 'Employee'}
+            {isRegularUser && (
+              <span className="ml-1 text-xs text-[var(--muted-foreground)]">
+                ({labels.restricted || 'Restricted'})
+              </span>
+            )}
           </label>
-          <input
-            type="text"
-            placeholder={labels.employeeName || 'Search by name...'}
-            value={employeeQuery}
-            onChange={(e) => handleEmployeeQueryChange(e.target.value)}
-            onFocus={() => employeeResults.length > 0 && setShowEmployeeDropdown(true)}
-            className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
-          />
-          {employeeSearching && (
-            <div className="absolute right-3 top-9 text-[var(--muted-foreground)]">
-              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-          )}
-          {showEmployeeDropdown && employeeResults.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-xl max-h-60 overflow-auto">
-              {employeeResults.map((emp) => (
-                <button
-                  key={emp.id}
-                  type="button"
-                  onClick={() => selectEmployee(emp)}
-                  className="w-full text-left px-4 py-2 hover:bg-[var(--muted)] text-sm transition-colors"
-                >
-                  {emp.label}
-                </button>
-              ))}
-            </div>
+          
+          {canAccessEmployeeSearch ? (
+            <>
+              <input
+                type="text"
+                placeholder={labels.employeeName || 'Search by name...'}
+                value={employeeQuery}
+                onChange={(e) => handleEmployeeQueryChange(e.target.value)}
+                onFocus={() => employeeResults.length > 0 && setShowEmployeeDropdown(true)}
+                className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
+              />
+              {employeeSearching && (
+                <div className="absolute right-3 top-9 text-[var(--muted-foreground)]">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              )}
+              {showEmployeeDropdown && employeeResults.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-xl max-h-60 overflow-auto">
+                  {employeeResults.map((emp) => (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => selectEmployee(emp)}
+                      className="w-full text-left px-4 py-2 hover:bg-[var(--muted)] text-sm transition-colors"
+                    >
+                      {emp.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--muted)]/30 text-[var(--muted-foreground)] rounded text-sm">
+                {labels.ownRecordOnly || 'Your own record only'}
+              </div>
+              <div className="mt-1 text-xs text-[var(--muted-foreground)]">
+                ⚠️ {labels.employeeSearchRestricted || 'Employee search restricted to managers and admins'}
+              </div>
+            </>
           )}
         </div>
       </div>

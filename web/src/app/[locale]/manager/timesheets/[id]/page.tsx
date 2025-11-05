@@ -92,7 +92,15 @@ export default async function Page({params}: {params: Promise<{locale: string; i
               </tr>
             </thead>
             <tbody>
-              {(data?.entries ?? []).map((e: Entry) => (
+              {(data?.entries ?? [])
+                .sort((a: Entry, b: Entry) => {
+                  // Sort by date first, then by hora_ini
+                  if (a.data !== b.data) return a.data.localeCompare(b.data);
+                  const timeA = a.hora_ini || '99:99';
+                  const timeB = b.hora_ini || '99:99';
+                  return timeA.localeCompare(timeB);
+                })
+                .map((e: Entry) => (
                 <tr key={e.id} className="border-t border-[var(--border)]">
                   <td className="px-4 py-2 text-[var(--foreground)]">{e.data}</td>
                   <td className="px-4 py-2 text-[var(--foreground)]">{e.tipo}</td>

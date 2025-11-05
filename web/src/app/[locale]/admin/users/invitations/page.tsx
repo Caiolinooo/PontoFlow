@@ -41,13 +41,7 @@ export default async function InvitationsPage({
   const { data: invitations, count } = await query;
 
   const t = await getTranslations({ locale, namespace: 'admin.users' });
-
-  const statusLabels: Record<string, string> = {
-    pending: 'Pendente',
-    accepted: 'Aceito',
-    expired: 'Expirado',
-    cancelled: 'Cancelado',
-  };
+  const tInvitations = await getTranslations({ locale, namespace: 'invitations' });
 
   const statusColors: Record<string, string> = {
     pending: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
@@ -70,29 +64,29 @@ export default async function InvitationsPage({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-            <h1 className="text-3xl font-bold text-[var(--foreground)]">📬 Convites de Usuários</h1>
+            <h1 className="text-3xl font-bold text-[var(--foreground)]">📬 {tInvitations('title')}</h1>
           </div>
           <p className="mt-2 text-[var(--muted-foreground)]">
-            Gerencie convites enviados para novos usuários
+            {tInvitations('form.subtitle')}
           </p>
         </div>
       </div>
 
       {/* Filters */}
       <form method="get" className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 flex flex-wrap gap-3">
-        <select 
-          name="status" 
-          defaultValue={status} 
+        <select
+          name="status"
+          defaultValue={status}
           className="border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded-lg px-3 py-2"
         >
-          <option value="all">Todos os Status</option>
-          <option value="pending">Pendentes</option>
-          <option value="accepted">Aceitos</option>
-          <option value="expired">Expirados</option>
-          <option value="cancelled">Cancelados</option>
+          <option value="all">{tInvitations('list.filter.all')}</option>
+          <option value="pending">{tInvitations('list.filter.pending')}</option>
+          <option value="accepted">{tInvitations('list.filter.accepted')}</option>
+          <option value="expired">{tInvitations('list.filter.expired')}</option>
+          <option value="cancelled">{tInvitations('list.filter.cancelled')}</option>
         </select>
         <button className="px-4 py-2 bg-[var(--muted)] text-[var(--foreground)] rounded-lg hover:bg-[var(--muted)]/80 transition-colors">
-          Filtrar
+          {t('filter')}
         </button>
       </form>
 
@@ -103,12 +97,10 @@ export default async function InvitationsPage({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
           </svg>
           <h3 className="text-lg font-medium text-[var(--card-foreground)] mb-2">
-            Nenhum convite encontrado
+            {tInvitations('list.empty')}
           </h3>
           <p className="text-[var(--muted-foreground)]">
-            {status === 'pending' 
-              ? 'Não há convites pendentes no momento'
-              : 'Tente ajustar os filtros para ver mais resultados'}
+            {t('noUsersDescription')}
           </p>
         </div>
       ) : (
@@ -117,25 +109,25 @@ export default async function InvitationsPage({
             <thead className="bg-[var(--muted)]/50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Usuário
+                  {tInvitations('list.table.name')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Email
+                  {tInvitations('list.table.email')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Função
+                  {tInvitations('list.table.role')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Convidado por
+                  {tInvitations('list.table.invitedBy')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Status
+                  {tInvitations('list.table.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Expira em
+                  {tInvitations('list.table.expiresAt')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
-                  Ações
+                  {t('actions')}
                 </th>
               </tr>
             </thead>
@@ -152,21 +144,21 @@ export default async function InvitationsPage({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200">
-                      {invitation.role}
+                      {tInvitations(`form.roles.${invitation.role}` as any)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--card-foreground)]">
-                    {invitation.invited_by_user 
+                    {invitation.invited_by_user
                       ? `${invitation.invited_by_user.first_name} ${invitation.invited_by_user.last_name}`
                       : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[invitation.status]}`}>
-                      {statusLabels[invitation.status] || invitation.status}
+                      {tInvitations(`list.status.${invitation.status}` as any)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--card-foreground)]">
-                    {new Date(invitation.expires_at).toLocaleDateString('pt-BR', {
+                    {new Date(invitation.expires_at).toLocaleDateString(locale, {
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric',

@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, context: {params: Promise<{id: stri
 
     // Fetch related data
     const [entriesRes, annotationsRes, approvalsRes, employeeRes] = await Promise.all([
-      supabase.from('timesheet_entries').select('*').eq('timesheet_id', id).order('data', {ascending: true}),
+      supabase.from('timesheet_entries').select('*').eq('timesheet_id', id).order('data', {ascending: true}).order('hora_ini', {ascending: true, nullsFirst: false}),
       supabase
         .from('timesheet_annotations')
         .select('id, entry_id, field_path, message, created_at')

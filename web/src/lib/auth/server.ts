@@ -36,7 +36,7 @@ export async function requireAuth(locale: string): Promise<User> {
  */
 export async function requireRole(
   locale: string,
-  allowedRoles: Array<'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER'>
+  allowedRoles: Array<'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER' | 'TENANT_ADMIN'>
 ): Promise<User> {
   const user = await requireAuth(locale);
 
@@ -89,7 +89,7 @@ export async function requireApiAuth(): Promise<User> {
  * Returns user or throws error response
  */
 export async function requireApiRole(
-  allowedRoles: Array<'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER'>
+  allowedRoles: Array<'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER' | 'TENANT_ADMIN'>
 ): Promise<User> {
   const user = await requireApiAuth();
 
@@ -98,4 +98,24 @@ export async function requireApiRole(
   }
 
   return user;
+}
+
+/**
+ * Check if user has TENANT_ADMIN role for a specific tenant
+ * Returns true if user is global ADMIN or has TENANT_ADMIN role for the tenant
+ */
+export function hasTenantAdminAccess(user: User, tenantId: string): boolean {
+  // Global ADMIN has access to all tenants
+  if (user.role === 'ADMIN') {
+    return true;
+  }
+
+  // Check if user has TENANT_ADMIN role for this specific tenant
+  if (user.tenant_roles) {
+    return user.tenant_roles.some(
+      tr => tr.tenant_id === tenantId && tr.role === 'TENANT_ADMIN'
+    );
+  }
+
+  return false;
 }

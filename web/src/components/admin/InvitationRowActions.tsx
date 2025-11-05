@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface InvitationRowActionsProps {
   invitationId: string;
@@ -19,10 +20,11 @@ export default function InvitationRowActions({
 }: InvitationRowActionsProps) {
   const [loading, setLoading] = useState(false);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const t = useTranslations('invitations');
 
   const handleResend = async () => {
-    if (!confirm('Deseja reenviar este convite?')) return;
-    
+    if (!confirm(t('confirmations.resend', { email: '' }))) return;
+
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/invitations/${invitationId}`, {
@@ -32,9 +34,9 @@ export default function InvitationRowActions({
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        alert(data.error || 'Erro ao reenviar convite');
+        alert(data.error || t('messages.resendError'));
       } else {
-        alert('Convite reenviado com sucesso!');
+        alert(t('messages.resendSuccess'));
         if (onAction) {
           onAction();
         } else {
@@ -42,15 +44,15 @@ export default function InvitationRowActions({
         }
       }
     } catch (error) {
-      alert('Erro ao reenviar convite');
+      alert(t('messages.resendError'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = async () => {
-    if (!confirm('Deseja cancelar este convite? Esta ação não pode ser desfeita.')) return;
-    
+    if (!confirm(t('confirmations.cancel'))) return;
+
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/invitations/${invitationId}`, {
@@ -60,9 +62,9 @@ export default function InvitationRowActions({
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        alert(data.error || 'Erro ao cancelar convite');
+        alert(data.error || t('messages.cancelError'));
       } else {
-        alert('Convite cancelado com sucesso!');
+        alert(t('messages.cancelSuccess'));
         if (onAction) {
           onAction();
         } else {
@@ -70,7 +72,7 @@ export default function InvitationRowActions({
         }
       }
     } catch (error) {
-      alert('Erro ao cancelar convite');
+      alert(t('messages.cancelError'));
     } finally {
       setLoading(false);
     }
@@ -84,14 +86,14 @@ export default function InvitationRowActions({
       setShowCopySuccess(true);
       setTimeout(() => setShowCopySuccess(false), 2000);
     } catch (error) {
-      alert('Erro ao copiar link');
+      alert(t('messages.error'));
     }
   };
 
   if (status === 'accepted') {
     return (
       <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-        ✓ Aceito
+        ✓ {t('list.status.accepted')}
       </span>
     );
   }
@@ -99,7 +101,7 @@ export default function InvitationRowActions({
   if (status === 'expired' || status === 'cancelled') {
     return (
       <span className="text-xs text-gray-500 dark:text-gray-400">
-        {status === 'expired' ? 'Expirado' : 'Cancelado'}
+        {t(`list.status.${status}` as any)}
       </span>
     );
   }
@@ -108,14 +110,14 @@ export default function InvitationRowActions({
     <div className="flex items-center gap-2 justify-end">
       {showCopySuccess && (
         <span className="text-xs text-green-600 dark:text-green-400 font-medium animate-fade-in">
-          ✓ Copiado!
+          ✓ {t('messages.linkCopied')}
         </span>
       )}
-      
+
       <button
         onClick={handleCopyLink}
         disabled={loading}
-        title="Copiar link do convite"
+        title={t('actions.copyLink')}
         className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +128,7 @@ export default function InvitationRowActions({
       <button
         onClick={handleResend}
         disabled={loading}
-        title="Reenviar convite"
+        title={t('actions.resend')}
         className="p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors disabled:opacity-50"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +139,7 @@ export default function InvitationRowActions({
       <button
         onClick={handleCancel}
         disabled={loading}
-        title="Cancelar convite"
+        title={t('actions.cancel')}
         className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

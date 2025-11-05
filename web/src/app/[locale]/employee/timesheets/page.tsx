@@ -84,7 +84,8 @@ export default async function TimesheetsPage({ params }: { params: Promise<{ loc
     .from('timesheet_entries')
     .select('*')
     .eq('timesheet_id', timesheet.id)
-    .order('data', { ascending: true });
+    .order('data', { ascending: true })
+    .order('hora_ini', { ascending: true, nullsFirst: false });
 
   // Get work schedule for employee
   const { data: workScheduleData } = await supabase

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import Avatar from '@/components/ui/Avatar';
 import NotifyEmployeeButton from '@/components/manager/NotifyEmployeeButton';
 
 interface Employee {
@@ -423,9 +424,12 @@ function ManagerPendingPageContent({ locale, month }: { locale: string, month?: 
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-[var(--muted)] flex items-center justify-center text-[var(--muted-foreground)]">
-                              {(row.employee.display_name ?? 'U').charAt(0).toUpperCase()}
-                            </div>
+                            <Avatar
+                              src={null}
+                              alt={row.employee.display_name ?? t('employee')}
+                              initials={(row.employee.display_name ?? 'U').charAt(0).toUpperCase()}
+                              size="sm"
+                            />
                             <div>
                               <div className="text-[var(--foreground)] font-medium">
                                 {row.employee.display_name ?? t('employee')}

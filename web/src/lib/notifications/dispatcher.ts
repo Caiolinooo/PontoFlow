@@ -5,7 +5,7 @@ import {deadlineReminderEmail} from './templates/deadline-reminder';
 import {managerPendingReminderEmail} from './templates/manager-pending-reminder';
 import {timesheetSubmittedEmail} from './templates/timesheet-submitted';
 import {timesheetAdjustedEmail} from './templates/timesheet-adjusted';
-import { createClient } from '@supabase/supabase-js';
+import { getTenantBranding } from './email-context';
 
 type Locale = 'pt-BR' | 'en-GB';
 
@@ -25,14 +25,9 @@ export async function dispatchNotification(event: Event) {
       const anyPayload: any = (event as any).payload;
       try {
         if (anyPayload?.tenantId) {
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-          const { data: settings } = await supabase
-            .from('tenant_settings')
-            .select('company_name, logo_url')
-            .eq('tenant_id', anyPayload.tenantId)
-            .maybeSingle();
-          companyName = settings?.company_name || undefined;
-          logoUrl = settings?.logo_url || undefined;
+          const branding = await getTenantBranding(anyPayload.tenantId);
+          companyName = branding.companyNameOverride || branding.tenantName;
+          logoUrl = branding.logoUrl;
         }
       } catch {}
       const {subject, html} = timesheetRejectedEmail({
@@ -45,7 +40,7 @@ export async function dispatchNotification(event: Event) {
         locale: event.payload.locale,
         branding: { companyName, logoUrl }
       });
-      await sendEmail({to: event.to, subject, html});
+      await sendEmail({to: event.to, subject, html, tenantId: event.payload.tenantId});
       return { subject, html };
     }
     case 'timesheet_approved': {
@@ -54,14 +49,9 @@ export async function dispatchNotification(event: Event) {
       const anyPayload: any = (event as any).payload;
       try {
         if (anyPayload?.tenantId) {
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-          const { data: settings } = await supabase
-            .from('tenant_settings')
-            .select('company_name, logo_url')
-            .eq('tenant_id', anyPayload.tenantId)
-            .maybeSingle();
-          companyName = settings?.company_name || undefined;
-          logoUrl = settings?.logo_url || undefined;
+          const branding = await getTenantBranding(anyPayload.tenantId);
+          companyName = branding.companyNameOverride || branding.tenantName;
+          logoUrl = branding.logoUrl;
         }
       } catch {}
       const {subject, html} = timesheetApprovedEmail({
@@ -72,7 +62,7 @@ export async function dispatchNotification(event: Event) {
         locale: event.payload.locale,
         branding: { companyName, logoUrl }
       });
-      await sendEmail({to: event.to, subject, html});
+      await sendEmail({to: event.to, subject, html, tenantId: event.payload.tenantId});
       return { subject, html };
     }
     case 'deadline_reminder': {
@@ -91,18 +81,13 @@ export async function dispatchNotification(event: Event) {
       const anyPayload: any = (event as any).payload;
       try {
         if (anyPayload?.tenantId) {
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-          const { data: settings } = await supabase
-            .from('tenant_settings')
-            .select('company_name, logo_url')
-            .eq('tenant_id', anyPayload.tenantId)
-            .maybeSingle();
-          companyName = settings?.company_name || undefined;
-          logoUrl = settings?.logo_url || undefined;
+          const branding = await getTenantBranding(anyPayload.tenantId);
+          companyName = branding.companyNameOverride || branding.tenantName;
+          logoUrl = branding.logoUrl;
         }
       } catch {}
       const {subject, html} = timesheetSubmittedEmail({ ...event.payload, branding: { companyName, logoUrl } });
-      await sendEmail({to: event.to, subject, html});
+      await sendEmail({to: event.to, subject, html, tenantId: anyPayload?.tenantId});
       return { subject, html };
     }
     case 'timesheet_adjusted': {
@@ -110,14 +95,9 @@ export async function dispatchNotification(event: Event) {
       let logoUrl: string | undefined;
       try {
         if (event.payload.tenantId) {
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-          const { data: settings } = await supabase
-            .from('tenant_settings')
-            .select('company_name, logo_url')
-            .eq('tenant_id', event.payload.tenantId)
-            .maybeSingle();
-          companyName = settings?.company_name || undefined;
-          logoUrl = settings?.logo_url || undefined;
+          const branding = await getTenantBranding(event.payload.tenantId);
+          companyName = branding.companyNameOverride || branding.tenantName;
+          logoUrl = branding.logoUrl;
         }
       } catch {}
       const {subject, html} = timesheetAdjustedEmail({
@@ -129,7 +109,7 @@ export async function dispatchNotification(event: Event) {
         locale: event.payload.locale,
         branding: { companyName, logoUrl }
       });
-      await sendEmail({to: event.to, subject, html});
+      await sendEmail({to: event.to, subject, html, tenantId: event.payload.tenantId});
       return { subject, html };
     }
   }

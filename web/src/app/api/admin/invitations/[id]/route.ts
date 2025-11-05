@@ -93,8 +93,9 @@ export async function POST(
 
     // Resend invitation email
     try {
-      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/accept-invite?token=${invitation.token}`;
-      
+      const userLocale = 'pt-BR';
+      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${userLocale}/auth/accept-invite?token=${invitation.token}`;
+
       const roleNames: Record<string, string> = {
         USER: 'Usuário',
         MANAGER_TIMESHEET: 'Gerente de Timesheet',
@@ -104,7 +105,7 @@ export async function POST(
 
       await sendEmail({
         to: invitation.email,
-        subject: '🔔 Lembrete: Convite PontoFlow',
+        subject: 'Lembrete: Convite PontoFlow',
         html: generateReminderEmail({
           firstName: invitation.first_name,
           lastName: invitation.last_name,
@@ -167,25 +168,25 @@ function generateReminderEmail({
               <!-- Header -->
               <tr>
                 <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
-                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">🔔 Lembrete de Convite</h1>
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">Lembrete de Convite</h1>
                 </td>
               </tr>
-              
+
               <!-- Content -->
               <tr>
                 <td style="padding: 40px;">
                   <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
                     Olá <strong>${firstName} ${lastName}</strong>,
                   </p>
-                  
+
                   <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
-                    Este é um lembrete de que você foi convidado por <strong>${invitedBy}</strong> 
+                    Este é um lembrete de que você foi convidado por <strong>${invitedBy}</strong>
                     para fazer parte do <strong>PontoFlow</strong>.
                   </p>
-                  
+
                   <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; margin: 24px 0; border-radius: 4px;">
                     <p style="margin: 0; font-size: 14px; color: #856404;">
-                      ⚠️ <strong>Atenção:</strong> Este convite expira em <strong>${expiresDate}</strong>
+                      <strong>Atenção:</strong> Este convite expira em <strong>${expiresDate}</strong>
                     </p>
                   </div>
                   

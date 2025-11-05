@@ -152,7 +152,7 @@ export async function sendTestEmail(config: EmailTestConfig, testEmail: string):
   const mailOptions = {
     from,
     to: testEmail,
-    subject: '🧪 PontoFlow - Teste de Configuração de Email',
+    subject: 'PontoFlow - Teste de Configuração de Email',
     html: generateTestEmailHtml(config, testEmail)
   };
 
@@ -188,21 +188,21 @@ function generateTestEmailHtml(config: EmailTestConfig, to: string): string {
     </head>
     <body>
         <div class="header">
-            <h1>🧪 Teste de Configuração de Email</h1>
+            <h1>Teste de Configuração de Email</h1>
             <p>Sistema de Timesheet - PontoFlow</p>
         </div>
-        
+
         <div class="content">
             <p>Olá!</p>
-            
+
             <p>Este é um email de teste enviado automaticamente pelo sistema <strong>PontoFlow</strong> para verificar se suas configurações de email estão funcionando corretamente.</p>
-            
+
             <div class="success">
-                <h2>✅ Teste Concluído com Sucesso!</h2>
+                <h2>Teste Concluído com Sucesso!</h2>
             </div>
-            
+
             <div class="config-info">
-                <h3>📧 Informações da Configuração</h3>
+                <h3>Informações da Configuração</h3>
                 <ul>
                     <li><strong>Provedor:</strong> ${provider}</li>
                     <li><strong>Servidor:</strong> ${host}:${port}</li>
@@ -210,18 +210,18 @@ function generateTestEmailHtml(config: EmailTestConfig, to: string): string {
                     <li><strong>Data/Hora:</strong> ${timestamp}</li>
                 </ul>
             </div>
-            
+
             <div class="highlight">
-                <p><strong>📋 Status:</strong> Se recebeu esta mensagem, suas configurações de email estão funcionando corretamente!</p>
+                <p><strong>Status:</strong> Se recebeu esta mensagem, suas configurações de email estão funcionando corretamente!</p>
             </div>
-            
+
             <div class="config-info">
-                <h3>🔧 Próximos Passos</h3>
+                <h3>Próximos Passos</h3>
                 <ul>
-                    <li>✅ Configuração validada e funcionando</li>
-                    <li>🔔 Notificações por email serão enviadas automaticamente</li>
-                    <li>📊 Relatórios e alertas serão entregues conforme configurado</li>
-                    <li>⚙️ Monitore regularmente o sistema para garantir operação contínua</li>
+                    <li>Configuração validada e funcionando</li>
+                    <li>Notificações por email serão enviadas automaticamente</li>
+                    <li>Relatórios e alertas serão entregues conforme configurado</li>
+                    <li>Monitore regularmente o sistema para garantir operação contínua</li>
                 </ul>
             </div>
         </div>

@@ -52,7 +52,7 @@ const CalendarGrid = memo(function CalendarGrid({
   const calendarDays = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const dayEntries = new Map();
-    
+
     // Group entries by date for efficient lookup
     entries.forEach(entry => {
       if (!dayEntries.has(entry.data)) {
@@ -63,7 +63,12 @@ const CalendarGrid = memo(function CalendarGrid({
 
     return days.map(date => {
       const dayNum = Number(date.split('-')[2]);
-      const dayEntryList = dayEntries.get(date) || [];
+      const dayEntryList = (dayEntries.get(date) || []).sort((a: any, b: any) => {
+        // Sort by hora_ini (start time) - entries without time go last
+        const timeA = a.hora_ini || '99:99';
+        const timeB = b.hora_ini || '99:99';
+        return timeA.localeCompare(timeB);
+      });
       const isToday = date === today;
       
       return (

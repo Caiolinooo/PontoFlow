@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDatabaseSetup } from '@/hooks/useDatabaseSetup';
 import DatabaseSetupModal from '@/components/DatabaseSetup';
+import SetupWizardModal from '@/components/setup-wizard/SetupWizardModal';
 // Removed DatabaseStatusIndicator import
 
 interface DatabaseSetupClientProps {
@@ -46,6 +47,7 @@ export default function DatabaseSetupClient({
   const [activeTab, setActiveTab] = useState<'overview' | 'validation' | 'setup' | 'logs'>('overview');
   const [logs, setLogs] = useState<string[]>([]);
   const [isAutoCheck, setIsAutoCheck] = useState(false);
+  const [showWizardModal, setShowWizardModal] = useState(false);
 
   // Adicionar log
   const addLog = useCallback((message: string) => {
@@ -94,6 +96,11 @@ export default function DatabaseSetupClient({
     openModal();
     // O modal automaticamente executará a validação
   }, [openModal]);
+
+  const handleWizard = useCallback(() => {
+    setShowWizardModal(true);
+    addLog('🧙 Abrindo Setup Wizard...');
+  }, [addLog]);
 
   // Auto-check periódico
   useEffect(() => {
@@ -193,6 +200,14 @@ export default function DatabaseSetupClient({
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             Validar Completo
+          </button>
+
+          <button
+            onClick={handleWizard}
+            disabled={state.isExecuting || state.isValidating}
+            className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          >
+            Setup Wizard
           </button>
 
           <button
@@ -579,6 +594,22 @@ export default function DatabaseSetupClient({
               </button>
 
               <button
+                onClick={handleWizard}
+                disabled={state.isExecuting || state.isValidating}
+                className="p-4 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg className="w-8 h-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                  Setup Wizard
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Assistente passo-a-passo para configuração completa
+                </p>
+              </button>
+
+              <button
                 onClick={openModal}
                 disabled={state.isExecuting || state.isValidating}
                 className="p-4 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -639,6 +670,20 @@ export default function DatabaseSetupClient({
             // Refresh status
             runValidation().catch(() => {});
           }
+        }}
+      />
+
+      {/* Setup Wizard Modal */}
+      <SetupWizardModal
+        open={showWizardModal}
+        onClose={() => {
+          setShowWizardModal(false);
+          addLog('🧙 Setup Wizard fechado');
+        }}
+        onComplete={() => {
+          addLog('✅ Setup Wizard concluído com sucesso');
+          // Refresh status after wizard completion
+          runValidation().catch(() => {});
         }}
       />
     </div>

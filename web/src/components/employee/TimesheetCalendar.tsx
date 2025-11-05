@@ -332,6 +332,8 @@ export default function TimesheetCalendar({
   };
 
   const handleDayClick = (date: string) => {
+    const dayEntries = entries.filter(e => e.data === date);
+    console.log(`📅 [Calendar] Clicked on ${date} - Found ${dayEntries.length} entries:`, dayEntries);
     setSelectedDate(date);
     setShowModal(true);
     setError(null);
@@ -588,16 +590,35 @@ export default function TimesheetCalendar({
           body: JSON.stringify({ entries: entriesToCreate }),
         }).then(async res => {
           if (res.ok) {
-            const result = await res.json();
-            results.createdCount = result.count || creates.length;
-            console.log(`✅ Created ${results.createdCount} entries`);
-            return result;
+            try {
+              const result = await res.json();
+              results.createdCount = result.count || creates.length;
+              console.log(`✅ Created ${results.createdCount} entries`);
+              return result;
+            } catch (parseError) {
+              console.error('❌ Failed to parse success response:', parseError);
+              results.errors.push('Failed to parse server response');
+              throw parseError;
+            }
           } else {
-            results.errors.push('Batch create failed');
-            throw new Error('Batch create failed');
+            // Try to parse error response
+            let errorMessage = 'Batch create failed';
+            try {
+              const errorData = await res.json();
+              errorMessage = errorData.error || errorMessage;
+              console.error('❌ Server error:', errorData);
+            } catch (parseError) {
+              console.error('❌ Failed to parse error response:', parseError);
+            }
+            results.errors.push(errorMessage);
+            throw new Error(errorMessage);
           }
         }).catch(err => {
-          results.errors.push(`Error creating entries: ${err.message}`);
+          console.error('❌ Create request failed:', err);
+          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+          if (!results.errors.includes(errorMsg)) {
+            results.errors.push(`Error creating entries: ${errorMsg}`);
+          }
         });
 
         promises.push(createPromise);
@@ -760,7 +781,14 @@ export default function TimesheetCalendar({
           {/* Day cells */}
           {days.map((date) => {
             const dayNum = Number(date.split('-')[2]);
-            const dayEntries = entries.filter((e) => e.data === date);
+            const dayEntries = entries
+              .filter((e) => e.data === date)
+              .sort((a, b) => {
+                // Sort by hora_ini (start time) - entries without time go last
+                const timeA = a.hora_ini || '99:99';
+                const timeB = b.hora_ini || '99:99';
+                return timeA.localeCompare(timeB);
+              });
             const isToday = date === new Date().toISOString().split('T')[0];
 
             return (
@@ -792,7 +820,7 @@ export default function TimesheetCalendar({
 
                 {/* Entries */}
                 <div className="space-y-0.5 flex-1 overflow-hidden">
-                  {dayEntries.slice(0, 2).map((entry) => {
+                  {dayEntries.slice(0, 5).map((entry) => {
                     const envColor = getEnvironmentColor(entry.environment_id);
                     const envName = getEnvironmentName(entry.environment_id);
                     return (
@@ -809,9 +837,9 @@ export default function TimesheetCalendar({
                       </div>
                     );
                   })}
-                  {dayEntries.length > 2 && (
+                  {dayEntries.length > 5 && (
                     <div className="text-[8px] sm:text-[10px] text-[var(--muted-foreground)] font-semibold text-center">
-                      +{dayEntries.length - 2}
+                      +{dayEntries.length - 5}
                     </div>
                   )}
                 </div>
@@ -955,6 +983,12 @@ export default function TimesheetCalendar({
                   <div className="space-y-2">
                     {entries
                       .filter((e) => e.data === selectedDate)
+                      .sort((a, b) => {
+                        // Sort by hora_ini (start time) - entries without time go last
+                        const timeA = a.hora_ini || '99:99';
+                        const timeB = b.hora_ini || '99:99';
+                        return timeA.localeCompare(timeB);
+                      })
                       .map((entry) => {
                         const envColor = getEnvironmentColor(entry.environment_id);
                         const envName = getEnvironmentName(entry.environment_id);

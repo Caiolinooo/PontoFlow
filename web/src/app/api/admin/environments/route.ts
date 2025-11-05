@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
 import { getServiceSupabase } from '@/lib/supabase/service';
 
 export async function GET() {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  // Use service role to bypass RLS since we're already checking permissions with requireApiRole
+  const supabase = getServiceSupabase();
 
   // Resolve tenant automatically if there is exactly one
   let tenantId = user.tenant_id as string | undefined;
   if (!tenantId) {
-    const svc = getServiceSupabase();
-    const { data: tenants } = await svc.from('tenants').select('id').limit(2);
+    const { data: tenants } = await supabase.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
       tenantId = tenants[0].id;
-      await svc.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
+      await supabase.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
     } else {
       return NextResponse.json({ error: 'missing_tenant' }, { status: 400 });
     }
@@ -31,7 +30,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const user = await requireApiRole(['ADMIN']);
-  const supabase = await getServerSupabase();
+  // Use service role to bypass RLS since we're already checking permissions with requireApiRole
+  const supabase = getServiceSupabase();
   const body = await req.json().catch(() => ({}));
   const name = (body?.name as string)?.trim();
   const slug = (body?.slug as string)?.trim();
@@ -42,28 +42,26 @@ export async function POST(req: NextRequest) {
   // Resolve tenant automatically if there is exactly one
   let tenantId = user.tenant_id as string | undefined;
   if (!tenantId) {
-    const svc = getServiceSupabase();
-    const { data: tenants } = await svc.from('tenants').select('id').limit(2);
+    const { data: tenants } = await supabase.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
       tenantId = tenants[0].id;
-      await svc.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
+      await supabase.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
     } else {
-      const { data: all } = await svc.from('tenants').select('id, name').order('name');
+      const { data: all } = await supabase.from('tenants').select('id, name').order('name');
       return NextResponse.json({ error: 'tenant_required', tenants: all ?? [] }, { status: 409 });
     }
   }
 
   // Defensive: ensure tenant exists to avoid FK violations with clearer message
-  const svc = getServiceSupabase();
-  let { data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle();
+  let { data: tenantRow } = await supabase.from('tenants').select('id').eq('id', tenantId).maybeSingle();
   if (!tenantRow) {
-    const { data: tenants } = await svc.from('tenants').select('id').limit(2);
+    const { data: tenants } = await supabase.from('tenants').select('id').limit(2);
     if (tenants && tenants.length === 1) {
       tenantId = tenants[0].id as string;
-      await svc.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
-      ({ data: tenantRow } = await svc.from('tenants').select('id').eq('id', tenantId).maybeSingle());
+      await supabase.from('users_unified').update({ tenant_id: tenantId }).eq('id', user.id);
+      ({ data: tenantRow } = await supabase.from('tenants').select('id').eq('id', tenantId).maybeSingle());
     } else {
-      const { data: all } = await svc.from('tenants').select('id, name').order('name');
+      const { data: all } = await supabase.from('tenants').select('id, name').order('name');
       return NextResponse.json({ error: 'tenant_required', tenants: all ?? [] }, { status: 409 });
     }
   }

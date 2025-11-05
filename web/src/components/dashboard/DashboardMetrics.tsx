@@ -12,7 +12,7 @@ interface DashboardMetrics {
 }
 
 interface DashboardMetricsProps {
-  userRole: 'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER';
+  userRole: 'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER' | 'TENANT_ADMIN';
 }
 
 export default function DashboardMetrics({ userRole }: DashboardMetricsProps) {
@@ -93,7 +93,7 @@ export default function DashboardMetrics({ userRole }: DashboardMetricsProps) {
         </div>
       </div>
 
-      {(userRole === 'ADMIN' || userRole === 'MANAGER' || userRole === 'MANAGER_TIMESHEET') ? (
+      {(userRole === 'ADMIN' || userRole === 'MANAGER' || userRole === 'MANAGER_TIMESHEET' || userRole === 'TENANT_ADMIN') ? (
         <>
           {/* Approved - Manager/Admin only */}
           <div className="bg-gradient-to-br from-[var(--card)] to-[var(--card)]/50 rounded-xl p-4 border border-[var(--border)] backdrop-blur">

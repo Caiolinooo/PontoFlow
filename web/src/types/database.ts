@@ -227,6 +227,62 @@ export interface DatabaseSetupConfig {
 }
 
 // ===============================
+// SETUP WIZARD
+// ===============================
+
+export interface WizardLayer {
+  id: string;
+  name: string;
+  order: number;
+  description: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  components: number;
+  startTime?: Date;
+  endTime?: Date;
+  duration?: number;
+  error?: string;
+}
+
+export interface WizardProgress {
+  totalLayers: number;
+  completedLayers: number;
+  currentLayer: number;
+  status: 'idle' | 'in_progress' | 'completed' | 'failed';
+  startedAt?: Date;
+  estimatedCompletion?: Date;
+  layers: WizardLayer[];
+}
+
+export interface WizardExecutionOptions {
+  layer?: number;
+  createBackup?: boolean;
+  dryRun?: boolean;
+  skipValidation?: boolean;
+}
+
+export interface WizardExecutionResult {
+  success: boolean;
+  layer: number;
+  layerName: string;
+  startedAt: Date;
+  completedAt: Date;
+  duration: number;
+  statementsExecuted: number;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface DryRunResult {
+  layer: number;
+  layerName: string;
+  sqlContent: string;
+  estimatedDuration: number;
+  statementsCount: number;
+  affectedTables: string[];
+  warnings: string[];
+}
+
+// ===============================
 // COMPONENTES DE UI
 // ===============================
 

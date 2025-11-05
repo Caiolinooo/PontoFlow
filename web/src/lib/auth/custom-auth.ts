@@ -86,8 +86,9 @@ export interface User {
   first_name: string;
   last_name: string;
   name: string;
-  role: 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER';
+  role: 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER' | 'TENANT_ADMIN';
   tenant_id?: string;
+  tenant_roles?: Array<{ tenant_id: string; role: string }>; // All tenant roles for this user
   phone_number: string;
   position: string;
   department: string;
@@ -214,7 +215,7 @@ export async function signInWithCredentials(
           first_name: unifiedUser.first_name || profile?.first_name || '',
           last_name: unifiedUser.last_name || profile?.last_name || '',
           name: unifiedUser.name || profile?.display_name || `${unifiedUser.first_name || ''} ${unifiedUser.last_name || ''}`.trim() || unifiedUser.email.split('@')[0],
-          role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER',
+          role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER' | 'TENANT_ADMIN',
           tenant_id: unifiedUser.tenant_id || tenantRole?.tenant_id || profile?.tenant_id,
           phone_number: unifiedUser.phone_number || profile?.phone_number || '',
           position: unifiedUser.position || employee?.cargo || '',
@@ -310,7 +311,7 @@ export async function signInWithCredentials(
         first_name: profile?.first_name || userMeta.first_name || '',
         last_name: profile?.last_name || userMeta.last_name || '',
         name: profile?.display_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || authEmail.split('@')[0],
-        role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER',
+        role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER' | 'TENANT_ADMIN',
         tenant_id: tenantRole?.tenant_id || profile?.tenant_id,
         phone_number: profile?.phone_number || '',
         position: employee?.cargo || '',
@@ -462,7 +463,7 @@ export async function getUserFromToken(token: string): Promise<User | null> {
         first_name: unifiedUser.first_name || profile?.first_name || '',
         last_name: unifiedUser.last_name || profile?.last_name || '',
         name: unifiedUser.name || profile?.display_name || `${unifiedUser.first_name || ''} ${unifiedUser.last_name || ''}`.trim() || unifiedUser.email.split('@')[0],
-        role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER',
+        role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER' | 'TENANT_ADMIN',
         tenant_id: selectedTenant,
         phone_number: unifiedUser.phone_number || profile?.phone_number || '',
         position: unifiedUser.position || employee?.cargo || '',
@@ -610,14 +611,17 @@ export async function getUserFromToken(token: string): Promise<User | null> {
       profile: profile?.tenant_id
     });
 
+    console.log('[getUserFromToken] User has', userTenantRoles.length, 'tenant roles:', userTenantRoles);
+
     return {
       id: userId,
       email: authEmail,
       first_name: firstName,
       last_name: lastName,
       name: displayName,
-      role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER',
+      role: userRole as 'ADMIN' | 'MANAGER_TIMESHEET' | 'MANAGER' | 'USER' | 'TENANT_ADMIN',
       tenant_id: tenantId,
+      tenant_roles: userTenantRoles, // Include all tenant roles
       phone_number: profile?.phone_number || authMetadata.phone_number || '',
       position: employee?.cargo || authMetadata.position || '',
       department: employee?.departamento || employee?.centro_custo || authMetadata.department || '',

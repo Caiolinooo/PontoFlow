@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import { getServiceSupabase } from '@/lib/supabase/server';
+import { decryptSmtpPassword } from '@/lib/email/smtp-encryption';
 
 type SMTPConfig = {
   host: string;
@@ -6,31 +8,101 @@ type SMTPConfig = {
   user?: string;
   pass?: string;
   from?: string;
+  fromName?: string;
 };
 
-const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com';
-const smtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
-const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER;
-const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
-const mailFrom = process.env.MAIL_FROM || process.env.EMAIL_FROM;
+// Global/default SMTP configuration from environment variables
+const defaultSmtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com';
+const defaultSmtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
+const defaultSmtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER;
+const defaultSmtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASSWORD || process.env.EMAIL_PASSWORD;
+const defaultMailFrom = process.env.MAIL_FROM || process.env.EMAIL_FROM;
 
-const smtp: SMTPConfig = {
-  host: smtpHost,
-  port: smtpPort,
-  user: smtpUser,
-  pass: smtpPass,
-  from: mailFrom
+const defaultSmtp: SMTPConfig = {
+  host: defaultSmtpHost,
+  port: defaultSmtpPort,
+  user: defaultSmtpUser,
+  pass: defaultSmtpPass,
+  from: defaultMailFrom
 };
+
+/**
+ * Get SMTP configuration for a specific tenant
+ * Falls back to global configuration if tenant doesn't have custom SMTP
+ */
+async function getTenantSmtpConfig(tenantId?: string): Promise<SMTPConfig> {
+  // If no tenant ID provided, use default config
+  if (!tenantId) {
+    return defaultSmtp;
+  }
+
+  try {
+    const supabase = getServiceSupabase();
+    const { data: tenant, error } = await supabase
+      .from('tenants')
+      .select('settings')
+      .eq('id', tenantId)
+      .single();
+
+    if (error || !tenant) {
+      console.warn(`[email-service] Failed to fetch tenant ${tenantId}, using default SMTP`);
+      return defaultSmtp;
+    }
+
+    const smtpSettings = tenant.settings?.smtp;
+
+    // Check if tenant has custom SMTP configured and enabled
+    if (smtpSettings && smtpSettings.enabled === true) {
+      const { host, port, user, password_encrypted, from, from_name } = smtpSettings;
+
+      // Validate required fields
+      if (!host || !port || !user || !password_encrypted || !from) {
+        console.warn(`[email-service] Tenant ${tenantId} has incomplete SMTP config, using default`);
+        return defaultSmtp;
+      }
+
+      // Decrypt password
+      let decryptedPassword: string;
+      try {
+        decryptedPassword = decryptSmtpPassword(password_encrypted);
+      } catch (decryptError) {
+        console.error(`[email-service] Failed to decrypt SMTP password for tenant ${tenantId}:`, decryptError);
+        return defaultSmtp;
+      }
+
+      console.log(`[email-service] Using tenant-specific SMTP for tenant ${tenantId}`);
+      return {
+        host,
+        port: Number(port),
+        user,
+        pass: decryptedPassword,
+        from,
+        fromName: from_name
+      };
+    }
+
+    // Tenant doesn't have custom SMTP, use default
+    return defaultSmtp;
+  } catch (error) {
+    console.error(`[email-service] Error fetching tenant SMTP config:`, error);
+    return defaultSmtp;
+  }
+}
 
 export async function sendEmail({
   to,
   subject,
-  html
+  html,
+  tenantId
 }: {
   to: string;
   subject: string;
   html: string;
+  tenantId?: string;
 }) {
+  // Get SMTP config for the tenant (or default)
+  const smtp = await getTenantSmtpConfig(tenantId);
+
   if (!smtp.user || !smtp.pass) {
     // Graceful no-op when credentials are missing (keeps runtime stable)
     console.warn('[email-service] Email disabled: missing credentials. Skipping send to', to);
@@ -44,11 +116,27 @@ export async function sendEmail({
     auth: { user: smtp.user, pass: smtp.pass }
   });
 
+  // Generate unique Message-ID for better deliverability
+  const domain = smtp.from?.split('@')[1] || 'pontoflow.com';
+  const messageId = `<${Date.now()}.${Math.random().toString(36).substring(7)}@${domain}>`;
+
+  // Format "from" field with name if provided
+  const fromField = smtp.fromName
+    ? `"${smtp.fromName}" <${smtp.from || smtp.user}>`
+    : smtp.from || smtp.user;
+
   await transporter.sendMail({
-    from: smtp.from || smtp.user,
+    from: fromField,
     to,
     subject,
-    html
+    html,
+    headers: {
+      'Message-ID': messageId,
+      'X-Mailer': 'PontoFlow Timesheet Manager',
+      'X-Priority': '3',
+      'Reply-To': smtp.from || smtp.user,
+      'List-Unsubscribe': `<mailto:${smtp.from || smtp.user}?subject=Unsubscribe>`,
+    }
   });
 }
 

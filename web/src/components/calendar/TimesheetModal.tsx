@@ -82,8 +82,15 @@ export default function TimesheetModal({
   locale,
   timesheetId,
 }: TimesheetModalProps) {
-  
-  const dateEntries = entries.filter(e => e.data === selectedDate);
+
+  const dateEntries = entries
+    .filter(e => e.data === selectedDate)
+    .sort((a, b) => {
+      // Sort by hora_ini (start time) - entries without time go last
+      const timeA = a.hora_ini || '99:99';
+      const timeB = b.hora_ini || '99:99';
+      return timeA.localeCompare(timeB);
+    });
 
   const handleCreateEntry = () => {
     if (!selectedDate || !form.environment_id) {

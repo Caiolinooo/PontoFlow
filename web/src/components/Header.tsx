@@ -6,6 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
 import NotificationBadge from './notifications/NotificationBadge';
 import NotificationModal from './notifications/NotificationModal';
+import Avatar from './ui/Avatar';
 import { useState, useEffect } from 'react';
 import type { User } from '@/lib/auth/custom-auth';
 import { branding } from '@/config/branding';
@@ -89,20 +90,12 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
                 {user ? (
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      {user.drive_photo_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={user.drive_photo_url}
-                          alt={user.name}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 bg-[var(--primary)]/10 rounded-full flex items-center justify-center">
-                          <span className="text-[var(--primary)] font-medium text-sm">
-                            {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
-                          </span>
-                        </div>
-                      )}
+                      <Avatar
+                        src={user.avatar || user.drive_photo_url}
+                        alt={user.name}
+                        initials={`${user.first_name?.charAt(0) || ''}${user.last_name?.charAt(0) || ''}`}
+                        size="sm"
+                      />
                       <span className="text-sm text-[var(--surface-foreground)] opacity-80">{user.name || user.email}</span>
                     </div>
                     <button

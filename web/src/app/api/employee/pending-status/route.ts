@@ -68,17 +68,21 @@ export async function GET(req: NextRequest) {
   try {
     const user = await requireApiRole(['USER', 'ADMIN', 'MANAGER', 'MANAGER_TIMESHEET']);
     const supabase = getServiceSupabase();
-    
-    // Get user's tenant and timezone
+
+    // Get user's tenant, timezone, and creation date
     const { data: employee } = await supabase
       .from('employees')
-      .select('tenant_id')
+      .select('tenant_id, created_at')
       .eq('profile_id', user.id)
       .single();
-    
+
     if (!employee) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
+
+    // Get employee creation date to avoid showing false overdue warnings
+    const employeeCreatedAt = new Date(employee.created_at);
+    console.log(`[PENDING-STATUS] Employee created at: ${employeeCreatedAt.toISOString()}`);
     
     const { data: tenant } = await supabase
       .from('tenants')
@@ -172,6 +176,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Get past month pendencies (last 6 months) using tenant timezone
+    // IMPORTANT: Only check months AFTER the employee was created to avoid false overdue warnings
     const pastMonths: Array<{
       month: string;
       status: 'pendente' | 'rascunho' | 'enviado' | 'aprovado' | 'recusado';
@@ -179,28 +184,37 @@ export async function GET(req: NextRequest) {
       deadline: string;
       isOverdue: boolean;
     }> = [];
-    
+
+    // Calculate the first month the employee should have a timesheet
+    const employeeCreatedMonth = firstDayOfMonthInTimezone(employeeCreatedAt, tenantTimezone);
+
     for (let i = 1; i <= 6; i++) {
       const monthStart = addMonths(currentMonthStart, -i);
       const monthStartISO = fmtDateISOInTimezone(monthStart, tenantTimezone);
-      
+
+      // Skip months before employee was created
+      if (monthStart < employeeCreatedMonth) {
+        console.log(`[PENDING-STATUS] Skipping ${getMonthName(monthStart)} - before employee creation date`);
+        continue;
+      }
+
       const { data: pastTimesheet } = await supabase
         .from('timesheets')
         .select('status')
         .eq('employee_id', user.id)
         .eq('periodo_ini', monthStartISO)
         .single();
-      
+
       // Calculate deadline for each month using tenant timezone
       const monthDeadline = calculateTimesheetDeadline(monthStart, tenantTimezone, 5);
-      
+
       // Adjust deadline to last business day if it falls on weekend
       while (monthDeadline.getDay() === 0 || monthDeadline.getDay() === 6) {
         monthDeadline.setDate(monthDeadline.getDate() - 1);
       }
-      
+
       const isOverdue = isPastDeadline(monthStart, tenantTimezone, 5);
-      
+
       pastMonths.push({
         month: getMonthName(monthStart),
         status: pastTimesheet?.status || 'pendente',

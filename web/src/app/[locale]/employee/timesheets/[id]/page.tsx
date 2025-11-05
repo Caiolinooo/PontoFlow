@@ -43,7 +43,8 @@ export default async function TimesheetByIdPage({ params }: { params: Promise<{ 
     .from('timesheet_entries')
     .select('*')
     .eq('timesheet_id', timesheet.id)
-    .order('data', { ascending: true });
+    .order('data', { ascending: true })
+    .order('hora_ini', { ascending: true, nullsFirst: false });
 
   // Get tenant info (including work_mode)
   const { data: tenant } = await supabase

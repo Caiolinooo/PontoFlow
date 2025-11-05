@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiRole } from '@/lib/auth/server';
+import { requireApiRole, hasTenantAdminAccess } from '@/lib/auth/server';
 import { z } from 'zod';
 import { getServerSupabase } from '@/lib/supabase/server';
 import { getServiceSupabase } from '@/lib/supabase/service';
@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     // Resolve tenant: if user has none and there is exactly one tenant, adopt it and persist for the user
     let tenantId = user.tenant_id as string | undefined;
     console.log('[GET /api/admin/delegations/groups] User tenant_id:', tenantId);
+    console.log('[GET /api/admin/delegations/groups] User tenant_roles:', user.tenant_roles);
 
     if (!tenantId) {
       const svc = getServiceSupabase();
@@ -32,6 +33,12 @@ export async function GET(req: NextRequest) {
         const { data: all } = await svc.from('tenants').select('id, name').order('name');
         return NextResponse.json({ error: 'tenant_required', tenants: all ?? [] }, { status: 409 });
       }
+    }
+
+    // Verify user has access to this tenant
+    if (!hasTenantAdminAccess(user, tenantId!)) {
+      console.error('[GET /api/admin/delegations/groups] User does not have TENANT_ADMIN access to tenant:', tenantId);
+      return NextResponse.json({ error: 'forbidden', message: 'No access to this tenant' }, { status: 403 });
     }
 
     // Use service client to bypass RLS
@@ -59,6 +66,7 @@ export async function GET(req: NextRequest) {
     if (e instanceof Error && (e.message === 'Unauthorized' || e.message === 'Forbidden')) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
+    console.error('[GET /api/admin/delegations/groups] Error:', e);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }
@@ -80,6 +88,12 @@ export async function POST(req: NextRequest) {
         const { data: all } = await supabase.from('tenants').select('id, name').order('name');
         return NextResponse.json({ error: 'tenant_required', tenants: all ?? [] }, { status: 409 });
       }
+    }
+
+    // Verify user has access to this tenant
+    if (!hasTenantAdminAccess(user, tenantId!)) {
+      console.error('[POST /api/admin/delegations/groups] User does not have TENANT_ADMIN access to tenant:', tenantId);
+      return NextResponse.json({ error: 'forbidden', message: 'No access to this tenant' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));

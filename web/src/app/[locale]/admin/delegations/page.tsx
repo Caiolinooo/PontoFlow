@@ -104,7 +104,7 @@ export default function AdminDelegationsPage() {
       }
 
       {loading ? (
-        <div className="text-[var(--muted-foreground)]">Carregando...</div>
+        <div className="text-[var(--muted-foreground)]">{t('loading')}</div>
       ) : error ? (
         <div className="text-[var(--destructive)]">{error}</div>
       ) : (
@@ -148,7 +148,7 @@ export default function AdminDelegationsPage() {
         onClose={() => setTenantModalOpen(false)}
         onSelected={async (tenantId) => {
           const resp = await fetch('/api/admin/me/tenant', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenant_id: tenantId }) });
-          if (!resp.ok) { setError('Falha ao definir tenant'); return; }
+          if (!resp.ok) { setError(t('setTenantFailed')); return; }
           await load();
         }}
       />

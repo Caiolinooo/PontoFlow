@@ -1,8 +1,11 @@
 import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import ReportsClient from '@/components/reports/ReportsClient';
+import { requireAuth } from '@/lib/auth/server';
 
-export default async function ReportsPage() {
+export default async function ReportsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const user = await requireAuth(locale);
   const t = await getTranslations();
 
   return (
@@ -15,7 +18,7 @@ export default async function ReportsPage() {
           {t('reports.description') || 'Generate and export timesheet reports'}
         </p>
       </div>
-      <ReportsClient />
+      <ReportsClient userRole={user.role} />
     </div>
   );
 }

@@ -16,6 +16,12 @@
       "overtime50": "Horas Extras (50%)",
       "overtime100": "Dobra (100%)"
     },
+    "pendingStatus": {
+      "totalPending": "Total Pendente",
+      "overdue": "Vencidos",
+      "current": "Atual",
+      "daysRemaining": "Dias Restantes"
+    },
     "modules": {
       "myTimesheet": {
         "title": "Minha Folha de Ponto",
@@ -384,6 +390,8 @@
     "scopeByEmployeeDesc": "Agrupar e consolidar dados por colaborador",
     "scopeByVessel": "Por Embarcação",
     "scopeByVesselDesc": "Agrupar e consolidar dados por embarcação",
+    "myTimesheets": "Meus Timesheets",
+    "myTimesheetsDesc": "Visualizar seus próprios registros de timesheet",
     "reportTitleAllTimesheets": "Todas as Folhas de Ponto",
     "reportTitlePending": "Itens Pendentes",
     "reportTitleApproved": "Timesheets Aprovados",
@@ -393,7 +401,8 @@
     "error": "Erro ao gerar relatório",
     "exportError": "Erro ao exportar relatório",
     "summaryReportTitle": "Relatórios Administrativos - Timesheet Summary Report",
-    "detailedReportTitle": "Relatórios Administrativos - Timesheet Detailed Report"
+    "detailedReportTitle": "Relatórios Administrativos - Timesheet Detailed Report",
+    "adminOnlyScopes": "Apenas administradores podem acessar estes escopos de relatório"
   },
   "messages": {
     "saved": "Preferências salvas com sucesso."
@@ -413,6 +422,7 @@
     "lastNameTooShort": "Sobrenome muito curto"
   },
   "admin": {
+    "currentTenant": "Tenant Atual",
     "users": {
       "title": "Gerenciamento de Usuários",
       "subtitle": "Gerencie todos os usuários do sistema",
@@ -456,7 +466,8 @@
       "searchPlaceholder": "Buscar por nome ou e-mail",
       "anyRole": "Qualquer função",
       "anyStatus": "Qualquer status",
-      "filter": "Filtrar"
+      "filter": "Filtrar",
+      "viewAll": "Ver todos"
     },
     "delegations": {
       "title": "Delegações (Grupos)",
@@ -483,7 +494,9 @@
       "selectTenant": "Selecionar tenant",
       "loadFailed": "Falha ao carregar grupos",
       "unexpectedError": "Erro inesperado",
-      "loadTenantsFailed": "Falha ao carregar tenants"
+      "loadTenantsFailed": "Falha ao carregar tenants",
+      "loading": "Carregando...",
+      "setTenantFailed": "Falha ao definir tenant"
     },
     "employees": {
       "newEmployeeTitle": "Novo Funcionário",
@@ -570,6 +583,14 @@
       "actions": "Ações",
       "edit": "Editar",
       "delete": "Excluir",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "editTenant": "Editar Tenant",
+      "namePlaceholder": "Digite o nome do tenant",
+      "slugPlaceholder": "Digite o slug (ex: minha-empresa)",
+      "slugInvalid": "Slug deve conter apenas letras minúsculas, números e hífens",
+      "deleteConfirmTitle": "Confirmar Exclusão",
+      "deleteConfirmMessage": "Tem certeza que deseja excluir o tenant \"{name}\"? Esta ação não pode ser desfeita.",
       "namePrompt": "Nome:",
       "slugPrompt": "Slug:",
       "deleteConfirm": "Excluir tenant? Esta ação não pode ser desfeita.",
@@ -595,6 +616,9 @@
       "locked": "Bloqueado",
       "unlocked": "Aberto",
       "reason": "Motivo",
+      "period": "Período",
+      "status": "Status",
+      "action": "Ação",
       "overridesByEnvironment": "Overrides por Ambiente",
       "overridesByEnvironmentDesc": "Travas específicas por ambiente (sobrepõem o tenant).",
       "searchEnvironment": "Buscar ambiente",
@@ -704,7 +728,19 @@
       "date": "Data",
       "time": "Horário",
       "noApprovalsFound": "Nenhuma aprovação registrada.",
-      "noEntriesFound": "Nenhum lançamento registrado."
+      "noEntriesFound": "Nenhum lançamento registrado.",
+      "statusLabels": {
+        "aprovado": "Aprovado",
+        "recusado": "Recusado",
+        "enviado": "Enviado"
+      },
+      "entryTypes": {
+        "embarque": "Embarque",
+        "offshore": "Offshore",
+        "translado": "Translado",
+        "ferias": "Férias",
+        "folga": "Folga"
+      }
     },
     "importExport": {
       "title": "Import/Export",
@@ -893,7 +929,8 @@
     "tabs": {
       "health": "Status do Sistema",
       "system": "Configurações do Sistema",
-      "tenant": "Configurações da Empresa"
+      "tenant": "Configurações da Empresa",
+      "userSync": "Sincronização de Usuários"
     },
     "health": {
       "title": "Status do Sistema",
@@ -1057,6 +1094,22 @@
       "apiBaseUrl": "URL base da API (opcional, padrão: mesma origem)",
       "webhookUrl": "URL para receber webhooks de eventos do sistema"
     },
+    "userSync": {
+      "title": "Sincronização de Usuários",
+      "description": "Controle a sincronização automática de usuários para a tabela users_unified (integração Painel ABZ)",
+      "enableSync": "Ativar sincronização para users_unified",
+      "syncEnabledInfo": "Novos usuários serão automaticamente sincronizados para users_unified",
+      "syncDisabledInfo": "Sincronização desativada - apenas auth.users e profiles serão usados",
+      "enabled": "Ativado",
+      "disabled": "Desativado",
+      "enabledSuccess": "Sincronização ativada com sucesso",
+      "disabledSuccess": "Sincronização desativada com sucesso",
+      "updateError": "Erro ao atualizar configuração de sincronização",
+      "infoTitle": "Informações Importantes",
+      "infoLine1": "ABZ Group: Mantenha ATIVADO para integração com Painel ABZ",
+      "infoLine2": "Clientes Futuros: DESATIVE para usar apenas Supabase Auth",
+      "infoLine3": "A mudança é aplicada imediatamente e afeta novos usuários"
+    },
     "tenantSettings": {
       "title": "Configurações da Empresa",
       "subtitle": "Informações da empresa, branding e templates de documentos",
@@ -1119,5 +1172,184 @@
     },
     "saveSuccess": "Configurações salvas com sucesso!",
     "saveError": "Erro ao salvar configurações"
+  },
+  "invitations": {
+    "title": "Gerenciar Convites",
+    "manageButton": "Gerenciar Convites",
+    "tabs": {
+      "create": "Criar Novo Convite",
+      "manage": "Gerenciar Convites"
+    },
+    "form": {
+      "title": "Convidar Novo Usuário",
+      "subtitle": "Preencha os dados do usuário que você deseja convidar",
+      "email": "Email",
+      "emailPlaceholder": "usuario@exemplo.com",
+      "emailHelp": "O convite será enviado para este email",
+      "firstName": "Nome",
+      "firstNamePlaceholder": "João",
+      "lastName": "Sobrenome",
+      "lastNamePlaceholder": "Silva",
+      "phone": "Telefone",
+      "phonePlaceholder": "+55 11 99999-9999",
+      "phoneOptional": "(opcional)",
+      "position": "Cargo",
+      "positionPlaceholder": "Desenvolvedor",
+      "positionOptional": "(opcional)",
+      "department": "Departamento",
+      "departmentPlaceholder": "TI",
+      "departmentOptional": "(opcional)",
+      "role": "Função",
+      "roleHelp": "Selecione a função do usuário no sistema",
+      "roles": {
+        "USER": "Usuário",
+        "MANAGER_TIMESHEET": "Gerente de Timesheet",
+        "MANAGER": "Gerente",
+        "ADMIN": "Administrador"
+      },
+      "roleDescriptions": {
+        "USER": "Acesso básico para visualizar e gerenciar seus próprios timesheets",
+        "MANAGER_TIMESHEET": "Pode aprovar timesheets e gerenciar grupos de usuários",
+        "MANAGER": "Acesso completo para gerenciar usuários, grupos e configurações",
+        "ADMIN": "Acesso total ao sistema, incluindo configurações avançadas"
+      },
+      "noTenants": "Nenhum tenant disponível",
+      "noGroupsForTenants": "Nenhum grupo disponível para os tenants selecionados",
+      "selectTenantFirst": "Selecione um tenant para ver os grupos disponíveis",
+      "managedGroupsDescription": "Selecione os grupos que este gerente irá gerenciar",
+      "tenants": "Tenants",
+      "tenantsHelp": "Selecione os tenants aos quais o usuário terá acesso",
+      "groups": "Grupos de Delegação",
+      "groupsHelp": "Selecione os grupos aos quais o usuário pertencerá",
+      "groupsEmpty": "Nenhum grupo disponível. Selecione um tenant primeiro.",
+      "managedGroups": "Grupos Gerenciados",
+      "managedGroupsHelp": "Selecione os grupos que este gerente irá supervisionar",
+      "managedGroupsEmpty": "Nenhum grupo disponível para gerenciar",
+      "submit": "Enviar Convite",
+      "submitting": "Enviando...",
+      "cancel": "Cancelar",
+      "validation": {
+        "checking": "Verificando disponibilidade...",
+        "available": "Email disponível",
+        "unavailable": "Este email já está em uso",
+        "invalid": "Email inválido",
+        "required": "Campo obrigatório"
+      }
+    },
+    "list": {
+      "title": "Convites Enviados",
+      "subtitle": "Gerencie os convites pendentes e visualize o histórico",
+      "pendingInvitations": "Convites Pendentes",
+      "filter": {
+        "all": "Todos",
+        "pending": "Pendentes",
+        "accepted": "Aceitos",
+        "expired": "Expirados",
+        "cancelled": "Cancelados"
+      },
+      "table": {
+        "email": "Email",
+        "name": "Nome",
+        "role": "Função",
+        "status": "Status",
+        "invitedBy": "Convidado por",
+        "invitedAt": "Data do Convite",
+        "expiresAt": "Expira em",
+        "actions": "Ações"
+      },
+      "status": {
+        "pending": "Pendente",
+        "accepted": "Aceito",
+        "expired": "Expirado",
+        "cancelled": "Cancelado"
+      },
+      "warnings": {
+        "expiresIn": "Expira em {hours}h",
+        "expired": "Expirado"
+      },
+      "empty": "Nenhum convite encontrado",
+      "loading": "Carregando convites...",
+      "pagination": {
+        "showing": "Mostrando {start} a {end} de {total} convites",
+        "previous": "Anterior",
+        "next": "Próximo"
+      }
+    },
+    "actions": {
+      "resend": "Reenviar",
+      "cancel": "Cancelar",
+      "copyLink": "Copiar Link",
+      "resending": "Reenviando...",
+      "cancelling": "Cancelando..."
+    },
+    "messages": {
+      "success": "Convite enviado com sucesso!",
+      "resendSuccess": "Convite reenviado com sucesso!",
+      "cancelSuccess": "Convite cancelado com sucesso!",
+      "linkCopied": "Link copiado para a área de transferência!",
+      "error": "Erro ao processar convite",
+      "resendError": "Erro ao reenviar convite",
+      "cancelError": "Erro ao cancelar convite",
+      "loadError": "Erro ao carregar convites"
+    },
+    "confirmations": {
+      "cancel": "Tem certeza que deseja cancelar este convite?",
+      "resend": "Deseja reenviar o convite para {email}?"
+    },
+    "errors": {
+      "emailExists": "Este email já está cadastrado no sistema",
+      "pendingInvitation": "Já existe um convite pendente para este email",
+      "invalidEmail": "Email inválido",
+      "requiredFields": "Campos obrigatórios: email, nome, sobrenome e função",
+      "managerGroupsOnly": "Apenas gerentes podem ter grupos gerenciados",
+      "unauthorized": "Não autenticado",
+      "forbidden": "Sem permissão",
+      "serverError": "Erro interno do servidor",
+      "networkError": "Erro de conexão. Verifique sua internet.",
+      "submitError": "Erro ao enviar convite. Por favor, tente novamente."
+    },
+    "suggestions": {
+      "emailExists": "Verifique se o usuário já foi cadastrado anteriormente. Você pode procurar pelo email na lista de usuários.",
+      "pendingInvitation": "Cancele o convite anterior na lista de convites antes de criar um novo.",
+      "invalidEmail": "Verifique se o email está no formato correto (exemplo@dominio.com).",
+      "requiredFields": "Preencha todos os campos obrigatórios marcados com *.",
+      "managerGroupsOnly": "Apenas usuários com função 'Gerente' ou 'Gerente de Timesheet' podem ter grupos gerenciados. Altere a função ou desmarque os grupos gerenciados.",
+      "unauthorized": "Sua sessão expirou. Por favor, recarregue a página e faça login novamente.",
+      "forbidden": "Você não tem permissão para criar convites. Entre em contato com um administrador do sistema.",
+      "serverError": "Ocorreu um erro no servidor. Tente novamente em alguns instantes. Se o problema persistir, entre em contato com o suporte técnico."
+    },
+    "wizard": {
+      "step1": {
+        "label": "Informações Básicas",
+        "description": "Dados pessoais",
+        "title": "Informações Básicas do Usuário"
+      },
+      "step2": {
+        "label": "Função",
+        "description": "Permissões",
+        "title": "Selecione a Função do Usuário",
+        "subtitle": "Escolha o nível de acesso que o usuário terá no sistema"
+      },
+      "step3": {
+        "label": "Tenants & Grupos",
+        "description": "Acesso",
+        "title": "Configurar Acesso a Tenants e Grupos",
+        "contextTenant": "Tenant atual pré-selecionado",
+        "filteredGroups": "Filtrado por {count} tenant(s)"
+      },
+      "step4": {
+        "label": "Revisar",
+        "description": "Confirmar",
+        "title": "Revisar e Confirmar Convite",
+        "subtitle": "Verifique todas as informações antes de enviar o convite",
+        "noSelection": "Nenhuma seleção",
+        "confirmTitle": "Pronto para enviar?",
+        "confirmMessage": "Um email de convite será enviado para o endereço fornecido com instruções para criar a conta."
+      },
+      "next": "Próximo",
+      "back": "Voltar",
+      "edit": "Editar",
+      "stepIndicator": "Passo {current} de {total}"
+    }
   }
 }
