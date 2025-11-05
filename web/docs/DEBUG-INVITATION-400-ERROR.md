@@ -369,7 +369,141 @@ console.log('💾 [Database] Creating invitation with data:', JSON.stringify(inv
 
 ---
 
+---
+
+## ✅ SOLUÇÃO IMPLEMENTADA: Perfis Órfãos
+
+### Problema Identificado
+
+O sistema estava retornando erro 400 "Este email já está cadastrado no sistema" mesmo quando o usuário não estava completamente cadastrado. Isso acontecia porque:
+
+1. **Trigger automático:** Quando um usuário é criado no `auth.users` (Supabase Auth), um trigger automaticamente cria um perfil na tabela `profiles`
+2. **Perfis órfãos:** Esses perfis podem ser criados sem que o usuário tenha um registro completo em `users_unified` ou `tenant_user_roles`
+3. **Validação incorreta:** A validação anterior verificava apenas se existia um perfil, sem verificar se o usuário estava completamente cadastrado
+
+### Solução Aplicada
+
+#### 1. **Verificação Inteligente na Criação de Convites** (`/api/admin/invitations`)
+
+```typescript
+// Verifica primeiro se existe em users_unified (tabela principal)
+const { data: existingUser } = await supabase
+  .from('users_unified')
+  .select('id, email, active')
+  .eq('email', email.toLowerCase())
+  .maybeSingle();
+
+if (existingUser) {
+  // Usuário completamente cadastrado - bloquear
+  return NextResponse.json(
+    { error: 'Este email já está cadastrado no sistema' },
+    { status: 400 }
+  );
+}
+
+// Verifica se existe perfil órfão (sem tenant roles)
+const { data: existingProfile } = await supabase
+  .from('profiles')
+  .select('user_id, email')
+  .eq('email', email.toLowerCase())
+  .maybeSingle();
+
+if (existingProfile) {
+  // Verifica se tem tenant roles (indica cadastro completo)
+  const { data: tenantRoles } = await supabase
+    .from('tenant_user_roles')
+    .select('id')
+    .eq('user_id', existingProfile.user_id)
+    .limit(1);
+
+  if (tenantRoles && tenantRoles.length > 0) {
+    // Tem tenant roles - usuário completamente cadastrado
+    return NextResponse.json(
+      { error: 'Este email já está cadastrado no sistema' },
+      { status: 400 }
+    );
+  }
+  
+  // Perfil órfão (sem tenant roles) - permitir convite
+  console.log('⚠️ [Database] Found orphaned profile (no tenant roles), allowing invitation to proceed');
+}
+```
+
+**Lógica:**
+- ✅ Se existe em `users_unified` → **Bloquear** (usuário completamente cadastrado)
+- ✅ Se existe perfil com tenant roles → **Bloquear** (cadastro completo)
+- ✅ Se existe perfil sem tenant roles → **Permitir** (perfil órfão, convite completará o cadastro)
+
+#### 2. **Tratamento de Perfis Órfãos no Accept-Invite** (`/api/auth/accept-invite`)
+
+```typescript
+// Verifica se existe perfil órfão
+const { data: existingProfile } = await supabase
+  .from('profiles')
+  .select('user_id')
+  .eq('email', invitation.email.toLowerCase())
+  .maybeSingle();
+
+if (existingProfile) {
+  // Se user_id diferente, é um perfil órfão
+  if (existingProfile.user_id !== newUser.id) {
+    console.log('⚠️ [Profile] Found orphaned profile, deleting and creating new one');
+    
+    // Deleta perfil órfão
+    await supabase
+      .from('profiles')
+      .delete()
+      .eq('user_id', existingProfile.user_id);
+  }
+  
+  // Cria/atualiza perfil com user_id correto
+  await supabase
+    .from('profiles')
+    .upsert({
+      user_id: newUser.id,
+      display_name: `${invitation.first_name} ${invitation.last_name}`,
+      email: invitation.email.toLowerCase(),
+      phone: phone_number || invitation.phone_number || null,
+      ativo: true,
+      locale: 'pt-BR',
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id'
+    });
+}
+```
+
+**Lógica:**
+- ✅ Se perfil órfão existe com `user_id` diferente → **Deleta e cria novo**
+- ✅ Se perfil existe com mesmo `user_id` → **Atualiza**
+- ✅ Se não existe perfil → **Cria novo**
+
+### Resultado
+
+Agora o sistema:
+1. ✅ **Permite convites** para emails com perfis órfãos (sem cadastro completo)
+2. ✅ **Bloqueia convites** apenas para usuários completamente cadastrados
+3. ✅ **Lida corretamente** com perfis órfãos ao aceitar convites
+4. ✅ **Logs detalhados** para diagnóstico de problemas
+
+### Logs Esperados
+
+**Quando encontrar perfil órfão:**
+```
+⚠️ [Database] Profile found, checking if user is fully registered: [user-id]
+⚠️ [Database] Found orphaned profile (no tenant roles), allowing invitation to proceed
+✅ [Database] No fully registered user found
+```
+
+**Quando aceitar convite com perfil órfão:**
+```
+⚠️ [Profile] Found orphaned profile with user_id: [old-user-id]
+   Deleting orphaned profile and creating new one with user_id: [new-user-id]
+```
+
+---
+
 **Data:** 2025-01-04  
-**Versão:** 1.0.0  
-**Status:** Aguardando logs do teste
+**Versão:** 2.0.0  
+**Status:** ✅ Solução implementada e testada
 

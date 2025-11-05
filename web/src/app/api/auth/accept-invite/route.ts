@@ -185,19 +185,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create profile if needed
+    // Create or update profile (handle orphaned profiles from trigger)
     try {
-      await supabase.from('profiles').insert({
-        user_id: newUser.id,
-        display_name: `${invitation.first_name} ${invitation.last_name}`,
-        email: invitation.email.toLowerCase(),
-        phone: phone_number || invitation.phone_number || null,
-        ativo: true,
-        locale: 'pt-BR',
-      });
+      // Check if profile already exists (orphaned profile from trigger)
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('email', invitation.email.toLowerCase())
+        .maybeSingle();
+
+      if (existingProfile) {
+        // If profile exists with different user_id, it's an orphaned profile
+        // We need to delete it and create a new one with the correct user_id
+        if (existingProfile.user_id !== newUser.id) {
+          console.log('⚠️ [Profile] Found orphaned profile with user_id:', existingProfile.user_id);
+          console.log('   Deleting orphaned profile and creating new one with user_id:', newUser.id);
+          
+          // Delete the orphaned profile
+          await supabase
+            .from('profiles')
+            .delete()
+            .eq('user_id', existingProfile.user_id);
+        }
+        
+        // Create or update profile with correct user_id
+        await supabase
+          .from('profiles')
+          .upsert({
+            user_id: newUser.id,
+            display_name: `${invitation.first_name} ${invitation.last_name}`,
+            email: invitation.email.toLowerCase(),
+            phone: phone_number || invitation.phone_number || null,
+            ativo: true,
+            locale: 'pt-BR',
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id'
+          });
+      } else {
+        // No profile exists, create new one
+        await supabase.from('profiles').insert({
+          user_id: newUser.id,
+          display_name: `${invitation.first_name} ${invitation.last_name}`,
+          email: invitation.email.toLowerCase(),
+          phone: phone_number || invitation.phone_number || null,
+          ativo: true,
+          locale: 'pt-BR',
+        });
+      }
     } catch (profileError) {
-      console.error('Error creating profile:', profileError);
-      // Continue even if profile creation fails
+      console.error('Error creating/updating profile:', profileError);
+      // Continue even if profile creation/update fails
     }
 
     // Assign to tenants if specified

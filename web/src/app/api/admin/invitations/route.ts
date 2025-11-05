@@ -174,11 +174,35 @@ export async function POST(request: NextRequest) {
     // Use service role client to bypass RLS for admin operations
     const supabase = getServiceSupabase();
 
-    // Check if user already exists in profiles table (which syncs with auth.users)
+    // Check if user already exists and is fully registered
+    // We check users_unified first (the main user table), then verify if there's a complete registration
     console.log('🔍 [Database] Checking for existing user with email:', email.toLowerCase());
+    
+    // Check if user exists in users_unified (main user table)
+    const { data: existingUser, error: userCheckError } = await supabase
+      .from('users_unified')
+      .select('id, email, active')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+
+    if (userCheckError) {
+      console.error('❌ [Database] Error checking existing user:', userCheckError);
+    }
+
+    if (existingUser) {
+      console.error('❌ [Validation] User already exists in users_unified:', existingUser.id);
+      console.log('   - User active status:', existingUser.active);
+      return NextResponse.json(
+        { error: 'Este email já está cadastrado no sistema' },
+        { status: 400 }
+      );
+    }
+
+    // Also check if there's a profile with associated tenant roles (indicating complete registration)
+    // Profiles created by trigger but without tenant roles are considered orphaned and can be invited
     const { data: existingProfile, error: profileCheckError } = await supabase
       .from('profiles')
-      .select('user_id')
+      .select('user_id, email')
       .eq('email', email.toLowerCase())
       .maybeSingle();
 
@@ -187,13 +211,34 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingProfile) {
-      console.error('❌ [Validation] User already exists in profiles:', existingProfile.user_id);
-      return NextResponse.json(
-        { error: 'Este email já está cadastrado no sistema' },
-        { status: 400 }
-      );
+      console.log('⚠️ [Database] Profile found, checking if user is fully registered:', existingProfile.user_id);
+      
+      // Check if this profile has associated tenant roles (indicating complete registration)
+      const { data: tenantRoles, error: rolesError } = await supabase
+        .from('tenant_user_roles')
+        .select('id')
+        .eq('user_id', existingProfile.user_id)
+        .limit(1);
+
+      if (rolesError) {
+        console.error('❌ [Database] Error checking tenant roles:', rolesError);
+      }
+
+      // If profile exists but has no tenant roles, it's likely an orphaned profile
+      // We'll allow the invitation to proceed as it will complete the registration
+      if (tenantRoles && tenantRoles.length > 0) {
+        console.error('❌ [Validation] User already exists in profiles with tenant roles:', existingProfile.user_id);
+        return NextResponse.json(
+          { error: 'Este email já está cadastrado no sistema' },
+          { status: 400 }
+        );
+      }
+
+      // Profile exists but no tenant roles - likely orphaned, allow invitation
+      console.log('⚠️ [Database] Found orphaned profile (no tenant roles), allowing invitation to proceed');
     }
-    console.log('✅ [Database] No existing user found');
+    
+    console.log('✅ [Database] No fully registered user found');
 
     // Check if there's already a pending invitation
     console.log('🔍 [Database] Checking for pending invitation...');
