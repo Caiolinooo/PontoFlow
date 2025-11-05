@@ -5,6 +5,17 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.4.1] - 2025-11-05
+
+### Added
+- **Database Dependency**: Added PostgreSQL driver (`pg ^8.16.3`) to package.json for database operations
+
+### Fixed
+- **User Role Constraint**: Fixed `users_unified_role_check` constraint to include 'USER' role for compatibility
+  - Removed existing constraint that was causing validation errors
+  - Added new constraint with expanded role options: ('ADMIN', 'MANAGER', 'EMPLOYEE', 'MANAGER_TIMESHEET', 'USER')
+  - Migration ensures backward compatibility with existing user data
+
 ## [0.4.0] - 2025-11-05
 
 ### Adicionado
