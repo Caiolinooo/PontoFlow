@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { sendEmail } from '@/lib/notifications/email-service';
 import { passwordResetEmail } from '@/lib/notifications/templates/password-reset';
 import { branding } from '@/config/branding';
+import { getBaseUrlSync } from '@/lib/base-url';
 
 /**
  * Request a password reset link
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
         if (!tokenError) {
           // Build reset URL
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.headers.get('origin') || 'http://localhost:3000';
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.headers.get('origin') || getBaseUrlSync();
           const resetUrl = `${baseUrl}/${locale}/auth/reset-password?token=${token}`;
 
           // Send email
@@ -86,4 +87,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 }
-

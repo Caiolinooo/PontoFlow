@@ -3,6 +3,7 @@
  * Layout base com logo, cabeçalho, rodapé e CSS inline
  * Suporta i18n (pt-BR/en-GB)
  */
+import { getBaseUrlSync } from '@/lib/base-url';
 
 export type EmailLocale = 'pt-BR' | 'en-GB';
 
@@ -30,7 +31,7 @@ const defaultEmailConfig = {
   backgroundColor: '#F5F5F5', // background
   textDark: '#111111', // text-dark
   borderColor: '#E5E7EB',
-  appUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+  appUrl: getBaseUrlSync()
 };
 
 const i18nFooter: Record<EmailLocale, string> = {
@@ -209,4 +210,3 @@ export function emailLayout(config: EmailLayoutConfig): string {
     </html>
   `;
 }
-

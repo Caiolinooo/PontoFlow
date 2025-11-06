@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
 import { getServerSupabase } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/notifications/email-service';
+import { getBaseUrlSync } from '@/lib/base-url';
 
 // DELETE - Cancel invitation
 export async function DELETE(
@@ -93,6 +94,7 @@ export async function POST(
 
     // Resend invitation email
     try {
+      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || getBaseUrlSync()}/${userLocale}/auth/accept-invite?token=${invitation.token}`;
       const userLocale = 'pt-BR';
       const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${userLocale}/auth/accept-invite?token=${invitation.token}`;
 
