@@ -5,6 +5,35 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] - 2025-11-06
+
+### Added
+- **Dynamic BASE_URL Configuration System**
+  - Added new `app_config` table to the database for managing global application settings
+  - Created admin interface at `/admin/config` to manage the application's base URL
+  - Implemented dynamic `getBaseUrl()` function to replace hardcoded URLs
+  - Added migration script for `app_config` table setup
+
+### Fixed
+- **Hardcoded URL Replacement**: Replaced all hardcoded `localhost:3000` URLs with dynamic `getBaseUrl()` function
+  - Updated invitation routes to use dynamic URLs for email links
+  - Updated password reset routes to use dynamic URLs for email links
+  - Fixed email template URLs to be environment-agnostic
+
+### Technical
+- **Files Added:**
+  - `web/migrations/ADD-APP-CONFIG-TABLE.sql` - Database migration for app_config table
+  - `web/src/app/[locale]/admin/config/page.tsx` - Admin interface for configuration
+  - `web/src/app/api/admin/config/route.ts` - API endpoint for configuration management
+  - `web/src/lib/base-url.ts` - Dynamic URL utility function
+  - `web/execute-migration.js` - Migration execution script
+
+- **Files Modified:**
+  - `web/src/app/api/admin/invitations/route.ts` - Updated to use dynamic URLs
+  - `web/src/app/api/admin/invitations/[id]/route.ts` - Updated to use dynamic URLs
+  - `web/src/app/api/auth/request-reset/route.ts` - Updated to use dynamic URLs
+  - `web/src/lib/notifications/email-layout.ts` - Updated email templates to use dynamic URLs
+
 ## [0.4.1] - 2025-11-05
 
 ### Added
