@@ -515,7 +515,8 @@ async function generateReportPDFWithPDFKit(
 
   if (isSummary) {
     const summary = (report as SummaryReport).summary;
-    doc.fontSize(11).fillColor('#000000').text(t.summary + ':', { underline: true });
+    const summaryTitle = locale === 'pt-BR' ? 'Resumo' : 'Summary';
+    doc.fontSize(11).fillColor('#000000').text(summaryTitle + ':', { underline: true });
     doc.fontSize(10).fillColor('#333333');
     doc.text(`${t.total}: ${summary.totalTimesheets}`);
     doc.text(`${t.approved_plural}: ${summary.approved}`);
