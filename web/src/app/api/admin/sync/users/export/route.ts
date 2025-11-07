@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase/service';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getApiUser } from '@/lib/auth/server';
+import { isSuperAdmin } from '@/lib/auth/super-admin';
 
 function verifyHmac(rawBody: string, headerSig: string | null, secret: string) {
   if (!headerSig) return false;
@@ -12,20 +13,6 @@ function verifyHmac(rawBody: string, headerSig: string | null, secret: string) {
   } catch {
     return false;
   }
-}
-
-/**
- * Checks if user is a super admin (Caio - system owner)
- * Super admins can export data from ALL tenants
- * Configure SUPER_ADMIN_EMAIL environment variable with your email
- */
-function isSuperAdmin(userEmail: string): boolean {
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
-  if (!superAdminEmail) {
-    console.warn('[export] SUPER_ADMIN_EMAIL not configured - no super admin access');
-    return false;
-  }
-  return userEmail.toLowerCase() === superAdminEmail.toLowerCase();
 }
 
 export async function POST(req: NextRequest) {
@@ -46,9 +33,9 @@ export async function POST(req: NextRequest) {
     const svc = getServiceSupabase();
 
     // MULTI-TENANT SECURITY:
-    // - Super Admin (Caio): Exports ALL users from ALL tenants
+    // - Super Admin (system owner + database entries): Exports ALL users from ALL tenants
     // - Regular Admin: Exports only users from THEIR tenant
-    const isSuper = isSuperAdmin(user.email);
+    const isSuper = await isSuperAdmin(user.email);
 
     let query = svc.from('users_unified').select('*');
 
