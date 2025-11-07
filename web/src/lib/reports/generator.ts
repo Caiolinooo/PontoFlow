@@ -451,7 +451,7 @@ export function generateSummaryReport(
       vesselId: t.employee?.vessel_id,
       period: `${t.periodo_ini} - ${t.periodo_fim}`,
       status: t.status,
-      entryCount: hoursCalc.entriesProcessed,
+      entryCount: entries.length, // Show total entries count, not just processed
       submittedAt: t.created_at,
       approvedAt: t.updated_at,
       totalHours: hoursCalc.totalHours,
@@ -463,8 +463,9 @@ export function generateSummaryReport(
     };
   });
 
-  // Filter out timesheets with no entries (only include those with entryCount > 0)
-  const items = allItems.filter(item => item.entryCount > 0);
+  // Include all timesheets, even those with no valid hours
+  // This ensures total hours are calculated correctly
+  const items = allItems;
 
   const totalHours = items.reduce((sum, item) => sum + (item.totalHours || 0), 0);
   const averageHours = items.length > 0 ? Math.round((totalHours / items.length) * 100) / 100 : 0;
@@ -526,7 +527,7 @@ export function generateDetailedReport(
         vesselId: t.employee?.vessel_id,
         period: `${t.periodo_ini} - ${t.periodo_fim}`,
         status: t.status,
-        entryCount: hoursCalc.entriesProcessed,
+        entryCount: entries.length, // Show total entries count, not just processed
         submittedAt: t.created_at,
         totalHours: hoursCalc.totalHours,
         totalMinutes: hoursCalc.totalMinutes,
@@ -544,8 +545,9 @@ export function generateDetailedReport(
     };
   });
 
-  // Filter out timesheets with no entries (only include those with entryCount > 0)
-  const items = allItems.filter(item => item.timesheet.entryCount > 0);
+  // Include all timesheets, even those with no valid hours
+  // This ensures consistency with summary report
+  const items = allItems;
 
   return {
     title: 'Timesheet Detailed Report',
@@ -674,6 +676,9 @@ export function generateGroupedByEmployeeReport(
   for (const [employeeId, items] of employeeGroups) {
     const totalHours = items.reduce((sum, item) => sum + (item.totalHours || 0), 0);
     const totalMinutes = totalHours * 60;
+    const normalHours = items.reduce((sum, item) => sum + (item.normalHours || 0), 0);
+    const extraHours = items.reduce((sum, item) => sum + (item.extraHours || 0), 0);
+    const holidayHours = items.reduce((sum, item) => sum + (item.holidayHours || 0), 0);
 
     groupedItems.push({
       id: `employee-${employeeId}`,
@@ -683,7 +688,10 @@ export function generateGroupedByEmployeeReport(
       status: 'grouped',
       entryCount: items.reduce((sum, item) => sum + item.entryCount, 0),
       totalHours,
-      totalMinutes
+      totalMinutes,
+      normalHours,
+      extraHours,
+      holidayHours
     });
   }
 
@@ -723,6 +731,9 @@ export function generateGroupedByVesselReport(
   for (const [vesselId, items] of vesselGroups) {
     const totalHours = items.reduce((sum, item) => sum + (item.totalHours || 0), 0);
     const totalMinutes = totalHours * 60;
+    const normalHours = items.reduce((sum, item) => sum + (item.normalHours || 0), 0);
+    const extraHours = items.reduce((sum, item) => sum + (item.extraHours || 0), 0);
+    const holidayHours = items.reduce((sum, item) => sum + (item.holidayHours || 0), 0);
     const employeeCount = new Set(items.map(item => item.employeeId)).size;
 
     groupedItems.push({
@@ -738,7 +749,10 @@ export function generateGroupedByVesselReport(
       status: 'grouped',
       entryCount: items.reduce((sum, item) => sum + item.entryCount, 0),
       totalHours,
-      totalMinutes
+      totalMinutes,
+      normalHours,
+      extraHours,
+      holidayHours
     });
   }
 
