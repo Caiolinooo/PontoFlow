@@ -5,7 +5,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
+  # Skip Puppeteer Chrome download during build
+  PUPPETEER_SKIP_DOWNLOAD = "true"
   # Disable secrets scanning for environment variable names (not values)
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_VAPID_PUBLIC_KEY,NEXT_PUBLIC_AVAILABLE_LOCALES,NEXT_PUBLIC_DEFAULT_LOCALE,NODE_ENV,SUPABASE_SERVICE_ROLE_KEY,SMTP_PASS,SMTP_USER,VAPID_PRIVATE_KEY"
   # Omit build artifacts, scripts, and migration files from secrets scanning
