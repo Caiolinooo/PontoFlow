@@ -82,16 +82,28 @@ export async function middleware(request: NextRequest) {
 
   // If it's a protected route, check authentication and RBAC
   if (isProtectedRoute) {
+    console.log('[MIDDLEWARE] Protected route accessed:', pathnameWithoutLocale);
     const token = request.cookies.get('timesheet_session')?.value;
+    console.log('[MIDDLEWARE] Token exists:', !!token);
+    if (token) {
+      console.log('[MIDDLEWARE] Token (first 30 chars):', token.substring(0, 30) + '...');
+    }
+
     const user = token ? await getUserFromToken(token) : null;
+    console.log('[MIDDLEWARE] User authenticated:', !!user);
+    if (user) {
+      console.log('[MIDDLEWARE] User:', user.email, 'Role:', user.role);
+    }
 
     // If no user, redirect to signin
     if (!user) {
+      console.log('[MIDDLEWARE] ✗ No user, redirecting to signin');
       const signInUrl = new URL(`/${locale}/auth/signin`, request.url);
       signInUrl.searchParams.set('redirect', pathname);
-      
+
       // Clear invalid token if exists
       if (token) {
+        console.log('[MIDDLEWARE] Clearing invalid token');
         const response = NextResponse.redirect(signInUrl);
         response.cookies.set('timesheet_session', '', {
           httpOnly: true,
@@ -102,7 +114,7 @@ export async function middleware(request: NextRequest) {
         });
         return response;
       }
-      
+
       return NextResponse.redirect(signInUrl);
     }
 
