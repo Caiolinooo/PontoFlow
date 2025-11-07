@@ -33,6 +33,25 @@ COMMENT ON COLUMN public.super_admins.created_by IS 'Email of the super admin wh
 COMMENT ON COLUMN public.super_admins.notes IS 'Optional notes about this super admin';
 
 -- ==========================================
+-- Helper Function (MUST be created BEFORE policies)
+-- ==========================================
+-- Get current authenticated user's email
+-- This is used by RLS policies below
+CREATE OR REPLACE FUNCTION current_user_email()
+RETURNS TEXT AS $$
+BEGIN
+  -- This will be set by application code via request context
+  -- For now, return empty string (app handles actual checks)
+  RETURN COALESCE(current_setting('request.jwt.claims', true)::json->>'email', '');
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN '';
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+COMMENT ON FUNCTION current_user_email() IS 'Returns email of currently authenticated user from JWT claims';
+
+-- ==========================================
 -- RLS Policies
 -- ==========================================
 -- IMPORTANT: Only super admins can view/manage this table
@@ -70,25 +89,6 @@ CREATE POLICY "super_admins_delete" ON public.super_admins
       WHERE sa.email = current_user_email()
     )
   );
-
--- ==========================================
--- Helper Function
--- ==========================================
--- Get current authenticated user's email
--- This is used by RLS policies
-CREATE OR REPLACE FUNCTION current_user_email()
-RETURNS TEXT AS $$
-BEGIN
-  -- This will be set by application code via request context
-  -- For now, return empty string (app handles actual checks)
-  RETURN COALESCE(current_setting('request.jwt.claims', true)::json->>'email', '');
-EXCEPTION
-  WHEN OTHERS THEN
-    RETURN '';
-END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
-
-COMMENT ON FUNCTION current_user_email() IS 'Returns email of currently authenticated user from JWT claims';
 
 -- ==========================================
 -- Indexes
