@@ -1,0 +1,379 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║              MAPEAMENTO DETALHADO DE PROBLEMAS - POR ARQUIVO                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+[01] 02-layer-01-root-tables.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 1.1: Validação de Timezone Fraca
+  Linha:  22
+  Código: CONSTRAINT check_timezone_valid CHECK (timezone ~ '^[A-Za-z_]+/[A-Za-z_]+(-[A-Za-z_]+)*$')
+  Risco:  Aceita 'Invalid/Timezone' como válido
+  Fix:    Usar enum ou tabela de timezones IANA válidas
+  
+❌ PROBLEMA 1.2: Sem Proteção de Delete em _migrations
+  Linha:  47
+  Código: ALTER TABLE public._migrations ENABLE ROW LEVEL SECURITY;
+  Risco:  Nenhuma RLS policy definida - qualquer role pode deletar migrations
+  Fix:    Criar policy que permite apenas ADMIN
+
+
+[02] 03-layer-02-user-environment.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 2.1: CASCADING DELETE - CRÍTICO
+  Linha:  72, 94
+  Código: REFERENCES public.tenants(id) ON DELETE CASCADE
+  Risco:  Deletar tenant = delete 1000+ registros em cadeia
+          ├─ environments → groups → employees → timesheets → entries
+          └─ IRRECUPERÁVEL SEM BACKUP
+  Fix:    Implementar soft delete (is_deleted boolean) ou change to ON DELETE RESTRICT
+  
+❌ PROBLEMA 2.2: Falta de Check Constraint em profiles
+  Linha:  14-25
+  Código: CREATE TABLE public.profiles (... ativo BOOLEAN NOT NULL DEFAULT TRUE)
+  Risco:  Sem índice em (ativo, locale) para queries rápidas
+  Fix:    CREATE INDEX idx_profiles_active_locale (ativo, locale) - JÁ FEITO EM LAYER 11
+
+
+[03] 04-layer-03-roles-settings.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 3.1: INCONSISTÊNCIA DE ROLES - CRÍTICO
+  Linhas: 17 (tenant_user_roles), 51 (users_unified)
+  Código: tenant_user_roles.role IN ('COLAB', 'GERENTE', 'TENANT_ADMIN', 'ADMIN_GLOBAL')
+          users_unified.role IN ('USER', 'MANAGER_TIMESHEET', 'MANAGER', 'ADMIN')
+  Risco:  ├─ ADMIN_GLOBAL em tenant_user_roles não existe em users_unified
+          ├─ RLS policies checam users_unified.role = 'ADMIN' e ignoram ADMIN_GLOBAL
+          ├─ Mapping entre roles perdido/ambíguo
+          └─ Usuários ADMIN_GLOBAL não conseguem fazer operações esperadas
+  Fix:    Criar mapeamento explícito ou unificar roles em uma única tabela
+
+❌ PROBLEMA 3.2: user_invitations FK para users_unified
+  Linha:  71
+  Código: invited_by UUID NOT NULL REFERENCES users_unified(id) ON DELETE CASCADE
+  Risco:  ├─ Deleting users_unified deleta invitations (data loss)
+          └─ Mas usuários Supabase Auth criam invitations em profiles context
+  Fix:    Mudar para REFERENCES profiles(user_id) ou adicionar column invited_by_type
+
+❌ PROBLEMA 3.3: notification_preferences FK para auth.users
+  Linha:  97
+  Código: REFERENCES auth.users(id) ON DELETE CASCADE
+  Risco:  ├─ Se auth.users é deletado, preferences são deletadas
+          ├─ Sem validação se user_id também existe em profiles ou users_unified
+          └─ Dados orphaned se ambos os sistemas dessincronizam
+  Fix:    Adicionar referência dupla ou consolidar user domains
+
+❌ PROBLEMA 3.4: push_subscriptions FK para auth.users (mesma issue)
+  Linha:  122
+  Código: REFERENCES auth.users(id) ON DELETE CASCADE
+
+
+[04] 05-layer-04-groups-employees.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 4.1: employees.profile_id sem validação de tenant
+  Linha:  40
+  Código: profile_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE
+  Risco:  Sem constraint que garanta profile_id pertence ao tenant_id
+  Fix:    Adicionar trigger ou constraint check que valida tenant_id
+
+
+[05] 06-layer-05-assignments.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 5.1: manager_group_assignments.manager_id SEM FOREIGN KEY - CRÍTICO
+  Linha:  15
+  Código: manager_id UUID NOT NULL,
+  Risco:  ├─ Sem constraint para profiles(user_id) ou users_unified(id)
+          ├─ Possível inserir manager_id aleatório
+          ├─ DELETE FROM profiles WHERE user_id=xxx deixa orphaned assignments
+          └─ Nenhuma validação de que manager existe
+  Fix:    ALTER TABLE manager_group_assignments 
+          ADD CONSTRAINT fk_manager_id 
+          FOREIGN KEY (manager_id) REFERENCES profiles(user_id) ON DELETE CASCADE;
+
+
+[06] 07-layer-06-timesheets-periods.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 6.1: timesheets.approved_by SEM FOREIGN KEY - CRÍTICO
+  Linha:  23
+  Código: approved_by UUID,
+  Risco:  ├─ Pode ser NULL ou qualquer UUID aleatorio
+          ├─ Nenhuma validação se approver realmente existe
+          ├─ Sem auditoria de quem aprovou
+          └─ Sem constraint que garanta data integrity
+  Fix:    ALTER TABLE timesheets 
+          ADD CONSTRAINT fk_approved_by 
+          FOREIGN KEY (approved_by) REFERENCES profiles(user_id) ON DELETE SET NULL;
+
+❌ PROBLEMA 6.2: period_locks.locked_by SEM FOREIGN KEY - CRÍTICO
+  Linha:  50
+  Código: locked_by UUID NOT NULL,
+  Risco:  ├─ Sem constraint
+          ├─ Nenhuma validação se usuário que locked realmente existe
+          └─ Data loss se usuário é deletado
+  Fix:    ALTER TABLE period_locks 
+          ADD CONSTRAINT fk_locked_by 
+          FOREIGN KEY (locked_by) REFERENCES profiles(user_id) ON DELETE RESTRICT;
+
+
+[07] 08-layer-07-timesheet-details.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 7.1: approvals.approver_id SEM FOREIGN KEY - CRÍTICO
+  Linha:  49
+  Código: approver_id UUID NOT NULL,
+  Risco:  ├─ Sem constraint
+          ├─ Audit trail pode estar comprometida
+          └─ Orphaned records quando usuário é deletado
+  Fix:    ALTER TABLE approvals 
+          ADD CONSTRAINT fk_approver_id 
+          FOREIGN KEY (approver_id) REFERENCES profiles(user_id) ON DELETE RESTRICT;
+
+❌ PROBLEMA 7.2: timesheet_annotations.author_id SEM FOREIGN KEY - CRÍTICO
+  Linha:  73
+  Código: author_id UUID NOT NULL,
+  Risco:  ├─ Sem constraint
+          ├─ Annotations pode estar de usuário que não existe mais
+          └─ Audit trail unreliable
+  Fix:    ALTER TABLE timesheet_annotations 
+          ADD CONSTRAINT fk_author_id 
+          FOREIGN KEY (author_id) REFERENCES profiles(user_id) ON DELETE RESTRICT;
+
+
+[08] 09-layer-08-communication-audit.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 8.1: comments.author_id SEM FOREIGN KEY - CRÍTICO
+  Linha:  18
+  Código: author_id UUID NOT NULL,
+  Risco:  ├─ Sem constraint
+          ├─ Comments orphaned quando autor é deletado
+          └─ Sem validação de author exist
+  Fix:    ALTER TABLE comments 
+          ADD CONSTRAINT fk_author_id 
+          FOREIGN KEY (author_id) REFERENCES profiles(user_id) ON DELETE RESTRICT;
+
+❌ PROBLEMA 8.2: notifications.user_id SEM FOREIGN KEY
+  Linha:  39
+  Código: user_id UUID NOT NULL,
+  Risco:  ├─ Comentário diz "references profiles.user_id" mas sem constraint
+          ├─ Notifications pode ser de usuário que não existe
+          └─ RLS policy tenta usar user_id = auth.uid() mas sem validação
+  Fix:    ALTER TABLE notifications 
+          ADD CONSTRAINT fk_user_id 
+          FOREIGN KEY (user_id) REFERENCES profiles(user_id) ON DELETE CASCADE;
+
+❌ PROBLEMA 8.3: notification_log.user_id REFERENCIA auth.users
+  Linha:  68
+  Código: REFERENCES auth.users(id) ON DELETE CASCADE
+  Risco:  ├─ Inconsistência com notifications que referencia profiles
+          ├─ Se auth.users é deletado, log é deletado (data loss)
+          └─ Sem auditoria se algo deu errado
+  Fix:    Adicionar ON DELETE SET NULL e adicionar archived_at timestamp
+
+
+[09] 10-layer-09-functions.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 9.1: set_tenant_context() SEM VALIDAÇÃO - MÉDIO
+  Linha:  156-164
+  Código: CREATE FUNCTION set_tenant_context(tenant_uuid UUID)
+          PERFORM set_config('app.current_tenant_id', tenant_uuid::TEXT, FALSE);
+  Risco:  ├─ Aceita qualquer UUID sem validar se tenant existe
+          ├─ Usuário pode chamar com tenant_uuid aleatório
+          └─ Código agiria como se pertencesse a tenant fantasma
+  Fix:    BEGIN
+            IF NOT EXISTS (SELECT 1 FROM tenants WHERE id = tenant_uuid) THEN
+              RAISE EXCEPTION 'Tenant not found';
+            END IF;
+            PERFORM set_config(...);
+          END;
+
+❌ PROBLEMA 9.2: timesheet_deadline() HARDCODED AO 5º DIA - BAIXO
+  Linha:  60
+  Código: date_trunc('month', periodo_ini)::DATE + INTERVAL '1 month + 4 days'
+  Risco:  ├─ Não é configurável por tenant
+          ├─ Difícil de mudar em produção
+          ├─ Não segue regras de negócio dinâmicas
+          └─ Hardcoded em trigger = impossível customizar
+  Fix:    SELECT deadline_day FROM tenant_settings WHERE tenant_id = ?
+
+
+[10] 11-layer-10-triggers.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 10.1: MÚLTIPLAS VERSÕES DA SYNC TRIGGER - CRÍTICO
+  Linhas: 54-112 (genérica) + SYNC-PROFILES-TO-USERS-UNIFIED-TRIGGER-ABZ.sql (ABZ) + CONFIGURABLE
+  Código: CREATE TRIGGER on_profile_sync_to_users_unified
+          AFTER INSERT OR UPDATE ON public.profiles
+  Risco:  ├─ Se múltiplas versões executam, há conflito de schema
+          ├─ Qual versão está em produção?
+          ├─ Schema drift ao longo do tempo
+          └─ Confusão de maintenance
+  Fix:    Consolidar em UM único arquivo com versão clara
+          DELETE FILE: SYNC-PROFILES-TO-USERS-UNIFIED-TRIGGER-ABZ.sql
+
+❌ PROBLEMA 10.2: Sync Trigger Ignora Erro Silenciosamente - MÉDIO
+  Linha:  66-69
+  Código: SELECT value INTO sync_enabled
+          FROM public.system_config
+          WHERE key = 'enable_users_unified_sync';
+          IF sync_enabled = 'true' THEN
+  Risco:  ├─ Se row não existe, sync_enabled = NULL e nada acontece
+          ├─ Sem logging/error handling
+          ├─ Difícil debugar "por que não sincronizou?"
+          └─ Silent failure
+  Fix:    SELECT COALESCE(value, 'false') ...
+          E adicionar RAISE NOTICE quando sync é skipped
+
+❌ PROBLEMA 10.3: Sync Trigger é AFTER, risco de race condition - ALTO
+  Linha:  110
+  Código: AFTER INSERT OR UPDATE ON public.profiles
+  Risco:  ├─ Race condition se transaction é rápida
+          ├─ Dados inconsistentes entre profiles e users_unified
+          ├─ Possível deadlock se trigger tenta atualizar users_unified
+          └─ Sem garantia de atomicity
+  Fix:    Considerar BEFORE trigger ou implement idempotency check
+
+
+[11] 12-layer-11-indexes.sql
+════════════════════════════════════════════════════════════════════════════════
+
+✅ GOOD: Indexes bem definidos
+  ✓ 80+ indexes criados
+  ✓ Covering indexes para queries complexas
+  ✓ Indexes em colunas foreignkey
+
+
+[12] 13-layer-12-rls-policies.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 12.1: RLS Policy para users_unified é permissiva
+  Linha:  70-75
+  Código: CREATE POLICY users_unified_admin_all ON users_unified
+          FOR ALL USING (role = 'ADMIN' OR id = auth.uid())
+  Risco:  ├─ Qualquer admin pode ver/modificar qualquer usuário
+          ├─ Sem restrição de tenant
+          ├─ Sem separação SELECT/UPDATE/DELETE
+          └─ Potencial privilege escalation
+  Fix:    Adicionar tenant_id check e separar policies por operação
+
+❌ PROBLEMA 12.2: RLS Policy para user_invitations é fraca
+  Linha:  382-391
+  Código: FOR ALL USING (
+            EXISTS (SELECT 1 FROM users_unified ...)
+            OR invited_by = auth.uid()
+          )
+  Risco:  ├─ Qualquer admin pode ver invitations
+          ├─ Quem convidou pode deletar (invited_by abuse)
+          ├─ Sem separação SELECT/UPDATE/DELETE
+          └─ Sem validação de tenant
+  Fix:    CREATE POLICY user_invitations_select ...
+          CREATE POLICY user_invitations_delete ... (mais restritivo)
+
+❌ PROBLEMA 12.3: RLS policy para password_reset_tokens é MUITO PERMISSIVA
+  Linha:  32-35 (password-reset-tokens.sql)
+  Código: FOR ALL USING (true);
+  Risco:  ├─ QUALQUER requisição pode acessar qualquer token
+          ├─ Service role bypass crítico
+          ├─ Sem validação de user_id
+          └─ SECURITY BREACH
+  Fix:    CREATE POLICY password_reset_tokens_own
+          FOR ALL USING (user_id = auth.uid());
+
+
+[13] password-reset-tokens.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 13.1: Referencia users_unified ao invés de auth.users
+  Linha:  6
+  Código: REFERENCES public.users_unified(id) ON DELETE CASCADE
+  Risco:  ├─ users_unified é fallback legacy, não é canônico
+          ├─ auth.users é canônico em Supabase
+          ├─ Inconsistência com notification_preferences (referencia auth.users)
+          └─ Possível data loss se ambos os sistemas desincronizam
+  Fix:    REFERENCES public.profiles(user_id) ON DELETE CASCADE
+          (ou adicionar coluna user_id_type)
+
+
+[14] create-user-invitations.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 14.1: Múltipla definição da tabela user_invitations
+  Linha:  5-26
+  Código: CREATE TABLE IF NOT EXISTS user_invitations
+  Risco:  ├─ Tabela também definida em 04-layer-03-roles-settings.sql:61-80
+          ├─ Tabela redefinida em FIX-USER-INVITATIONS-COMPLETE.sql
+          ├─ Qual schema é correto?
+          ├─ Conflito se múltiplas migrations executam
+          └─ Schema drift
+  Fix:    DELETAR create-user-invitations.sql
+          Manter ÚNICO arquivo em setup-wizard/04-layer-03-roles-settings.sql
+          Criar MIGRATION FILE para qualquer changes futuras
+
+
+[15] FIX-USER-ROLE-CONSTRAINT.sql
+════════════════════════════════════════════════════════════════════════════════
+
+⚠️ PROBLEMA 15.1: Tentativa de corrigir inconsistência de roles
+  Linha:  5-6
+  Código: ALTER TABLE users_unified DROP CONSTRAINT users_unified_role_check;
+          ADD CONSTRAINT users_unified_role_check
+          CHECK (role IN ('ADMIN', 'MANAGER', 'EMPLOYEE', 'MANAGER_TIMESHEET', 'USER'))
+  Risco:  ├─ Adiciona EMPLOYEE role que não existe em tenant_user_roles
+          ├─ Ainda existe mismatch com tenant_user_roles
+          ├─ Fix parcial, não resolve o problema raiz
+          └─ Apenas adiciona mais confusão
+  Fix:    Criar tabela de enum de roles
+          Consolidar modelo de roles único
+
+
+[16] FIX-USER-INVITATIONS-COMPLETE.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 16.1: Múltipla redefinição de user_invitations
+  Linha:  35-56
+  Código: CREATE TABLE public.user_invitations (DROP TABLE IF EXISTS CASCADE first)
+  Risco:  ├─ Terceira definição da tabela
+          ├─ Deletes table com DROP TABLE ... CASCADE (data loss!)
+          ├─ Diferentes schemas em cada versão
+          └─ Ambiguidade total
+  Fix:    DELETE este arquivo
+          Usar versão definitiva em um único arquivo
+
+
+[17] SYNC-PROFILES-TO-USERS-UNIFIED-TRIGGER-ABZ.sql
+════════════════════════════════════════════════════════════════════════════════
+
+❌ PROBLEMA 17.1: Segunda definição da sync trigger
+  Linha:  24-95
+  Código: CREATE OR REPLACE FUNCTION sync_profile_to_users_unified()
+  Risco:  ├─ Segunda versão da função (também em 11-layer-10-triggers.sql)
+          ├─ Se ambas executam, última sobrescreve primeira
+          ├─ Qual está em produção?
+          └─ Maintenance nightmare
+  Fix:    DELETE este arquivo
+          Consolidar em 11-layer-10-triggers.sql
+
+❌ PROBLEMA 17.2: Coluna "active" vs "is_active" inconsistency
+  Linha:  62
+  Código: active,  (no INSERT)
+          is_active = EXCLUDED.active (no UPDATE)
+  Risco:  ├─ profiles.ativo vs users_unified.is_active
+          ├─ Nomes inconsistentes causam bugs
+          └─ Confusão durante sincronização
+  Fix:    Padronizar em todas tabelas (escolher is_active)
+
+
+════════════════════════════════════════════════════════════════════════════════
+TOTAL DE ARQUIVOS ANALISADOS: 35
+TOTAL DE PROBLEMAS: 31
+CRÍTICOS: 8
+ALTOS: 12
+MÉDIOS: 9
+BAIXOS: 2
+════════════════════════════════════════════════════════════════════════════════
+

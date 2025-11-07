@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[SIGNIN API] Login successful, setting cookie with token:', result.token.substring(0, 20) + '...');
+    console.log('[SIGNIN] Login successful for user:', result.user.email);
 
     // Create response with user data
     const response = NextResponse.json({
@@ -39,11 +39,9 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    console.log('[SIGNIN API] Cookie set on response');
-
     return response;
   } catch (error) {
-    console.error('Sign in API error:', error);
+    console.error('[SIGNIN] Error:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

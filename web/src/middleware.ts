@@ -89,7 +89,7 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const signInUrl = new URL(`/${locale}/auth/signin`, request.url);
       signInUrl.searchParams.set('redirect', pathname);
-      
+
       // Clear invalid token if exists
       if (token) {
         const response = NextResponse.redirect(signInUrl);
@@ -102,7 +102,7 @@ export async function middleware(request: NextRequest) {
         });
         return response;
       }
-      
+
       return NextResponse.redirect(signInUrl);
     }
 

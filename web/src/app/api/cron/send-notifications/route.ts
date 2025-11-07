@@ -184,7 +184,7 @@ async function sendEmployeeReminders(
       `)
       .eq('tenant_id', tenantId)
       .eq('periodo_ini', params.currentPeriodStart)
-      .in('status', ['draft', 'submitted']);
+      .in('status', ['rascunho', 'enviado']); // Portuguese enum values
 
     if (error) {
       console.error('Error fetching pending timesheets:', error);

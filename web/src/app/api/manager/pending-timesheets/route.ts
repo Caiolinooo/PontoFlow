@@ -198,13 +198,24 @@ export async function GET(req: NextRequest) {
         }, { status: 500 });
       }
 
-      const groupIds = managerGroups?.map(g => g.group_id) || [];
-      
+      // SECURITY: Validate that manager groups belong to user's tenant (even in fallback mode)
+      const validManagerGroups = (managerGroups || []).filter(g => {
+        // If tenant_id exists in the data, validate it
+        if (g.tenant_id !== undefined) {
+          return g.tenant_id === user.tenant_id;
+        }
+        // If tenant_id doesn't exist, allow (legacy fallback)
+        // TODO: Remove this fallback after migration is complete
+        return true;
+      });
+
+      const groupIds = validManagerGroups.map(g => g.group_id);
+
       if (groupIds.length === 0) {
         return NextResponse.json({
           pending_timesheets: [],
           total: 0,
-          message: 'Nenhum grupo atribuído ao gerente'
+          message: 'Nenhum grupo atribuído ao gerente neste tenant'
         });
       }
 

@@ -10,6 +10,8 @@ import Avatar from './ui/Avatar';
 import { useState, useEffect } from 'react';
 import type { User } from '@/lib/auth/custom-auth';
 import { branding } from '@/config/branding';
+import SuperAdminModal from './admin/SuperAdminModal';
+import { isSuperAdminSync } from '@/lib/auth/super-admin';
 
 export default function Header({ initialUser }: { initialUser?: User | null }) {
   const tNav = useTranslations('nav');
@@ -18,9 +20,13 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [loading, setLoading] = useState(!initialUser);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
 
   // Extract locale from pathname
   const locale = pathname?.split('/')[1] || 'pt-BR';
+
+  // Check if user is super admin (for super admin button visibility)
+  const isSuper = user ? isSuperAdminSync(user.email) : false;
 
   useEffect(() => {
     if (initialUser !== undefined) return; // Já temos o usuário do servidor; evita refetch e flicker
@@ -124,6 +130,18 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
                         {user.first_name || user.email?.split('@')[0]}
                       </span>
                     </div>
+                    {isSuper && (
+                      <button
+                        onClick={() => setShowSuperAdminModal(true)}
+                        className="p-1.5 rounded hover:bg-[var(--muted)] transition-all duration-300 hover:scale-110 opacity-70 hover:opacity-100"
+                        title="Super Admin"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       onClick={handleSignOut}
                       className="text-xs sm:text-sm font-medium text-[var(--surface-foreground)] opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105 px-2 py-1 rounded-md hover:bg-[var(--muted)]/50"
@@ -171,6 +189,18 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
           </nav>
         </div>
       </div>
+
+      {/* Super Admin Modal - Only visible to super admins */}
+      <SuperAdminModal
+        isOpen={showSuperAdminModal}
+        onClose={() => setShowSuperAdminModal(false)}
+      />
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </header>
   );
 }

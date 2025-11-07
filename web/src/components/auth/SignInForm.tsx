@@ -121,4 +121,3 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
     </form>
   );
 }
-

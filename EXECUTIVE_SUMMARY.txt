@@ -1,0 +1,174 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                   AUDITORIA DE MIGRAÇÕES - RESUMO EXECUTIVO                    ║
+║                         PontoFlow Database Schema                              ║
+║                              2025-11-07                                        ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─ ESTATÍSTICAS ───────────────────────────────────────────────────────────────┐
+│ Total de Problemas Found:        31                                           │
+│ ├─ Críticos:                      8  (26%)                                     │
+│ ├─ Altos:                        12  (39%)                                     │
+│ ├─ Médios:                        9  (29%)                                     │
+│ └─ Baixos:                        2  (6%)                                      │
+│                                                                                 │
+│ Arquivos Analisados:             35                                            │
+│ Linhas de SQL Analisadas:        2500+                                         │
+│ RLS Policies:                     64                                            │
+│ Triggers:                          7                                            │
+│ Functions:                        12+                                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ PROBLEMAS CRÍTICOS ─────────────────────────────────────────────────────────┐
+│                                                                                 │
+│ 1. FALTA DE FOREIGN KEYS EM COLUNAS user_id (8 colunas afetadas)              │
+│    └─ Risco: Orphaned records, data corruption                                │
+│       ├─ timesheets.approved_by                                                │
+│       ├─ period_locks.locked_by                                                │
+│       ├─ approvals.approver_id                                                 │
+│       ├─ comments.author_id                                                    │
+│       ├─ timesheet_annotations.author_id                                       │
+│       ├─ manager_group_assignments.manager_id                                  │
+│       └─ notifications.user_id                                                 │
+│                                                                                 │
+│ 2. CASCADING DELETE - RISCO DE PERDA DE DADOS                                 │
+│    └─ Arquivo: 03-layer-02-user-environment.sql (linhas 72, 94)               │
+│       ├─ Deletar tenant = Deleta 6+ níveis de dados                           │
+│       ├─ Impossível recuperar dados (sem backup manual)                        │
+│       └─ Sem soft delete ou archive                                            │
+│                                                                                 │
+│ 3. MÚLTIPLAS DEFINIÇÕES DE TABELAS E TRIGGERS                                 │
+│    ├─ user_invitations: 3+ versões                                             │
+│    ├─ sync_profile_to_users_unified: 2-3 versões                              │
+│    ├─ Conflito se múltiplas são executadas                                    │
+│    └─ Schema drift ao longo do tempo                                           │
+│                                                                                 │
+│ 4. INCONSISTÊNCIA DE ROLE MODELS                                              │
+│    ├─ tenant_user_roles: COLAB, GERENTE, TENANT_ADMIN, ADMIN_GLOBAL          │
+│    ├─ users_unified: USER, MANAGER_TIMESHEET, MANAGER, ADMIN                 │
+│    └─ RLS policies não funcionam corretamente com ADMIN_GLOBAL               │
+│                                                                                 │
+│ 5. 3 DOMÍNIOS DE USER_ID DIFERENTES                                           │
+│    ├─ auth.users.id (Supabase Auth)                                            │
+│    ├─ profiles.user_id (Mirror)                                                │
+│    ├─ users_unified.id (Legacy ABZ)                                            │
+│    └─ Ambiguidade, risco de data loss em deletions                            │
+│                                                                                 │
+│ 6. VALIDAÇÃO INADEQUADA EM FUNCTIONS                                           │
+│    ├─ set_tenant_context(): Sem validação se tenant existe                    │
+│    ├─ timesheet_deadline(): Hardcoded ao 5º dia                                │
+│    └─ sync trigger: Silenciosamente ignora se config row não existe           │
+│                                                                                 │
+│ 7. RLS POLICIES INCOMPLETAS E PERMISSIVAS                                      │
+│    ├─ user_invitations: Sem separação SELECT/DELETE                           │
+│    ├─ password_reset_tokens: USING (true) muito permissivo                   │
+│    └─ Service role pode acessar dados de qualquer usuário                     │
+│                                                                                 │
+│ 8. CONFLITO EM password_reset_tokens TABLE                                     │
+│    └─ Referencia users_unified mas deveria referenciar auth.users             │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ TOP 5 RISCOS IMEDIATOS ─────────────────────────────────────────────────────┐
+│                                                                                 │
+│ RISCO 1: Data Loss via Cascading Delete (CRÍTICO)                             │
+│          Cenário: DELETE FROM tenants WHERE id = 'xxx'                        │
+│          Resultado: 1000+ registros deletados em cadeia                        │
+│          Impacto: IRRECUPERÁVEL                                                │
+│          Ação: Implementar soft delete ou mudá-la para SET NULL               │
+│                                                                                 │
+│ RISCO 2: Orphaned Records (CRÍTICO)                                           │
+│          Problema: Sem FK constraints em user_id columns                      │
+│          Cenário: DELETE FROM users_unified WHERE id = 'xxx'                  │
+│          Resultado: Registros orphaned em 7+ tabelas                          │
+│          Ação: Adicionar FK constraints com ON DELETE CASCADE/SET NULL        │
+│                                                                                 │
+│ RISCO 3: RLS Policy Bypass (ALTO)                                             │
+│          Arquivo: password-reset-tokens.sql:32                                │
+│          Policy: FOR ALL USING (true)                                          │
+│          Risco: Service role ou bug pode expor dados de qualquer usuário      │
+│          Ação: Restringir a user_id = auth.uid()                              │
+│                                                                                 │
+│ RISCO 4: Schema Inconsistency (ALTO)                                          │
+│          Problema: 3 domínios de user_id                                       │
+│          Impacto: Code complexity, data loss risk, migration bugs              │
+│          Ação: Unificar em auth.users com profiles como cache                 │
+│                                                                                 │
+│ RISCO 5: Trigger Loop/Race Conditions (ALTO)                                  │
+│          Problema: sync_profile_to_users_unified é AFTER INSERT/UPDATE        │
+│          Risco: Race condition em fast transactions                            │
+│          Ação: Mudar para BEFORE ou implementar idempotency check             │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ RECOMENDAÇÕES PRIORITÁRIAS ─────────────────────────────────────────────────┐
+│                                                                                 │
+│ PRIORIDADE 1 (HOJE)                                                            │
+│ ├─ [ ] Audit database para orphaned records (approvals.approver_id = NULL)    │
+│ ├─ [ ] Backup completo antes de fazer alterações                              │
+│ ├─ [ ] Documentar qual versão de user_invitations está em produção            │
+│ └─ [ ] Desabilitar qualquer trigger de sync até decisão final                 │
+│                                                                                 │
+│ PRIORIDADE 2 (ESTA SEMANA)                                                    │
+│ ├─ [ ] Resolver role inconsistency (ADMIN_GLOBAL vs ADMIN)                   │
+│ ├─ [ ] Adicionar FK constraints a todas user_id columns                       │
+│ ├─ [ ] Consolidar user_invitations em único arquivo                           │
+│ ├─ [ ] Refatorar RLS policy em password_reset_tokens                          │
+│ └─ [ ] Adicionar validação em set_tenant_context()                            │
+│                                                                                 │
+│ PRIORIDADE 3 (PRÓXIMAS 2 SEMANAS)                                             │
+│ ├─ [ ] Mudar CASCADE delete para SET NULL para dados críticos                 │
+│ ├─ [ ] Unificar domínio de user_id (auth.users preferido)                     │
+│ ├─ [ ] Consolidar sync triggers em única versão                               │
+│ ├─ [ ] Adicionar logging a funções SECURITY DEFINER                           │
+│ └─ [ ] Testar todas RLS policies com diferentes user roles                    │
+│                                                                                 │
+│ PRIORIDADE 4 (PLANEJAMENTO)                                                   │
+│ ├─ [ ] Implementar enum para roles                                             │
+│ ├─ [ ] Padronizar column names (ativo vs is_active vs active)                │
+│ ├─ [ ] Documentar dependências de migração                                     │
+│ └─ [ ] Setup CI/CD para validar schema integrity                              │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ ARQUIVOS MAIS PROBLEMÁTICOS ────────────────────────────────────────────────┐
+│                                                                                 │
+│ 1. 03-layer-02-user-environment.sql   [CRÍTICO]                                │
+│    └─ CASCADE delete em tenants → cascata completa de dados                    │
+│                                                                                 │
+│ 2. 04-layer-03-roles-settings.sql     [CRÍTICO]                                │
+│    └─ Inconsistência de roles (COLAB, GERENTE vs USER, MANAGER)              │
+│                                                                                 │
+│ 3. 07-layer-06-timesheets-periods.sql [CRÍTICO]                                │
+│    └─ approved_by sem FK, sem validação de quem aprova                        │
+│                                                                                 │
+│ 4. 11-layer-10-triggers.sql           [CRÍTICO]                                │
+│    └─ Sync trigger com 2+ versões, silent failure, race conditions            │
+│                                                                                 │
+│ 5. 13-layer-12-rls-policies.sql       [ALTO]                                   │
+│    └─ Policies permissivas, ADMIN_GLOBAL ignorado                             │
+│                                                                                 │
+│ 6. password-reset-tokens.sql          [ALTO]                                   │
+│    └─ RLS USING (true), wrong user_id domain                                  │
+│                                                                                 │
+│ 7. FIX-USER-INVITATIONS-COMPLETE.sql  [ALTO]                                   │
+│    └─ Múltipla definição de tabela, conflito com layer 3                      │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ ESTIMATIVA DE TRABALHO ─────────────────────────────────────────────────────┐
+│                                                                                 │
+│ Código:                          40-60 horas (Implementação + Testes)          │
+│ Testes:                          20-30 horas (QA completo)                     │
+│ Migration Planning:              10-15 horas (Zero-downtime strategy)          │
+│ Data Validation:                 10-20 horas (Auditar dados existentes)        │
+│ Documentação:                     5-10 horas (Specs, runbooks)                 │
+│                                                                                 │
+│ TOTAL:                           85-135 horas (2-3 sprints)                    │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+

@@ -85,7 +85,7 @@ export async function GET() {
           .from('timesheets')
           .select('id, periodo_ini, periodo_fim, status')
           .eq('employee_id', emp.id)
-          .eq('status', 'rejected')
+          .eq('status', 'recusado') // Portuguese enum value
           .order('periodo_ini', { ascending: false })
           .limit(5);
 
@@ -110,7 +110,7 @@ export async function GET() {
               .from('approvals')
               .select('mensagem, created_at')
               .eq('timesheet_id', ts.id)
-              .eq('status', 'rejected')
+              .eq('status', 'recusado') // Portuguese enum value
               .order('created_at', { ascending: false })
               .limit(1)
               .maybeSingle();
@@ -146,7 +146,7 @@ export async function GET() {
             actionKey: 'fillNow',
             href: '/employee/timesheets'
           });
-        } else if (ts.status === 'rascunho' || ts.status === 'draft') {
+        } else if (ts.status === 'rascunho') { // Portuguese enum value only
           alerts.push({
             type: 'info',
             i18nKey: 'employee.draft',

@@ -1,6 +1,7 @@
-import {NextResponse} from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 import {getServiceSupabase} from '@/lib/supabase/service';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
+import crypto from 'crypto';
 
 function firstDayOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1); }
 function firstDayOfNextMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 1); }
@@ -10,7 +11,56 @@ function periodLabel(d: Date) {
   return `${month}/${d.getFullYear()}`;
 }
 
-export async function POST() {
+/**
+ * Validates cron job authentication using timing-safe comparison
+ * Requires CRON_SECRET environment variable
+ */
+function validateCronAuth(request: NextRequest): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret) {
+    console.error('[cron] CRON_SECRET not configured. Set CRON_SECRET environment variable.');
+    return false;
+  }
+
+  // Accept secret from Authorization header (preferred) or X-Cron-Secret header
+  const authHeader = request.headers.get('authorization');
+  const cronHeader = request.headers.get('x-cron-secret');
+
+  let providedSecret: string | null = null;
+
+  if (authHeader?.startsWith('Bearer ')) {
+    providedSecret = authHeader.substring(7);
+  } else if (cronHeader) {
+    providedSecret = cronHeader;
+  }
+
+  if (!providedSecret) {
+    return false;
+  }
+
+  // Timing-safe comparison to prevent timing attacks
+  try {
+    const expectedBuffer = Buffer.from(cronSecret, 'utf8');
+    const providedBuffer = Buffer.from(providedSecret, 'utf8');
+
+    if (expectedBuffer.length !== providedBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(request: NextRequest) {
+  // SECURITY: Validate cron authentication
+  if (!validateCronAuth(request)) {
+    console.warn('[cron] Unauthorized cron request attempt');
+    return NextResponse.json({ok: false, error: 'unauthorized'}, {status: 401});
+  }
+
   // Use service role to bypass RLS for global reminders
   let supabase;
   try {

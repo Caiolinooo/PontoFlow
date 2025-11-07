@@ -58,10 +58,10 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       if (!membership) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
-    // Update status to rejected
+    // Update status to recusado (rejected)
     const {data: updated, error} = await supabase
       .from('timesheets')
-      .update({status: 'rejected'})
+      .update({status: 'recusado'}) // Portuguese enum value as per database schema
       .eq('id', id)
       .select('id,employee_id,periodo_ini,periodo_fim,tenant_id')
       .single();
@@ -70,12 +70,12 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       return NextResponse.json({error: error.message}, {status: 400});
     }
 
-    // Insert approval record (rejected)
+    // Insert approval record (recusado)
     await supabase.from('approvals').insert({
       tenant_id: updated.tenant_id,
       timesheet_id: id,
       manager_id: user.id,
-      status: 'rejected',
+      status: 'recusado', // Portuguese enum value
       mensagem: parsed.data.reason
     });
 
@@ -103,8 +103,8 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       action: 'reject',
       resourceType: 'timesheet',
       resourceId: id,
-      oldValues: { prev_status: 'submitted' },
-      newValues: { status: 'rejected', reason: parsed.data.reason, annotations: parsed.data.annotations ?? [] }
+      oldValues: { prev_status: 'enviado' }, // Portuguese enum value
+      newValues: { status: 'recusado', reason: parsed.data.reason, annotations: parsed.data.annotations ?? [] } // Portuguese enum value
     });
 
     // Fetch employee + profile for email + locale

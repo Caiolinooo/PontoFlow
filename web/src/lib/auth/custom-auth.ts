@@ -1,22 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-
-function toBase64(str: string): string {
-  // Use Web API in Edge/browser; fallback to Node Buffer on server
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const g: any = globalThis as any;
-  if (typeof g.btoa === 'function') return g.btoa(str);
-  // Node.js fallback
-  // @ts-ignore - Buffer may not exist in Edge, but this branch won't run there
-  return Buffer.from(str, 'utf-8').toString('base64');
-}
-
-function fromBase64(str: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const g: any = globalThis as any;
-  if (typeof g.atob === 'function') return g.atob(str);
-  // @ts-ignore
-  return Buffer.from(str, 'base64').toString('utf-8');
-}
+import { generateToken, verifyToken, generateLegacyToken, verifyLegacyToken } from './jwt';
 
 // Lazy initialization to avoid build-time errors
 let _supabase: ReturnType<typeof createClient> | null = null;
@@ -205,8 +188,8 @@ export async function signInWithCredentials(
         return { error: 'Conta inativa. Entre em contato com o administrador.' };
       }
 
-      // Generate token
-      const token = toBase64(`${unifiedUser.id}:${Date.now()}`);
+      // Generate token (JWT or legacy fallback)
+      const token = generateToken(unifiedUser.id) || generateLegacyToken(unifiedUser.id);
 
       return {
         user: {
@@ -301,8 +284,8 @@ export async function signInWithCredentials(
 
     console.log('[AUTH] Login successful!');
 
-    // Generate a simple token (in production, use JWT)
-    const token = toBase64(`${userData.id}:${Date.now()}`);
+    // Generate token (JWT or legacy fallback)
+    const token = generateToken(userData.id) || generateLegacyToken(userData.id);
 
     return {
       user: {
@@ -329,50 +312,24 @@ export async function signInWithCredentials(
 }
 
 /**
- * Get user from session token
+ * Get user from session token (JWT or legacy base64)
  */
 export async function getUserFromToken(token: string): Promise<User | null> {
   try {
-    // Decode token to get user ID and timestamp
-    let decoded: string;
-    try {
-      decoded = fromBase64(token);
-    } catch (error) {
-      console.log('getUserFromToken: Malformed base64 token');
-      return null;
-    }
-    
-    const parts = decoded.split(':');
-    if (parts.length !== 2) {
-      console.log('getUserFromToken: Invalid token format');
-      return null;
-    }
-    
-    const [userId, timestamp] = parts;
-    const timestampNum = parseInt(timestamp);
+    // Try JWT first
+    const payload = verifyToken(token);
+    let userId: string | null = null;
 
-    if (!userId || !timestamp || isNaN(timestampNum)) {
-      console.log('getUserFromToken: Invalid token format');
-      return null;
+    if (payload) {
+      // JWT token verified successfully
+      userId = payload.sub;
+    } else {
+      // Fallback to legacy base64 token
+      userId = verifyLegacyToken(token);
+      if (!userId) {
+        return null;
+      }
     }
-
-    // Check if token is too old (7 days)
-    const tokenAge = Date.now() - timestampNum;
-    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-    
-    if (tokenAge > maxAge) {
-      console.log('getUserFromToken: Token expired');
-      return null;
-    }
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId)) {
-      console.log('getUserFromToken: Invalid user ID format:', userId);
-      return null;
-    }
-
-    console.log('[getUserFromToken] Looking up user ID:', userId);
 
     const supabase = getSupabase();
     const supabaseAdmin = getSupabaseAdmin();

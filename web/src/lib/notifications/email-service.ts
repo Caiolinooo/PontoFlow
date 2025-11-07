@@ -89,6 +89,21 @@ async function getTenantSmtpConfig(tenantId?: string): Promise<SMTPConfig> {
   }
 }
 
+/**
+ * Validates email address to prevent header injection attacks
+ * Blocks: newlines, null bytes, and invalid email formats
+ */
+function validateEmail(email: string): boolean {
+  // Check for header injection attempts (newlines, carriage returns, null bytes)
+  if (/[\r\n\0]/.test(email)) {
+    return false;
+  }
+
+  // Validate email format with strict regex
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -100,6 +115,12 @@ export async function sendEmail({
   html: string;
   tenantId?: string;
 }) {
+  // SECURITY: Validate email to prevent header injection
+  if (!validateEmail(to)) {
+    console.error('[email-service] Invalid or potentially malicious email address:', to);
+    throw new Error('Invalid email address');
+  }
+
   // Get SMTP config for the tenant (or default)
   const smtp = await getTenantSmtpConfig(tenantId);
 

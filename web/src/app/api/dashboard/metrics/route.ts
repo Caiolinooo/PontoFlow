@@ -103,12 +103,12 @@ export async function GET() {
         timesheetIds = teamTimesheetIds;
 
         // Count approved and pending timesheets
-        // Note: Database uses English status values (draft, submitted, approved, rejected)
+        // Note: Database uses Portuguese status values (rascunho, enviado, aprovado, recusado)
         const present = new Map(tsRows?.map((t: any) => [t.employee_id, t.status]) ?? []);
         const missing = employeeIds.filter((id) => !present.has(id));
-        const drafts = (tsRows ?? []).filter((t: any) => t.status === 'draft');
-        const submitted = (tsRows ?? []).filter((t: any) => t.status === 'submitted');
-        const approved = (tsRows ?? []).filter((t: any) => t.status === 'approved');
+        const drafts = (tsRows ?? []).filter((t: any) => t.status === 'rascunho'); // Portuguese enum value
+        const submitted = (tsRows ?? []).filter((t: any) => t.status === 'enviado'); // Portuguese enum value
+        const approved = (tsRows ?? []).filter((t: any) => t.status === 'aprovado'); // Portuguese enum value
 
         approvedCount = approved.length;
         // Count missing (no timesheet) and drafts separately to match manager panel logic
