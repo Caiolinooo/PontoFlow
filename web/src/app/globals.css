@@ -1,4 +1,7 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import "../styles/animations.css";
 
 :root {
@@ -91,4 +94,75 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Responsive improvements */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 800px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+/* Auto-sizing containers */
+.auto-fit-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .auto-fit-container {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    gap: 1.5rem;
+  }
+}
+
+/* Responsive text */
+.responsive-text-xs {
+  @apply text-xs sm:text-sm;
+}
+
+.responsive-text-sm {
+  @apply text-sm sm:text-base;
+}
+
+.responsive-text-base {
+  @apply text-base sm:text-lg;
+}
+
+.responsive-text-lg {
+  @apply text-lg sm:text-xl lg:text-2xl;
+}
+
+.responsive-text-xl {
+  @apply text-xl sm:text-2xl lg:text-3xl;
+}
+
+/* Responsive spacing */
+.responsive-p-4 {
+  @apply p-3 sm:p-4 lg:p-6;
+}
+
+.responsive-p-6 {
+  @apply p-4 sm:p-6 lg:p-8;
+}
+
+.responsive-gap-4 {
+  @apply gap-2 sm:gap-4 lg:gap-6;
+}
+
+.responsive-gap-6 {
+  @apply gap-4 sm:gap-6 lg:gap-8;
 }

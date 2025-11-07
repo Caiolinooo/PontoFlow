@@ -5,6 +5,64 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.2.0] - 2025-11-06
+
+### Added
+- **Enhanced Animation System**
+  - Added modern CSS animations with elastic bounces, parallax floats, and gradient shifts
+  - Implemented smooth transitions with cubic-bezier timing functions
+  - Added micro-interactions for buttons, cards, and loading states
+  - Enhanced hover effects with scale transforms and gradient overlays
+
+- **Improved Responsive Layout**
+  - Dashboard restructured to fit entirely within viewport without scrolling
+  - Grid layout optimized for mobile and desktop (2-5 columns responsive)
+  - Card sizing improved to prevent content overflow
+  - Better spacing and gap management throughout the interface
+
+- **Unified Header Design**
+  - Integrated footer information (copyright and developer details) into header
+  - Removed duplicate footer from bottom navigation
+  - Added social media links for mobile view
+  - Cleaner, more compact design
+
+### Fixed
+- **Critical Time Calculation Logic**
+  - Fixed major flaw where each entry was counted as separate day instead of grouping by date
+  - Completely rewrote `calculateWorkedHours` function to intelligently group entries by date
+  - Added proper time spread detection for single time entries
+  - Enhanced report generation with normal/extra hours breakdown
+
+- **Row Level Security Policy Violation**
+  - Fixed period closing API RLS violation by using service client instead of regular client
+  - Updated `/api/admin/periods` to bypass RLS for admin operations
+  - Period lock functionality now works correctly for admin users
+
+- **Database Cleanup**
+  - Executed cleanup script for old timesheets (none found, database was already clean)
+  - Verified data integrity and proper record management
+
+- **Report Display Issues**
+  - Added "Normal Hours" and "Extra Hours" columns to report tables
+  - Implemented filtering to exclude timesheets with 0 entries
+  - Fixed missing translations for hour breakdowns in both Portuguese and English
+
+### Technical
+- **Files Modified:**
+  - `web/src/styles/animations.css` - Enhanced animation system with modern effects
+  - `web/src/app/[locale]/dashboard/page.tsx` - Viewport-constrained layout
+  - `web/src/components/Header.tsx` - Integrated footer information
+  - `web/src/components/UnifiedBottomNav.tsx` - Removed duplicate footer
+  - `web/src/lib/reports/generator.ts` - Fixed time calculation logic
+  - `web/src/components/reports/ReportTable.tsx` - Enhanced hour display
+  - `web/src/app/api/admin/periods/route.ts` - Fixed RLS policy violation
+
+- **Performance Improvements:**
+  - Smoother animations with optimized timing functions
+  - Better viewport management reduces scroll requirements
+  - Improved loading states and error handling
+  - Enhanced responsive design for all screen sizes
+
 ## [1.1.0] - 2025-11-06
 
 ### Added

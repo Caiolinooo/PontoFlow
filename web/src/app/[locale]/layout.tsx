@@ -1,18 +1,18 @@
 import type {Metadata} from 'next';
 import {NextIntlClientProvider} from 'next-intl';
 import {getMessages} from 'next-intl/server';
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Roboto_Mono } from "next/font/google";
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import '../globals.css';
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+import { ServiceWorkerRegistrar } from '../../components/ServiceWorkerRegistrar';
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
   subsets: ["latin"],
 });
 
@@ -29,7 +29,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       icon: branding.logoUrl || '/brand/logo.svg',
       shortcut: branding.logoUrl || '/brand/logo.svg',
       apple: branding.logoUrl || '/brand/logo.svg'
-    }
+    },
+    manifest: '/manifest.json'
   };
 }
 
@@ -66,16 +67,17 @@ export default async function LocaleLayout({
       }
     } catch {}
   }
+
   return (
     <html lang={locale} className={isDark ? 'dark' : ''} suppressHydrationWarning>
-      <body suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
+      <body suppressHydrationWarning className={`${inter.variable} ${robotoMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
         {/* Inline no-FOUC script: only runs when cookie is missing, uses localStorage or prefers-color-scheme */}
         <script dangerouslySetInnerHTML={{__html: `(() => { try { const c = document.cookie.match(/(?:^|; )theme=([^;]+)/)?.[1]; if (c) return; var t = localStorage.getItem('theme'); if (!t) { t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } if (t === 'dark') document.documentElement.classList.add('dark'); } catch(_){} })();`}} />
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <ServiceWorkerRegistrar />
           {children}
         </NextIntlClientProvider>
       </body>
     </html>
   );
 }
-

@@ -402,7 +402,16 @@
     "exportError": "Erro ao exportar relatório",
     "summaryReportTitle": "Relatórios Administrativos - Timesheet Summary Report",
     "detailedReportTitle": "Relatórios Administrativos - Timesheet Detailed Report",
-    "adminOnlyScopes": "Apenas administradores podem acessar estes escopos de relatório"
+    "employeeSearchRestricted": "Busca de colaborador restrita a gerentes",
+    "adminOnlyScopes": "Escopos apenas para administradores",
+    "vessel": "Embarcação/Ambiente",
+    "allVessels": "Todas as Embarcações",
+    "group": "Grupo",
+    "allGroups": "Todos os Grupos",
+    "restricted": "Restrito",
+    "ownRecordOnly": "Apenas seus próprios registros",
+    "normalHours": "Horas Normais",
+    "extraHours": "Horas Extras"
   },
   "messages": {
     "saved": "Preferências salvas com sucesso."
@@ -422,6 +431,60 @@
     "lastNameTooShort": "Sobrenome muito curto"
   },
   "admin": {
+    "currentTenant": "Tenant Atual",
+    "dashboard": {
+      "title": "Administração",
+      "description": "Gerencie configurações do sistema e dados dos usuários"
+    },
+    "modules": {
+      "users": {
+        "title": "Usuários",
+        "description": "Gerenciar contas de usuários, convites e permissões"
+      },
+      "employees": {
+        "title": "Funcionários",
+        "description": "Gerenciar perfis e atribuições de funcionários"
+      },
+      "timesheets": {
+        "title": "Timesheets",
+        "description": "Revisar e gerenciar todas as entradas de timesheet"
+      },
+      "tenants": {
+        "title": "Tenants",
+        "description": "Gerenciar organizações e configurações multi-tenant"
+      },
+      "environments": {
+        "title": "Ambientes",
+        "description": "Configurar ambientes e locais de trabalho"
+      },
+      "periods": {
+        "title": "Períodos",
+        "description": "Gerenciar períodos de relatório e bloqueios"
+      },
+      "delegations": {
+        "title": "Delegações & Grupos",
+        "description": "Organizar equipes e gerenciar atribuições de gerentes"
+      },
+      "vessels": {
+        "title": "Embarcações",
+        "description": "Gerenciar embarcações e plataformas flutuantes"
+      },
+      "workSchedules": {
+        "title": "Escalas de Trabalho",
+        "description": "Configurar escalas e modelos de trabalho"
+      },
+      "settings": {
+        "title": "Configurações",
+        "description": "Configuração do sistema e preferências"
+      }
+    },
+    "quickActions": {
+      "title": "Ações Rápidas",
+      "addUser": "Adicionar Usuário",
+      "addEmployee": "Adicionar Funcionário",
+      "addEnvironment": "Adicionar Ambiente",
+      "manageTenants": "Gerenciar Tenants"
+    },
     "currentTenant": "Tenant Atual",
     "users": {
       "title": "Gerenciamento de Usuários",

@@ -400,7 +400,17 @@
     "error": "Error generating report",
     "exportError": "Error exporting report",
     "summaryReportTitle": "Administrative Reports - Timesheet Summary Report",
-    "detailedReportTitle": "Administrative Reports - Timesheet Detailed Report"
+    "detailedReportTitle": "Administrative Reports - Timesheet Detailed Report",
+    "employeeSearchRestricted": "Employee search restricted to managers",
+    "adminOnlyScopes": "Admin-only scopes",
+    "vessel": "Vessel/Environment",
+    "allVessels": "All Vessels",
+    "group": "Group",
+    "allGroups": "All Groups",
+    "restricted": "Restricted",
+    "ownRecordOnly": "Your own record only",
+    "normalHours": "Normal Hours",
+    "extraHours": "Extra Hours"
   },
   "messages": {
     "saved": "Preferences saved."
@@ -421,6 +431,59 @@
   },
   "admin": {
     "currentTenant": "Current Tenant",
+    "dashboard": {
+      "title": "Administration",
+      "description": "Manage system settings and user data"
+    },
+    "modules": {
+      "users": {
+        "title": "Users",
+        "description": "Manage user accounts, invitations, and permissions"
+      },
+      "employees": {
+        "title": "Employees",
+        "description": "Manage employee profiles and assignments"
+      },
+      "timesheets": {
+        "title": "Timesheets",
+        "description": "Review and manage all timesheet entries"
+      },
+      "tenants": {
+        "title": "Tenants",
+        "description": "Manage organizations and multi-tenant settings"
+      },
+      "environments": {
+        "title": "Environments",
+        "description": "Configure work environments and locations"
+      },
+      "periods": {
+        "title": "Periods",
+        "description": "Manage reporting periods and locks"
+      },
+      "delegations": {
+        "title": "Delegations & Groups",
+        "description": "Organize teams and manage manager assignments"
+      },
+      "vessels": {
+        "title": "Vessels",
+        "description": "Manage vessels and floating platforms"
+      },
+      "workSchedules": {
+        "title": "Work Schedules",
+        "description": "Configure work schedules and templates"
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "System configuration and preferences"
+      }
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "addUser": "Add User",
+      "addEmployee": "Add Employee",
+      "addEnvironment": "Add Environment",
+      "manageTenants": "Manage Tenants"
+    },
     "users": {
       "title": "User Management",
       "subtitle": "Manage all system users",

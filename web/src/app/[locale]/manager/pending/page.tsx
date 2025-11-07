@@ -54,29 +54,12 @@ interface ApiResponse {
   };
 }
 
-export default function ManagerPendingPage({ params, searchParams }: { 
-  params: Promise<{ locale: string }>, 
-  searchParams: Promise<{ month?: string }> 
+export default async function ManagerPendingPage({ params, searchParams }: {
+  params: Promise<{ locale: string }>,
+  searchParams: Promise<{ month?: string }>
 }) {
-  const [locale, setLocale] = useState<string>('');
-  const [month, setMonth] = useState<string>('');
-
-  // Initialize locale and month from props when available
-  useEffect(() => {
-    params.then(({ locale: loc }) => setLocale(loc));
-    searchParams.then(({ month: m }) => {
-      setMonth(m ?? '');
-    });
-  }, [params, searchParams]);
-
-  // If not yet initialized, show loading
-  if (!locale) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const { locale } = await params;
+  const { month } = await searchParams;
 
   return <ManagerPendingPageContent locale={locale} month={month} />;
 }

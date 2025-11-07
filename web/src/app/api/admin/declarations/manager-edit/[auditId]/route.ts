@@ -8,7 +8,7 @@ function defaultTemplate() {
     <head>
       <meta charset="utf-8" />
       <style>
-        body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, \"Apple Color Emoji\", \"Segoe UI Emoji\"; color: #111; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color: #111; }
         .container { max-width: 800px; margin: 24px auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px; position: relative; }
         .watermark { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-20deg); font-size: 64px; color: rgba(0,0,0,0.06); white-space: nowrap; pointer-events: none; }
         h1 { font-size: 20px; margin: 0 0 8px; }
@@ -71,7 +71,6 @@ function defaultTemplate() {
 }
 
 function renderTemplate(tpl: string, vars: Record<string, any>) {
-  // very small mustache-like replacement
   return tpl.replace(/\{\{(#if\s+([^}]+))\}\}([\s\S]*?)\{\{\/if\}\}/g, (_m, _g1, key, inner) => {
     const v = vars[key.trim()];
     return v ? inner : '';
@@ -107,7 +106,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ auditId: st
 
     const tpl = settings?.legal_declaration_template || defaultTemplate();
 
-    // Build adjustments table (best effort from audit newValues/oldValues)
+    // Build adjustments table
     const rows: string[] = [];
     const oldV = audit.old_values || {};
     const newV = audit.new_values || {};
@@ -150,26 +149,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ auditId: st
 
     const format = (req.nextUrl?.searchParams.get('format') || '').toLowerCase();
     if (format === 'pdf') {
-      try {
-        const mod: any = await import('puppeteer');
-        const puppeteer = mod?.default ?? mod;
-        const browser = await puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'] });
-        try {
-          const page = await browser.newPage();
-          await page.setContent(html, { waitUntil: 'networkidle0' });
-          const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '12mm', right: '10mm', bottom: '12mm', left: '10mm' } });
-          const headers = new Headers();
-          headers.set('Content-Type', 'application/pdf');
-          headers.set('Content-Disposition', `inline; filename="declaracao-ajuste-${auditId}.pdf"`);
-          const ab: ArrayBuffer = (pdf as any).buffer as ArrayBuffer;
-          const blob = new Blob([ab], { type: 'application/pdf' });
-          return new NextResponse(blob, { status: 200, headers });
-        } finally {
-          await browser.close();
-        }
-      } catch {
-        return NextResponse.json({ error: 'pdf_not_supported' }, { status: 501 });
-      }
+      return NextResponse.json({ error: 'PDF generation temporarily disabled' }, { status: 501 });
     }
 
     return new NextResponse(html, {
@@ -183,4 +163,3 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ auditId: st
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }
-

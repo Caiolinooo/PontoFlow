@@ -9,6 +9,7 @@ export interface ReportFilters {
   endDate?: string;
   status?: string;
   employeeId?: string;
+  vesselId?: string;
   groupId?: string;
   userRole?: string; // 'ADMIN', 'GERENTE', 'COLABORADOR'
 }
@@ -28,6 +29,10 @@ export interface ReportEntry {
   rejectedAt?: string;
   totalHours?: number;
   totalMinutes?: number;
+  breakDeducted?: number;
+  normalHours?: number;
+  extraHours?: number;
+  holidayHours?: number;
 }
 
 export interface SummaryReport {
@@ -119,64 +124,274 @@ export interface TimesheetBasic {
   updated_at?: string;
 }
 
+export interface WorkModeConfig {
+  mode: 'standard' | 'offshore';
+  breakRules?: {
+    minHoursForBreak: number;  // Ex: 6 (> 6h requires break)
+    breakDuration: number;      // Ex: 60 (1 hour in minutes)
+  };
+}
+
 /**
- * Calculate total hours from timesheet entries
+ * Calculate worked hours with proper break deduction
+ * Supports offshore (no break) vs onshore (CLT rules) modes
+ *
+ * @param entries - Array of time entries
+ * @param workModeConfig - Configuration for work mode (standard/offshore)
+ * @returns Detailed hours calculation with breakdown
  */
-export function calculateTotalHours(entries: Array<{ hora_ini?: string; hora_fim?: string }>): number {
-  if (!entries || entries.length === 0) return 0;
-  
-  let totalMinutes = 0;
-  
-  for (const entry of entries) {
-    if (!entry.hora_ini || !entry.hora_fim) continue;
-    
-    try {
-      const [startHour, startMin] = entry.hora_ini.split(':').map(Number);
-      const [endHour, endMin] = entry.hora_fim.split(':').map(Number);
-      
-      const startTotalMinutes = startHour * 60 + startMin;
-      let endTotalMinutes = endHour * 60 + endMin;
-      
-      // Handle overnight shifts (end time next day)
-      if (endTotalMinutes <= startTotalMinutes) {
-        endTotalMinutes += 24 * 60;
-      }
-      
-      const durationMinutes = endTotalMinutes - startTotalMinutes;
-      totalMinutes += Math.max(0, durationMinutes);
-    } catch (error) {
-      console.warn('Error parsing time entries:', error);
-      continue;
+export function calculateWorkedHours(
+  entries: Array<{
+    data?: string;
+    hora_ini?: string;
+    hora_fim?: string;
+    tipo?: 'normal' | 'extra' | 'feriado' | 'folga' | string;
+  }>,
+  workModeConfig: WorkModeConfig = {
+    mode: 'standard',
+    breakRules: {
+      minHoursForBreak: 6,
+      breakDuration: 60 // 1 hour in minutes
     }
   }
-  
-  return Math.round((totalMinutes / 60) * 100) / 100; // Round to 2 decimal places
+): {
+  totalHours: number;
+  totalMinutes: number;
+  breakMinutesDeducted: number;
+  entriesProcessed: number;
+  breakdown: {
+    normalHours: number;
+    extraHours: number;
+    holidayHours: number;
+  };
+} {
+  if (!entries || entries.length === 0) {
+    return {
+      totalHours: 0,
+      totalMinutes: 0,
+      breakMinutesDeducted: 0,
+      entriesProcessed: 0,
+      breakdown: { normalHours: 0, extraHours: 0, holidayHours: 0 }
+    };
+  }
+
+  let totalMinutes = 0;
+  let breakMinutesDeducted = 0;
+  let normalMinutes = 0;
+  let extraMinutes = 0;
+  let holidayMinutes = 0;
+  let entriesProcessed = 0;
+
+  // Group entries by date for proper break calculation
+  const entriesByDate = new Map<string, typeof entries>();
+
+  for (const entry of entries) {
+    if (!entry.hora_ini && !entry.hora_fim) continue;
+
+    const date = entry.data || 'unknown';
+    if (!entriesByDate.has(date)) {
+      entriesByDate.set(date, []);
+    }
+    entriesByDate.get(date)!.push(entry);
+  }
+
+  // Process each day
+  for (const [date, dayEntries] of entriesByDate) {
+    let dayTotalMinutes = 0;
+
+    // SMART LOGIC: Process entries for the entire day
+    try {
+      const tipo = dayEntries[0]?.tipo?.toLowerCase();
+
+      // Check if we have complete entries (with both start and end times)
+      const completeEntries = dayEntries.filter(e => e.hora_ini && e.hora_fim);
+
+      if (completeEntries.length > 0) {
+        // We have complete entries - use actual time calculation
+        for (const entry of completeEntries) {
+          const [startHour, startMin] = entry.hora_ini!.split(':').map(Number);
+          const [endHour, endMin] = entry.hora_fim!.split(':').map(Number);
+
+          let startTotalMinutes = startHour * 60 + startMin;
+          let endTotalMinutes = endHour * 60 + endMin;
+
+          // Handle overnight shifts
+          if (endTotalMinutes <= startTotalMinutes) {
+            endTotalMinutes += 24 * 60;
+          }
+
+          const durationMinutes = endTotalMinutes - startTotalMinutes;
+          if (durationMinutes > 0) {
+            dayTotalMinutes += durationMinutes;
+            entriesProcessed++;
+          }
+        }
+      } else {
+        // No complete entries - use smart single time calculation
+        const singleTimeEntries = dayEntries.filter(e => e.hora_ini && !e.hora_fim);
+
+        if (singleTimeEntries.length > 0) {
+          // Find earliest and latest times for the day
+          const times = singleTimeEntries.map(e => {
+            const [hour, min] = e.hora_ini!.split(':').map(Number);
+            return hour * 60 + min;
+          }).sort((a, b) => a - b);
+
+          const earliestTime = times[0];
+          const latestTime = times[times.length - 1];
+
+          let durationMinutes = 0;
+          const entryTipo = singleTimeEntries[0]?.tipo?.toLowerCase();
+
+          if (entryTipo === 'inicio') {
+            // If only 'inicio' entries, assume standard shift (8 hours)
+            durationMinutes = 8 * 60;
+          } else if (entryTipo === 'folga' || entryTipo === 'feriado') {
+            // Single folga/feriado day - count as full day
+            durationMinutes = 8 * 60;
+          } else if (entryTipo === 'trabalho' || entryTipo === 'normal' || entryTipo === 'extra') {
+            // For work entries, calculate based on time spread or standard shift
+            if (latestTime - earliestTime > 0) {
+              // Calculate actual time spread
+              durationMinutes = latestTime - earliestTime;
+              // Minimum 4 hours, maximum 12 hours for single entries
+              durationMinutes = Math.max(4 * 60, Math.min(12 * 60, durationMinutes));
+            } else {
+              // Default to 8 hours for single work entry
+              durationMinutes = 8 * 60;
+            }
+          } else {
+            // Default for unknown types
+            durationMinutes = 4 * 60;
+          }
+
+          dayTotalMinutes += durationMinutes;
+          entriesProcessed++;
+        }
+      }
+
+      // Categorize the day's hours by type
+      const mainTipo = dayEntries[0]?.tipo?.toLowerCase();
+      switch (mainTipo) {
+        case 'normal':
+        case 'trabalho':
+          normalMinutes += dayTotalMinutes;
+          break;
+        case 'extra':
+          extraMinutes += dayTotalMinutes;
+          break;
+        case 'feriado':
+          holidayMinutes += dayTotalMinutes;
+          break;
+        case 'folga':
+          // Folga hours don't count in worked hours totals
+          dayTotalMinutes = 0; // Reset so folga doesn't affect total worked hours
+          break;
+        case 'inicio':
+          // 'inicio' alone doesn't count unless mixed with other types
+          if (dayEntries.length > 1) {
+            normalMinutes += dayTotalMinutes;
+          } else {
+            dayTotalMinutes = 0;
+          }
+          break;
+        default:
+          // Default to normal hours for unknown types
+          normalMinutes += dayTotalMinutes;
+      }
+
+    } catch (error) {
+      console.warn('Error processing day entries:', error, dayEntries);
+    }
+
+    // Apply break deduction for this day (ONLY for standard mode)
+    if (workModeConfig.mode === 'standard' && workModeConfig.breakRules) {
+      const dayHours = dayTotalMinutes / 60;
+
+      if (dayHours > workModeConfig.breakRules.minHoursForBreak) {
+        // Deduct break time
+        const breakToDeduct = workModeConfig.breakRules.breakDuration;
+        dayTotalMinutes -= breakToDeduct;
+        breakMinutesDeducted += breakToDeduct;
+      }
+    }
+
+    totalMinutes += Math.max(0, dayTotalMinutes); // Never negative
+  }
+
+  // Adjust categorized minutes for break deduction (proportional)
+  if (breakMinutesDeducted > 0 && totalMinutes > 0) {
+    const ratio = (totalMinutes - breakMinutesDeducted) / totalMinutes;
+    normalMinutes = Math.round(normalMinutes * ratio);
+    extraMinutes = Math.round(extraMinutes * ratio);
+    holidayMinutes = Math.round(holidayMinutes * ratio);
+  }
+
+  return {
+    totalHours: Math.round((totalMinutes / 60) * 100) / 100,
+    totalMinutes: Math.round(totalMinutes),
+    breakMinutesDeducted,
+    entriesProcessed,
+    breakdown: {
+      normalHours: Math.round((normalMinutes / 60) * 100) / 100,
+      extraHours: Math.round((extraMinutes / 60) * 100) / 100,
+      holidayHours: Math.round((holidayMinutes / 60) * 100) / 100,
+    }
+  };
+}
+
+/**
+ * Calculate total hours from timesheet entries (Legacy - kept for backward compatibility)
+ * @deprecated Use calculateWorkedHours instead for proper break deduction
+ */
+export function calculateTotalHours(entries: Array<{ hora_ini?: string; hora_fim?: string }>): number {
+  const result = calculateWorkedHours(entries, { mode: 'offshore' }); // No break deduction for legacy
+  return result.totalHours;
 }
 
 /**
  * Calculate duration for a single entry in hours
  */
-function calculateEntryDuration(entry: { hora_ini?: string; hora_fim?: string }): number {
-  if (!entry.hora_ini || !entry.hora_fim) return 0;
-  
-  try {
-    const [startHour, startMin] = entry.hora_ini.split(':').map(Number);
-    const [endHour, endMin] = entry.hora_fim.split(':').map(Number);
-    
-    const startTotalMinutes = startHour * 60 + startMin;
-    let endTotalMinutes = endHour * 60 + endMin;
-    
-    // Handle overnight shifts
-    if (endTotalMinutes <= startTotalMinutes) {
-      endTotalMinutes += 24 * 60;
+function calculateEntryDuration(entry: { hora_ini?: string; hora_fim?: string; tipo?: string }): number {
+  // For detailed reports, show individual entry duration
+  if (entry.hora_ini && entry.hora_fim) {
+    // Complete entry with both times - calculate actual duration
+    try {
+      const [startHour, startMin] = entry.hora_ini.split(':').map(Number);
+      const [endHour, endMin] = entry.hora_fim.split(':').map(Number);
+
+      const startTotalMinutes = startHour * 60 + startMin;
+      let endTotalMinutes = endHour * 60 + endMin;
+
+      // Handle overnight shifts
+      if (endTotalMinutes <= startTotalMinutes) {
+        endTotalMinutes += 24 * 60;
+      }
+
+      const durationMinutes = endTotalMinutes - startTotalMinutes;
+      return Math.round((durationMinutes / 60) * 100) / 100;
+    } catch (error) {
+      console.warn('Error calculating entry duration:', error);
+      return 0;
     }
-    
-    const durationMinutes = endTotalMinutes - startTotalMinutes;
-    return Math.round((durationMinutes / 60) * 100) / 100;
-  } catch (error) {
-    console.warn('Error calculating entry duration:', error);
-    return 0;
+  } else if (entry.hora_ini && !entry.hora_fim) {
+    // Single time entry - this will be processed as part of daily calculation
+    // In detailed view, we show what's recorded or a reasonable estimate
+    const tipo = entry.tipo?.toLowerCase();
+    if (tipo === 'inicio') {
+      return 0; // 'inicio' is just a marker
+    } else if (tipo === 'folga' || tipo === 'feriado') {
+      return 0; // Will be calculated at daily level
+    } else if (tipo === 'trabalho' || tipo === 'normal') {
+      return 0; // Will be calculated at daily level
+    } else if (tipo === 'extra') {
+      return 0; // Will be calculated at daily level
+    } else {
+      return 0; // Will be calculated at daily level
+    }
   }
+
+  return 0;
 }
 
 /**
@@ -207,16 +422,25 @@ export function generateRoleSpecificReport(
 }
 
 /**
- * Generate summary report with hour calculations
+ * Generate summary report with hour calculations and work mode support
  */
 export function generateSummaryReport(
   timesheets: TimesheetBasic[],
-  filters: ReportFilters
+  filters: ReportFilters,
+  workModeConfig?: WorkModeConfig
 ): SummaryReport {
-  const items: ReportEntry[] = timesheets.map(t => {
+  // Use default standard mode if not provided (backward compatibility)
+  const config: WorkModeConfig = workModeConfig || {
+    mode: 'standard',
+    breakRules: {
+      minHoursForBreak: 6,
+      breakDuration: 60
+    }
+  };
+
+  const allItems: ReportEntry[] = timesheets.map(t => {
     const entries = t.entries || [];
-    const totalHours = calculateTotalHours(entries);
-    const totalMinutes = totalHours * 60;
+    const hoursCalc = calculateWorkedHours(entries, config);
 
     return {
       id: t.id,
@@ -227,16 +451,23 @@ export function generateSummaryReport(
       vesselId: t.employee?.vessel_id,
       period: `${t.periodo_ini} - ${t.periodo_fim}`,
       status: t.status,
-      entryCount: entries.length,
+      entryCount: hoursCalc.entriesProcessed,
       submittedAt: t.created_at,
       approvedAt: t.updated_at,
-      totalHours,
-      totalMinutes
+      totalHours: hoursCalc.totalHours,
+      totalMinutes: hoursCalc.totalMinutes,
+      breakDeducted: hoursCalc.breakMinutesDeducted,
+      normalHours: hoursCalc.breakdown.normalHours,
+      extraHours: hoursCalc.breakdown.extraHours,
+      holidayHours: hoursCalc.breakdown.holidayHours
     };
   });
 
+  // Filter out timesheets with no entries (only include those with entryCount > 0)
+  const items = allItems.filter(item => item.entryCount > 0);
+
   const totalHours = items.reduce((sum, item) => sum + (item.totalHours || 0), 0);
-  const averageHours = timesheets.length > 0 ? Math.round((totalHours / timesheets.length) * 100) / 100 : 0;
+  const averageHours = items.length > 0 ? Math.round((totalHours / items.length) * 100) / 100 : 0;
 
   // Helper function to check status (supports both English and Portuguese)
   const isStatus = (status: string, ...values: string[]) => {
@@ -265,15 +496,25 @@ export function generateSummaryReport(
 }
 
 /**
- * Generate detailed report with hour calculations
+ * Generate detailed report with hour calculations and work mode support
  */
 export function generateDetailedReport(
   timesheets: TimesheetBasic[],
-  filters: ReportFilters
+  filters: ReportFilters,
+  workModeConfig?: WorkModeConfig
 ): DetailedReport {
-  const items = timesheets.map(t => {
+  // Use default standard mode if not provided (backward compatibility)
+  const config: WorkModeConfig = workModeConfig || {
+    mode: 'standard',
+    breakRules: {
+      minHoursForBreak: 6,
+      breakDuration: 60
+    }
+  };
+
+  const allItems = timesheets.map(t => {
     const entries = t.entries || [];
-    const totalHours = calculateTotalHours(entries);
+    const hoursCalc = calculateWorkedHours(entries, config);
 
     return {
       timesheet: {
@@ -285,9 +526,14 @@ export function generateDetailedReport(
         vesselId: t.employee?.vessel_id,
         period: `${t.periodo_ini} - ${t.periodo_fim}`,
         status: t.status,
-        entryCount: entries.length,
+        entryCount: hoursCalc.entriesProcessed,
         submittedAt: t.created_at,
-        totalHours
+        totalHours: hoursCalc.totalHours,
+        totalMinutes: hoursCalc.totalMinutes,
+        breakDeducted: hoursCalc.breakMinutesDeducted,
+        normalHours: hoursCalc.breakdown.normalHours,
+        extraHours: hoursCalc.breakdown.extraHours,
+        holidayHours: hoursCalc.breakdown.holidayHours
       },
       entries: entries.map(entry => ({
         ...entry,
@@ -297,6 +543,9 @@ export function generateDetailedReport(
       approvals: t.approvals || [],
     };
   });
+
+  // Filter out timesheets with no entries (only include those with entryCount > 0)
+  const items = allItems.filter(item => item.timesheet.entryCount > 0);
 
   return {
     title: 'Timesheet Detailed Report',
@@ -312,11 +561,12 @@ export function generateDetailedReport(
 export function generateReports(
   timesheets: TimesheetBasic[],
   filters: ReportFilters,
-  userRole: string
+  userRole: string,
+  workModeConfig?: WorkModeConfig
 ): { summary: SummaryReport; detailed: DetailedReport } {
   // Apply role-based filtering for collaborator
   let filteredTimesheets = timesheets;
-  
+
   if (userRole === 'COLABORADOR') {
     if (filters.employeeId) {
       filteredTimesheets = timesheets.filter(t => t.employee_id === filters.employeeId);
@@ -324,10 +574,10 @@ export function generateReports(
       filteredTimesheets = [];
     }
   }
-  
+
   return {
-    summary: generateSummaryReport(filteredTimesheets, filters),
-    detailed: generateDetailedReport(filteredTimesheets, filters)
+    summary: generateSummaryReport(filteredTimesheets, filters, workModeConfig),
+    detailed: generateDetailedReport(filteredTimesheets, filters, workModeConfig)
   };
 }
 
@@ -402,9 +652,10 @@ export function reportToCSV(report: SummaryReport | DetailedReport): string {
  */
 export function generateGroupedByEmployeeReport(
   timesheets: TimesheetBasic[],
-  filters: ReportFilters
+  filters: ReportFilters,
+  workModeConfig?: WorkModeConfig
 ): SummaryReport {
-  const report = generateSummaryReport(timesheets, filters);
+  const report = generateSummaryReport(timesheets, filters, workModeConfig);
 
   // Group items by employee
   const employeeGroups = new Map<string, ReportEntry[]>();
@@ -449,9 +700,10 @@ export function generateGroupedByEmployeeReport(
  */
 export function generateGroupedByVesselReport(
   timesheets: TimesheetBasic[],
-  filters: ReportFilters
+  filters: ReportFilters,
+  workModeConfig?: WorkModeConfig
 ): SummaryReport {
-  const report = generateSummaryReport(timesheets, filters);
+  const report = generateSummaryReport(timesheets, filters, workModeConfig);
 
   // Group items by vessel
   const vesselGroups = new Map<string, ReportEntry[]>();

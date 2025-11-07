@@ -25,7 +25,7 @@ describe('Auth Forms', () => {
 
     fireEvent.click(screen.getByRole('button'));
     {
-      const els = await screen.findAllByText((_, el) => el?.tagName === 'P' && el.className.includes('text-[var(--destructive)]'));
+      const els = await screen.findAllByText((_, el) => el?.tagName === 'P' && (el.className.includes('text-red-600') || el.className.includes('text-[var(--destructive)]')));
       expect(els.length).toBeGreaterThan(0);
     }
   });

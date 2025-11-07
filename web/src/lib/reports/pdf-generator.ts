@@ -1,5 +1,6 @@
 import { SummaryReport, DetailedReport } from './generator';
 import { getReportTranslations, translateStatus, formatDate, formatDateOnly, ReportLocale } from './translations';
+import PDFDocument from 'pdfkit';
 
 interface PDFGenerationOptions {
   companyName?: string;
@@ -47,6 +48,8 @@ export function generateReportHTML(
           <td>${item.period}</td>
           <td><span class="status status-${item.status}">${translateStatus(item.status, locale)}</span></td>
           <td class="text-center">${item.entryCount}</td>
+          <td class="text-right">${(item.normalHours || 0).toFixed(2)}h</td>
+          <td class="text-right">${(item.extraHours || 0).toFixed(2)}h</td>
           <td class="text-right">${(item.totalHours || 0).toFixed(2)}h</td>
         </tr>
       `
@@ -369,6 +372,8 @@ export function generateReportHTML(
             <th>${t.period}</th>
             <th>${t.status}</th>
             <th class="text-center">${t.entries}</th>
+            <th class="text-right">${t.normalHours}</th>
+            <th class="text-right">${t.extraHours}</th>
             <th class="text-right">${t.totalHours}</th>
           `
               : `
@@ -397,40 +402,154 @@ export function generateReportHTML(
 }
 
 /**
- * Generate PDF from report using Puppeteer
+ * Generate PDF from report using Puppeteer (more reliable for standalone builds)
  */
 export async function generateReportPDF(
   report: SummaryReport | DetailedReport,
   options: PDFGenerationOptions = {}
 ): Promise<Buffer> {
-  const html = generateReportHTML(report, options);
-  
-  // Dynamic import to avoid bundling issues
-  const puppeteer = await import('puppeteer');
-  
-  const browser = await puppeteer.default.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  try {
+    return await generateReportPDFWithPuppeteer(report, options);
+  } catch (error) {
+    console.warn('[PDF] Puppeteer failed, falling back to PDFKit:', error);
+    return await generateReportPDFWithPDFKit(report, options);
+  }
+}
+
+/**
+ * Generate PDF using Puppeteer browser automation
+ */
+async function generateReportPDFWithPuppeteer(
+  report: SummaryReport | DetailedReport,
+  options: PDFGenerationOptions = {}
+): Promise<Buffer> {
+  const puppeteer = require('puppeteer');
+  const browser = await puppeteer.launch({
     headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
-  
+
   try {
     const page = await browser.newPage();
+
+    // Generate HTML content
+    const html = generateReportHTML(report, options);
+
     await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    const pdf = await page.pdf({
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: {
-        top: '10mm',
-        right: '10mm',
-        bottom: '10mm',
-        left: '10mm',
-      },
+        top: '50px',
+        right: '50px',
+        bottom: '50px',
+        left: '50px'
+      }
     });
-    
-    return Buffer.from(pdf);
+
+    return pdfBuffer;
   } finally {
     await browser.close();
   }
 }
 
+/**
+ * Generate PDF from report using PDFKit (fallback)
+ */
+async function generateReportPDFWithPDFKit(
+  report: SummaryReport | DetailedReport,
+  options: PDFGenerationOptions = {}
+): Promise<Buffer> {
+  const {
+    companyName = 'PontoFlow',
+    employeeName = '',
+    employeeId = '',
+    locale = 'pt-BR',
+  } = options;
+
+  const t = getReportTranslations(locale);
+  const PDFDocument = require('pdfkit');
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+  // Create a buffer to store the PDF
+  const chunks: Buffer[] = [];
+  doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+  const pdfPromise = new Promise<Buffer>((resolve) => {
+    doc.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+  });
+
+  // Add content to the PDF
+  doc.fontSize(18).text(companyName, { align: 'left' });
+  doc.moveDown(0.5);
+  doc.fontSize(12).text(t.summaryReportTitle, { align: 'left' });
+  doc.moveDown(0.5);
+  doc.fontSize(10).text(`Generated: ${formatDate(new Date(), locale)}`, { align: 'left' });
+  doc.moveDown();
+
+  if (employeeName || employeeId) {
+    doc.fontSize(12).text('Employee Information:', { underline: true });
+    if (employeeName) doc.text(`Name: ${employeeName}`);
+    if (employeeId) doc.text(`ID: ${employeeId}`);
+    doc.moveDown();
+  }
+
+  const isSummary = 'summary' in report;
+
+  if (isSummary) {
+    const summary = (report as SummaryReport).summary;
+    doc.fontSize(12).text('Summary:', { underline: true });
+    doc.text(`Total: ${summary.totalTimesheets}`);
+    doc.text(`Approved: ${summary.approved}`);
+    doc.text(`Pending: ${summary.pending}`);
+    doc.text(`Rejected: ${summary.rejected}`);
+    doc.moveDown();
+  }
+
+  // Add table header
+  doc.fontSize(12).text('Data', 50, doc.y, { width: 100, align: 'left' });
+  doc.text('Period', 150, doc.y, { width: 100, align: 'left' });
+  doc.text('Status', 250, doc.y, { width: 100, align: 'left' });
+  doc.text('Entries', 350, doc.y, { width: 100, align: 'left' });
+  doc.text('Total Hours', 450, doc.y, { width: 100, align: 'left' });
+  doc.moveDown();
+
+  // Add table data
+  if (isSummary) {
+    const summaryReport = report as SummaryReport;
+    summaryReport.items.forEach((item) => {
+      doc.fontSize(10).text(item.employeeName, 50, doc.y, { width: 100, align: 'left' });
+      doc.text(item.period, 150, doc.y, { width: 100, align: 'left' });
+      doc.text(translateStatus(item.status, locale), 250, doc.y, { width: 100, align: 'left' });
+      doc.text(item.entryCount.toString(), 350, doc.y, { width: 100, align: 'left' });
+      doc.text(`${(item.totalHours || 0).toFixed(2)}h`, 450, doc.y, { width: 100, align: 'left' });
+      doc.moveDown();
+    });
+  } else {
+    const detailedReport = report as DetailedReport;
+    detailedReport.items.forEach((item) => {
+      doc.fontSize(11).text(`${item.timesheet.employeeName} - ${item.timesheet.period}`, { underline: true });
+      doc.moveDown(0.5);
+      item.entries.forEach((entry) => {
+        doc.fontSize(9).text(formatDateOnly(entry.data, locale), 50, doc.y, { width: 100, align: 'left' });
+        doc.text(entry.hora_ini || '-', 150, doc.y, { width: 100, align: 'left' });
+        doc.text(entry.hora_fim || '-', 250, doc.y, { width: 100, align: 'left' });
+        doc.text(entry.tipo || '-', 350, doc.y, { width: 100, align: 'left' });
+        doc.text(entry.observacao || '-', 450, doc.y, { width: 100, align: 'left' });
+        doc.moveDown();
+      });
+      doc.moveDown();
+    });
+  }
+
+  // Add footer
+  doc.moveDown();
+  doc.fontSize(8).text(`${t.autoGenerated} ${companyName}`, 50, doc.page.height - 50, { align: 'center' });
+
+  doc.end();
+
+  return await pdfPromise;
+}

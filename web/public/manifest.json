@@ -1,0 +1,20 @@
+{
+  "name": "PontoFlow - Time Sheet Manager",
+  "short_name": "PontoFlow",
+  "description": "A comprehensive time sheet management system.",
+  "start_url": "/pt-BR/dashboard",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#005dff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/brand/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "lang": "pt-BR"
+}

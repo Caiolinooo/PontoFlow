@@ -110,7 +110,13 @@ export default function ReportTable({ report, loading, labels, onExport }: Props
               <th className="py-2 px-3">{labels.period || 'Period'}</th>
               <th className="py-2 px-3">{labels.status || 'Status'}</th>
               <th className="py-2 px-3">{labels.entries || 'Entries'}</th>
-              {isSummary && <th className="py-2 px-3">{labels.totalHours || 'Hours'}</th>}
+              {isSummary && (
+                <>
+                  <th className="py-2 px-3 text-right">{labels.normalHours || 'Normal Hours'}</th>
+                  <th className="py-2 px-3 text-right">{labels.extraHours || 'Extra Hours'}</th>
+                  <th className="py-2 px-3 text-right">{labels.totalHours || 'Total Hours'}</th>
+                </>
+              )}
               {!isSummary && <th className="py-2 px-3">{labels.details || 'Details'}</th>}
             </tr>
           </thead>
@@ -126,7 +132,13 @@ export default function ReportTable({ report, loading, labels, onExport }: Props
                     </span>
                   </td>
                   <td className="py-2 px-3">{item.entryCount}</td>
-                  <td className="py-2 px-3 font-medium">
+                  <td className="py-2 px-3 text-right font-medium">
+                    {(item.normalHours || 0).toFixed(1)}h
+                  </td>
+                  <td className="py-2 px-3 text-right font-medium">
+                    {(item.extraHours || 0).toFixed(1)}h
+                  </td>
+                  <td className="py-2 px-3 text-right font-medium">
                     {(item.totalHours || 0).toFixed(1)}h
                   </td>
                 </tr>

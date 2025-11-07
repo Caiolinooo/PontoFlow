@@ -11,6 +11,17 @@ interface Period {
   isCurrent: boolean;
 }
 
+interface Vessel {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
+interface Group {
+  id: string;
+  name: string;
+}
+
 interface Props {
   onFilter: (filters: ReportFilters) => void;
   labels: Record<string, string>;
@@ -19,6 +30,10 @@ interface Props {
   currentPeriod?: Period | null;
   userRole?: 'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER' | 'TENANT_ADMIN';
   restrictEmployeeSearch?: boolean;
+  availableVessels?: Vessel[];
+  availableGroups?: Group[];
+  hideVesselFilter?: boolean;
+  hideGroupFilter?: boolean;
 }
 
 export default function ReportFiltersComponent({
@@ -29,6 +44,10 @@ export default function ReportFiltersComponent({
   currentPeriod = null,
   userRole = 'USER',
   restrictEmployeeSearch = false,
+  availableVessels = [],
+  availableGroups = [],
+  hideVesselFilter = true,
+  hideGroupFilter = true,
 }: Props) {
   const [filters, setFilters] = React.useState<ReportFilters>({});
   const [loading, setLoading] = React.useState(false);
@@ -165,8 +184,8 @@ export default function ReportFiltersComponent({
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
       <h3 className="font-semibold mb-4 text-[var(--card-foreground)]">{labels.filters || 'Filters'}</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Year Selector */}
         <div>
           <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
@@ -227,6 +246,48 @@ export default function ReportFiltersComponent({
             <option value="bloqueado">{labels.locked || 'Locked'}</option>
           </select>
         </div>
+
+        {/* Vessel/Environment Filter */}
+        {!hideVesselFilter && availableVessels.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
+              {labels.vessel || 'Vessel/Environment'}
+            </label>
+            <select
+              value={filters.vesselId || ''}
+              onChange={(e) => handleChange('vesselId' as keyof ReportFilters, e.target.value)}
+              className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
+            >
+              <option value="">{labels.allVessels || 'All Vessels'}</option>
+              {availableVessels.map((vessel) => (
+                <option key={vessel.id} value={vessel.id}>
+                  {vessel.code ? `${vessel.code} - ${vessel.name}` : vessel.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Group Filter */}
+        {!hideGroupFilter && availableGroups.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted-foreground)]">
+              {labels.group || 'Group'}
+            </label>
+            <select
+              value={filters.groupId || ''}
+              onChange={(e) => handleChange('groupId' as keyof ReportFilters, e.target.value)}
+              className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
+            >
+              <option value="">{labels.allGroups || 'All Groups'}</option>
+              {availableGroups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Employee Search */}
         <div className="relative">

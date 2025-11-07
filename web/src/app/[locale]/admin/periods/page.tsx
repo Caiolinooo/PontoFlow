@@ -5,15 +5,6 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSelectorModal';
 
-function toISO(y: number, m: number) {
-  const mm = `${m}`.padStart(2, '0');
-  return `${y}-${mm}-01`;
-}
-
-function monthLabel(d: Date) {
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-}
-
 export default function AdminPeriodsPage() {
   const t = useTranslations('admin.periods');
   const params = useParams();
@@ -47,16 +38,92 @@ export default function AdminPeriodsPage() {
   const [groupLocks, setGroupLocks] = useState<Record<string, { locked: boolean; reason?: string | null }>>({});
   const [groupError, setGroupError] = useState<string | null>(null);
 
-  // Build last 12 months starting current
-  const months = useMemo(() => {
-    const out: { key: string; label: string }[] = [];
-    const now = new Date();
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      out.push({ key: toISO(d.getFullYear(), d.getMonth() + 1), label: monthLabel(d) });
-    }
-    return out;
+  // State for tenant settings
+  const [deadlineDay, setDeadlineDay] = useState<number>(0);
+  const [periods, setPeriods] = useState<Array<{ key: string; label: string; startDate: string; endDate: string }>>([]);
+
+  // Fetch tenant settings and calculate periods
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetch('/api/admin/tenant-settings', { cache: 'no-store' });
+        if (resp.ok) {
+          const data = await resp.json();
+          const deadline = data.settings?.deadline_day ?? 0;
+          setDeadlineDay(deadline);
+
+          // Calculate periods based on deadline_day
+          const calculatedPeriods = calculatePeriodsForAdmin(deadline);
+          setPeriods(calculatedPeriods);
+        } else {
+          // Fallback to calendar months if settings fetch fails
+          const calculatedPeriods = calculatePeriodsForAdmin(0);
+          setPeriods(calculatedPeriods);
+        }
+      } catch (error) {
+        console.error('Error fetching tenant settings:', error);
+        // Fallback to calendar months
+        const calculatedPeriods = calculatePeriodsForAdmin(0);
+        setPeriods(calculatedPeriods);
+      }
+    })();
   }, []);
+
+  // Calculate periods for admin page (last 12 periods)
+  function calculatePeriodsForAdmin(deadlineDay: number): Array<{ key: string; label: string; startDate: string; endDate: string }> {
+    const out: Array<{ key: string; label: string; startDate: string; endDate: string }> = [];
+    const now = new Date();
+
+    for (let i = 0; i < 12; i++) {
+      const referenceDate = new Date(now.getFullYear(), now.getMonth() - i, 15); // Use mid-month as reference
+      const period = calculatePeriodForDate(referenceDate, deadlineDay);
+      out.push(period);
+    }
+
+    return out;
+  }
+
+  // Calculate period for a specific date based on deadline_day
+  function calculatePeriodForDate(date: Date, deadlineDay: number): { key: string; label: string; startDate: string; endDate: string } {
+    let periodStart: Date;
+    let periodEnd: Date;
+
+    if (deadlineDay >= 1 && deadlineDay <= 28) {
+      const dateDay = date.getDate();
+      const dateMonth = date.getMonth();
+      const dateYear = date.getFullYear();
+
+      if (dateDay >= deadlineDay) {
+        // Date is after deadline, period started this month
+        periodStart = new Date(dateYear, dateMonth, deadlineDay);
+        periodEnd = new Date(dateYear, dateMonth + 1, deadlineDay - 1);
+      } else {
+        // Date is before deadline, period started last month
+        periodStart = new Date(dateYear, dateMonth - 1, deadlineDay);
+        periodEnd = new Date(dateYear, dateMonth, deadlineDay - 1);
+      }
+    } else {
+      // Default to calendar month (deadline_day = 0 means last day of month)
+      periodStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      periodEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    }
+
+    const startStr = periodStart.toISOString().split('T')[0];
+    const endStr = periodEnd.toISOString().split('T')[0];
+    const periodKey = `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, '0')}-01`;
+
+    // Create readable label
+    const startLabel = periodStart.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+    const endLabel = periodEnd.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+    const label = `${startLabel} - ${endLabel}`;
+
+    return {
+      key: periodKey,
+      label,
+      startDate: startStr,
+      endDate: endStr
+    };
+  }
 
   useEffect(() => {
     (async () => {
@@ -352,7 +419,7 @@ export default function AdminPeriodsPage() {
             </tr>
           </thead>
           <tbody>
-            {months.map(m => {
+            {periods.map(m => {
               const st = locks[m.key];
               const locked = !!st?.locked;
               return (
@@ -433,7 +500,7 @@ export default function AdminPeriodsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {months.map(m => {
+                  {periods.map(m => {
                     const st = envLocks[m.key];
                     const locked = !!st?.locked;
                     return (
@@ -518,7 +585,7 @@ export default function AdminPeriodsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {months.map(m => {
+                  {periods.map(m => {
                     const st = groupLocks[m.key];
                     const locked = !!st?.locked;
                     return (
@@ -604,7 +671,7 @@ export default function AdminPeriodsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {months.map(m => {
+                  {periods.map(m => {
                     const st = empLocks[m.key];
                     const locked = !!st?.locked;
                     return (

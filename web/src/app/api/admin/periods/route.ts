@@ -189,8 +189,11 @@ export async function POST(req: NextRequest) {
     const targetMonth = raw || new Date().toISOString().slice(0, 7); // Use current month if not provided
     const periodBoundaries = calculatePeriodBoundaries(tenantTimezone, deadlineDay, targetMonth);
 
+    // Use service client to bypass RLS for admin operations
+    const serviceClient = getServiceSupabase();
+
     // Upsert lock for tenant+period using actual period boundaries
-    const { data: existing } = await supabase
+    const { data: existing } = await serviceClient
       .from('period_locks')
       .select('id')
       .eq('tenant_id', tenantId)
@@ -198,13 +201,13 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (existing?.id) {
-      const { error } = await supabase
+      const { error } = await serviceClient
         .from('period_locks')
         .update({ locked, reason })
         .eq('id', existing.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     } else {
-      const { error } = await supabase
+      const { error } = await serviceClient
         .from('period_locks')
         .insert({
           tenant_id: tenantId,

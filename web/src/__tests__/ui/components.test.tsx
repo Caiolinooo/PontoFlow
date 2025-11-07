@@ -136,7 +136,7 @@ describe('UI Components', () => {
       );
 
       const confirmButton = screen.getByText('Confirm');
-      expect(confirmButton).toHaveClass('bg-red-600');
+      expect(confirmButton).toHaveClass('bg-[var(--destructive)]');
     });
   });
 

@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import TimesheetCalendar from '@/components/employee/TimesheetCalendar';
 import TenantSelector from '@/components/employee/TenantSelector';
 import { getTranslations } from 'next-intl/server';
+import { calculateCurrentTimesheetPeriod } from '@/lib/periods/calculator';
 
 export default async function TimesheetsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -36,13 +37,20 @@ export default async function TimesheetsPage({ params }: { params: Promise<{ loc
     redirect(`/${locale}/employee/bootstrap`);
   }
 
-  // Get or create current month timesheet
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const periodo_ini = `${year}-${String(month).padStart(2, '0')}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
-  const periodo_fim = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  // Get tenant settings for deadline_day and timezone
+  const { data: tenantSettings } = await supabase
+    .from('tenant_settings')
+    .select('deadline_day, timezone')
+    .eq('tenant_id', selectedTenantId)
+    .maybeSingle();
+
+  const deadlineDay = tenantSettings?.deadline_day ?? 0; // Default: 0 (last day of month)
+  const tenantTimezone = tenantSettings?.timezone ?? 'America/Sao_Paulo';
+
+  // Calculate current period based on tenant's deadline_day configuration
+  const currentPeriod = calculateCurrentTimesheetPeriod(tenantTimezone, deadlineDay);
+  const periodo_ini = currentPeriod.startDate;
+  const periodo_fim = currentPeriod.endDate;
 
   let { data: timesheet } = await supabase
     .from('timesheets')

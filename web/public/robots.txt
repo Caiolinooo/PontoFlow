@@ -1,0 +1,8 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow crawling of admin routes for security reasons
+Disallow: /api/admin/
+Disallow: /admin/
+Disallow: /_next/static/

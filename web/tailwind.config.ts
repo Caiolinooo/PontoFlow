@@ -1,13 +1,12 @@
-import type { Config } from 'tailwindcss';
-
-// Tailwind v4: opt-in to class-based dark mode so ThemeToggle works
+// Tailwind v4: Configuration is done via CSS, this file is kept for compatibility
+// Dark mode is configured via class-based approach in globals.css
 export default {
   darkMode: 'class',
   content: [
     './src/**/*.{ts,tsx}',
-    './messages/**/*.{json}',
+    './messages/**/*.json',
     './public/**/*.{html,svg}',
   ],
   theme: {},
-} satisfies Config;
+};
 

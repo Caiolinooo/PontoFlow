@@ -14,6 +14,17 @@ interface AvailablePeriod {
   isCurrent: boolean;
 }
 
+interface Vessel {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
+interface Group {
+  id: string;
+  name: string;
+}
+
 interface ReportsClientProps {
   userRole: 'ADMIN' | 'MANAGER' | 'MANAGER_TIMESHEET' | 'USER' | 'TENANT_ADMIN';
 }
@@ -29,6 +40,10 @@ export default function ReportsClient({ userRole }: ReportsClientProps) {
   const [availableYears, setAvailableYears] = React.useState<number[]>([]);
   const [availablePeriods, setAvailablePeriods] = React.useState<AvailablePeriod[]>([]);
   const [currentPeriod, setCurrentPeriod] = React.useState<AvailablePeriod | null>(null);
+  const [availableVessels, setAvailableVessels] = React.useState<Vessel[]>([]);
+  const [availableGroups, setAvailableGroups] = React.useState<Group[]>([]);
+  const [hideVesselFilter, setHideVesselFilter] = React.useState(true);
+  const [hideGroupFilter, setHideGroupFilter] = React.useState(true);
 
   // Check if user is a regular user (not manager/admin)
   const isRegularUser = userRole === 'USER';
@@ -57,6 +72,25 @@ export default function ReportsClient({ userRole }: ReportsClientProps) {
     fetchAvailablePeriods();
   }, []);
 
+  // Fetch available vessels and groups on mount
+  React.useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const res = await fetch('/api/reports/filter-options');
+        if (!res.ok) return;
+        const data = await res.json();
+        setAvailableVessels(data.vessels || []);
+        setAvailableGroups(data.groups || []);
+        setHideVesselFilter(data.hideVesselFilter ?? true);
+        setHideGroupFilter(data.hideGroupFilter ?? true);
+      } catch (err) {
+        console.error('Error fetching filter options:', err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, []);
+
   const handleFilter = async (filters: ReportFilters) => {
     setLoading(true);
     setCurrentFilters(filters);
@@ -68,6 +102,8 @@ export default function ReportsClient({ userRole }: ReportsClientProps) {
       if (filters.endDate) params.set('endDate', filters.endDate);
       if (filters.status) params.set('status', filters.status);
       if (filters.employeeId) params.set('employeeId', filters.employeeId);
+      if (filters.vesselId) params.set('vesselId', filters.vesselId);
+      if (filters.groupId) params.set('groupId', filters.groupId);
 
       const res = await fetch(`/api/reports/generate?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to generate report');
@@ -100,6 +136,8 @@ export default function ReportsClient({ userRole }: ReportsClientProps) {
       if (currentFilters.endDate) params.set('endDate', currentFilters.endDate);
       if (currentFilters.status) params.set('status', currentFilters.status);
       if (currentFilters.employeeId) params.set('employeeId', currentFilters.employeeId);
+      if (currentFilters.vesselId) params.set('vesselId', currentFilters.vesselId);
+      if (currentFilters.groupId) params.set('groupId', currentFilters.groupId);
 
       const res = await fetch(`/api/reports/export?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to export report');
@@ -153,6 +191,8 @@ export default function ReportsClient({ userRole }: ReportsClientProps) {
     period: t('reports.period') || 'Period',
     details: t('reports.details') || 'Details',
     totalHours: t('reports.totalHours') || 'Total Hours',
+    normalHours: t('reports.normalHours') || 'Normal Hours',
+    extraHours: t('reports.extraHours') || 'Extra Hours',
     averageHours: t('reports.averageHours') || 'Avg Hours',
     summary: t('reports.summary') || 'Summary',
     detailed: t('reports.detailed') || 'Detailed',
@@ -170,6 +210,13 @@ export default function ReportsClient({ userRole }: ReportsClientProps) {
     scopeRejected: t('reports.scopeRejected') || 'Rejected Only',
     scopeByEmployee: t('reports.scopeByEmployee') || 'By Employee',
     scopeByVessel: t('reports.scopeByVessel') || 'By Vessel',
+    vessel: t('reports.vessel') || 'Vessel/Environment',
+    allVessels: t('reports.allVessels') || 'All Vessels',
+    group: t('reports.group') || 'Group',
+    allGroups: t('reports.allGroups') || 'All Groups',
+    restricted: t('reports.restricted') || 'Restricted',
+    ownRecordOnly: t('reports.ownRecordOnly') || 'Your own record only',
+    employeeSearchRestricted: t('reports.employeeSearchRestricted') || 'Employee search restricted to managers and admins',
   };
 
   return (
@@ -344,6 +391,10 @@ export default function ReportsClient({ userRole }: ReportsClientProps) {
         currentPeriod={currentPeriod}
         userRole={userRole}
         restrictEmployeeSearch={!canAccessIndividualEmployeeFiltering}
+        availableVessels={availableVessels}
+        availableGroups={availableGroups}
+        hideVesselFilter={hideVesselFilter}
+        hideGroupFilter={hideGroupFilter}
       />
 
       {/* Report Table */}

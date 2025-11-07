@@ -15,12 +15,12 @@ type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm',
-  secondary: 'bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm',
-  danger: 'bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm',
-  success: 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 shadow-sm',
-  ghost: 'bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50',
-  outline: 'bg-transparent border-2 border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50',
+  primary: 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm hover-lift button-ripple animate-gentle-fade-in',
+  secondary: 'bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm hover-lift button-ripple animate-gentle-fade-in',
+  danger: 'bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90 disabled:opacity-50 shadow-sm hover-lift button-ripple animate-gentle-fade-in',
+  success: 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 shadow-sm hover-lift button-ripple animate-gentle-fade-in',
+  ghost: 'bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50 hover-smooth animate-gentle-fade-in',
+  outline: 'bg-transparent border-2 border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--muted)] disabled:opacity-50 hover-smooth animate-gentle-fade-in',
 };
 
 const sizes: Record<Size, string> = {
@@ -50,9 +50,9 @@ export default function Button({
       aria-disabled={loading || rest.disabled}
       className={`
         inline-flex items-center justify-center gap-2 rounded-lg font-medium
-        transition-all duration-200
+        transition-all duration-300 transform-gpu
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2
-        disabled:cursor-not-allowed active:scale-95
+        disabled:cursor-not-allowed active:scale-95 hover:scale-105
         ${variants[variant]}
         ${sizes[size]}
         ${fullWidth ? 'w-full' : ''}

@@ -24,13 +24,19 @@ export default function LoadingSpinner({
   };
 
   const spinner = (
-    <div className={`flex flex-col items-center justify-center gap-2 ${className}`}>
-      <div
-        className={`${sizeClasses[size]} border-[var(--muted)] border-t-[var(--primary)] rounded-full animate-spin`}
-        role="status"
-        aria-label={label || 'Loading'}
-        aria-busy="true"
-      />
+    <div className={`flex flex-col items-center justify-center gap-3 ${className} animate-gentle-fade-in`}>
+      <div className="relative">
+        <div
+          className={`${sizeClasses[size]} border-[var(--muted)] border-t-[var(--primary)] rounded-full animate-spin`}
+          role="status"
+          aria-label={label || 'Loading'}
+          aria-busy="true"
+        />
+        <div
+          className={`${sizeClasses[size]} border-[var(--muted)] border-r-[var(--primary)]/30 rounded-full animate-spin absolute top-0 left-0`}
+          style={{ animationDelay: '0.15s', animationDirection: 'reverse' }}
+        />
+      </div>
       {label && (
         <p className="text-sm text-[var(--muted-foreground)] animate-pulse">
           {label}
@@ -41,7 +47,7 @@ export default function LoadingSpinner({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 bg-[var(--background)]/80 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-[var(--background)]/90 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in">
         {spinner}
       </div>
     );

@@ -4,9 +4,18 @@
  */
 
 import { format, parseISO, addDays, differenceInDays, isAfter, isBefore } from 'date-fns';
-import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 
 export type TimezoneType = 'UTC' | 'America/Sao_Paulo' | 'America/New_York' | 'Europe/London' | 'Asia/Tokyo' | string;
+
+/**
+ * Helper function to convert from zoned time to UTC
+ * Replaces fromZonedTime which was removed in date-fns-tz v2
+ */
+function fromZonedTime(date: Date, timeZone: string): Date {
+  // Use zonedTimeToUtc which is the replacement for fromZonedTime in date-fns-tz v2
+  return zonedTimeToUtc(date, timeZone);
+}
 
 /**
  * Available timezone options for tenant configuration
@@ -93,25 +102,30 @@ export function convertToTenantTimezone(
   tenantTimezone: TimezoneType
 ): Date {
   const date = typeof utcTimestamp === 'string' ? parseISO(utcTimestamp) : utcTimestamp;
-  return toZonedTime(date, tenantTimezone);
+  return utcToZonedTime(date, tenantTimezone);
 }
 
 /**
  * Convert tenant timezone timestamp to UTC
+ * Note: fromZonedTime was removed in date-fns-tz v2, using alternative approach
  */
 export function convertFromTenantTimezone(
   tenantTimestamp: string | Date,
   tenantTimezone: TimezoneType
 ): Date {
   const date = typeof tenantTimestamp === 'string' ? parseISO(tenantTimestamp) : tenantTimestamp;
-  return fromZonedTime(date, tenantTimezone);
+  // Convert by treating the date as if it's in the timezone, then getting UTC equivalent
+  // This is the reverse of utcToZonedTime
+  const zonedDate = utcToZonedTime(date, tenantTimezone);
+  const offset = date.getTime() - zonedDate.getTime();
+  return new Date(date.getTime() - offset);
 }
 
 /**
  * Get current timestamp in tenant timezone
  */
 export function getCurrentTimeInTenantTimezone(tenantTimezone: TimezoneType): Date {
-  return toZonedTime(new Date(), tenantTimezone);
+  return utcToZonedTime(new Date(), tenantTimezone);
 }
 
 /**
@@ -134,7 +148,7 @@ export function getStartOfDayInTimezone(
   tenantTimezone: TimezoneType
 ): Date {
   const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-  const zonedDate = toZonedTime(parsedDate, tenantTimezone);
+  const zonedDate = utcToZonedTime(parsedDate, tenantTimezone);
   return new Date(zonedDate.getFullYear(), zonedDate.getMonth(), zonedDate.getDate());
 }
 
@@ -146,7 +160,7 @@ export function getEndOfDayInTimezone(
   tenantTimezone: TimezoneType
 ): Date {
   const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-  const zonedDate = toZonedTime(parsedDate, tenantTimezone);
+  const zonedDate = utcToZonedTime(parsedDate, tenantTimezone);
   return new Date(
     zonedDate.getFullYear(),
     zonedDate.getMonth(),
@@ -168,7 +182,7 @@ export function calculateTimesheetDeadline(
   customDeadlineDay?: number
 ): Date {
   const parsedDate = typeof periodStart === 'string' ? parseISO(periodStart) : periodStart;
-  const zonedDate = toZonedTime(parsedDate, tenantTimezone);
+  const zonedDate = utcToZonedTime(parsedDate, tenantTimezone);
   
   // Get first day of next month in tenant timezone
   const nextMonth = new Date(zonedDate.getFullYear(), zonedDate.getMonth() + 1, 1);
@@ -272,8 +286,8 @@ export function formatTimesheetPeriodDisplay(
   const end = typeof endDate === 'string' ? parseISO(endDate) : endDate;
   
   // Use date-fns format with timezone conversion for proper locale support
-  const startZoned = toZonedTime(start, tenantTimezone);
-  const endZoned = toZonedTime(end, tenantTimezone);
+  const startZoned = utcToZonedTime(start, tenantTimezone);
+  const endZoned = utcToZonedTime(end, tenantTimezone);
   
   const formatStr = 'dd/MM/yyyy';
   

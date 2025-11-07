@@ -10,7 +10,8 @@ import {
   generateGroupedByEmployeeReport,
   generateGroupedByVesselReport,
   ReportFilters,
-  TimesheetBasic
+  TimesheetBasic,
+  WorkModeConfig
 } from '@/lib/reports/generator';
 import {
   convertToTenantTimezone,
@@ -39,6 +40,8 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('endDate');
     const status = searchParams.get('status');
     const employeeIdParam = searchParams.get('employeeId') || undefined;
+    const vesselIdParam = searchParams.get('vesselId') || undefined;
+    const groupIdParam = searchParams.get('groupId') || undefined;
 
     // Validate and sanitize input parameters
     const validation = validateReportParameters({
@@ -145,8 +148,46 @@ export async function GET(req: NextRequest) {
       console.warn('[REPORTS] Could not fetch tenant timezone, using default:', err);
       tenantTimezone = 'America/Sao_Paulo';
     }
-    
+
     console.log('[REPORTS] Tenant timezone:', tenantTimezone);
+
+    // Get tenant work_mode for hours calculation
+    let tenantWorkMode: 'standard' | 'offshore' = 'standard';
+
+    try {
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('work_mode')
+        .eq('id', user.tenant_id)
+        .single();
+
+      if (tenantError && tenantError.code === '42703') {
+        // Column doesn't exist yet - use default
+        console.warn('[REPORTS] Tenant work_mode column missing, using default standard');
+        tenantWorkMode = 'standard';
+      } else if (tenantError) {
+        console.warn('[REPORTS] Error fetching tenant work_mode, using default:', tenantError);
+        tenantWorkMode = 'standard';
+      } else {
+        tenantWorkMode = (tenant?.work_mode as 'standard' | 'offshore') || 'standard';
+      }
+    } catch (err) {
+      console.warn('[REPORTS] Could not fetch tenant work_mode, using default:', err);
+      tenantWorkMode = 'standard';
+    }
+
+    // Create work mode configuration for hours calculation
+    const workModeConfig: WorkModeConfig = tenantWorkMode === 'offshore'
+      ? { mode: 'offshore' }
+      : {
+          mode: 'standard',
+          breakRules: {
+            minHoursForBreak: 6,
+            breakDuration: 60  // 1 hour in minutes
+          }
+        };
+
+    console.log('[REPORTS] Work mode config:', workModeConfig);
 
     // Build query for timesheets - include vessel information
     let query = supabase
@@ -201,10 +242,36 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log('[REPORTS] Found timesheets:', timesheets?.length || 0);
+    // Apply vessel and group filters after fetching (since these are employee-level filters)
+    let filteredTimesheets = timesheets || [];
+
+    if (vesselIdParam && filteredTimesheets.length > 0) {
+      filteredTimesheets = filteredTimesheets.filter((ts: any) => {
+        const emp = Array.isArray(ts.employee) ? ts.employee?.[0] : ts.employee;
+        return emp?.vessel_id === vesselIdParam;
+      });
+      console.log(`[REPORTS] Filtered by vessel ${vesselIdParam}:`, filteredTimesheets.length, 'timesheets');
+    }
+
+    if (groupIdParam && filteredTimesheets.length > 0) {
+      // For group filtering, we need to fetch group members first
+      const { data: groupMembers } = await supabase
+        .from('employee_group_members')
+        .select('employee_id')
+        .eq('group_id', groupIdParam);
+
+      const groupEmployeeIds = new Set(groupMembers?.map(gm => gm.employee_id) || []);
+
+      filteredTimesheets = filteredTimesheets.filter((ts: any) => {
+        return groupEmployeeIds.has(ts.employee_id);
+      });
+      console.log(`[REPORTS] Filtered by group ${groupIdParam}:`, filteredTimesheets.length, 'timesheets');
+    }
+
+    console.log('[REPORTS] Found timesheets after filtering:', filteredTimesheets.length);
 
     // Get profile names for employees
-    const profileIds = timesheets?.flatMap((ts: any) => 
+    const profileIds = filteredTimesheets.flatMap((ts: any) =>
       (ts.employee && Array.isArray(ts.employee) ? ts.employee[0]?.profile_id : ts.employee?.profile_id) || []
     ).filter(Boolean) || [];
     
@@ -224,7 +291,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Normalize timesheets data and sort entries by time
-    const normalizedTimesheets: TimesheetBasic[] = (timesheets || []).map((ts: any) => {
+    const normalizedTimesheets: TimesheetBasic[] = filteredTimesheets.map((ts: any) => {
       const emp = Array.isArray(ts.employee) ? ts.employee?.[0] : ts.employee;
       const displayName = emp?.profile_id ? profileNames[emp.profile_id] : (emp?.name || 'Unknown');
 
@@ -250,7 +317,8 @@ export async function GET(req: NextRequest) {
 
     // Generate reports based on type and scope
     let report;
-    let filteredTimesheets = normalizedTimesheets;
+    // Apply additional scope-based filtering to the already filtered timesheets
+    let finalFilteredTimesheets = [...normalizedTimesheets];
 
     // Log successful access
     await logAccessControl({
@@ -265,7 +333,7 @@ export async function GET(req: NextRequest) {
         reportType: type,
         reportScope: reportScope,
         totalTimesheets: normalizedTimesheets.length,
-        filteredTimesheets: filteredTimesheets.length,
+        filteredTimesheets: finalFilteredTimesheets.length,
         dateRange: validation.sanitized.startDate && validation.sanitized.endDate ?
           `${validation.sanitized.startDate} to ${validation.sanitized.endDate}` : 'all',
         statusFilter: validation.sanitized.status || 'all'
@@ -280,67 +348,67 @@ export async function GET(req: NextRequest) {
     switch (reportScope) {
       case 'approved':
         // Filter only approved timesheets
-        filteredTimesheets = normalizedTimesheets.filter(t =>
+        finalFilteredTimesheets = finalFilteredTimesheets.filter(t =>
           t.status === 'approved' || t.status === 'aprovado'
         );
-        console.log('[REPORTS] Approved timesheets:', filteredTimesheets.length);
+        console.log('[REPORTS] Approved timesheets:', finalFilteredTimesheets.length);
         break;
 
       case 'rejected':
         // Filter only rejected timesheets
-        filteredTimesheets = normalizedTimesheets.filter(t =>
+        finalFilteredTimesheets = finalFilteredTimesheets.filter(t =>
           t.status === 'rejected' || t.status === 'recusado'
         );
-        console.log('[REPORTS] Rejected timesheets:', filteredTimesheets.length);
+        console.log('[REPORTS] Rejected timesheets:', finalFilteredTimesheets.length);
         break;
 
       case 'pending':
         // Filter only pending/submitted timesheets
-        filteredTimesheets = normalizedTimesheets.filter(t =>
+        finalFilteredTimesheets = finalFilteredTimesheets.filter(t =>
           t.status === 'submitted' || t.status === 'enviado'
         );
-        console.log('[REPORTS] Pending timesheets:', filteredTimesheets.length);
+        console.log('[REPORTS] Pending timesheets:', finalFilteredTimesheets.length);
         break;
 
       case 'by-employee':
       case 'by-vessel':
         // These scopes use all timesheets but group differently
-        filteredTimesheets = normalizedTimesheets;
-        console.log('[REPORTS] Grouping scope, using all timesheets:', filteredTimesheets.length);
+        // Already have all normalized timesheets, no additional filtering needed
+        console.log('[REPORTS] Grouping scope, using all timesheets:', finalFilteredTimesheets.length);
         break;
 
       default:
         // 'timesheets' - use all
-        filteredTimesheets = normalizedTimesheets;
-        console.log('[REPORTS] Default scope (all timesheets):', filteredTimesheets.length);
+        // Already have all normalized timesheets, no additional filtering needed
+        console.log('[REPORTS] Default scope (all timesheets):', finalFilteredTimesheets.length);
     }
 
     // Generate report based on scope and type
     if (reportScope === 'by-employee') {
       // Generate employee-grouped report
       if (type === 'summary') {
-        report = generateGroupedByEmployeeReport(filteredTimesheets, filters);
+        report = generateGroupedByEmployeeReport(finalFilteredTimesheets, filters, workModeConfig);
         report.title = 'Timesheet Report - Grouped by Employee';
       } else {
         // For detailed, use regular detailed report
-        const reports = generateReports(filteredTimesheets, filters, user.role);
+        const reports = generateReports(finalFilteredTimesheets, filters, user.role, workModeConfig);
         report = reports.detailed;
         report.title = 'Timesheet Detailed Report - By Employee';
       }
     } else if (reportScope === 'by-vessel') {
       // Generate vessel-grouped report
       if (type === 'summary') {
-        report = generateGroupedByVesselReport(filteredTimesheets, filters);
+        report = generateGroupedByVesselReport(finalFilteredTimesheets, filters, workModeConfig);
         report.title = 'Timesheet Report - Grouped by Vessel';
       } else {
         // For detailed, use regular detailed report with vessel info
-        const reports = generateReports(filteredTimesheets, filters, user.role);
+        const reports = generateReports(finalFilteredTimesheets, filters, user.role, workModeConfig);
         report = reports.detailed;
         report.title = 'Timesheet Detailed Report - By Vessel';
       }
     } else {
       // Generate regular reports for all other scopes
-      const reports = generateReports(filteredTimesheets, filters, user.role);
+      const reports = generateReports(finalFilteredTimesheets, filters, user.role, workModeConfig);
       report = reports[type as keyof typeof reports] || reports.summary;
 
       // Set appropriate title based on scope

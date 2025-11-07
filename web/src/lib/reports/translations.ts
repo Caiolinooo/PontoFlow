@@ -22,6 +22,8 @@ export interface ReportTranslations {
   period: string;
   status: string;
   entries: string;
+  normalHours: string;
+  extraHours: string;
   totalHours: string;
   date: string;
   startTime: string;
@@ -63,6 +65,8 @@ const ptBR: ReportTranslations = {
   period: 'Período',
   status: 'Status',
   entries: 'Entradas',
+  normalHours: 'Horas Normais',
+  extraHours: 'Horas Extras',
   totalHours: 'Total Horas',
   date: 'Data',
   startTime: 'Hora Início',
@@ -104,6 +108,8 @@ const enGB: ReportTranslations = {
   period: 'Period',
   status: 'Status',
   entries: 'Entries',
+  normalHours: 'Normal Hours',
+  extraHours: 'Extra Hours',
   totalHours: 'Total Hours',
   date: 'Date',
   startTime: 'Start Time',

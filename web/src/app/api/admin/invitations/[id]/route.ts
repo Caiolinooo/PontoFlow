@@ -94,9 +94,8 @@ export async function POST(
 
     // Resend invitation email
     try {
-      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || getBaseUrlSync()}/${userLocale}/auth/accept-invite?token=${invitation.token}`;
       const userLocale = 'pt-BR';
-      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${userLocale}/auth/accept-invite?token=${invitation.token}`;
+      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || getBaseUrlSync()}/${userLocale}/auth/accept-invite?token=${invitation.token}`;
 
       const roleNames: Record<string, string> = {
         USER: 'Usuário',
@@ -229,4 +228,3 @@ function generateReminderEmail({
     </html>
   `;
 }
-

@@ -63,23 +63,36 @@ class InAppNotificationManager {
   // Create and show notification from API data
   async showFromAPI(notificationId: string) {
     try {
-      const response = await fetch(`/api/notifications/list?unread=true`);
-      if (response.ok) {
-        const data = await response.json();
-        const notification = data.notifications?.find((n: any) => n.id === notificationId);
-        
-        if (notification) {
-          this.show({
-            id: notification.id,
-            type: this.mapEventToType(notification.event),
-            title: notification.title,
-            message: notification.message,
-            data: notification.data
-          });
-        }
+      const response = await fetch(`/api/notifications/list?unread=true`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        credentials: 'same-origin'
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to fetch notification data:', response.status, response.statusText);
+        return;
+      }
+
+      const data = await response.json();
+      const notification = data.notifications?.find((n: any) => n.id === notificationId);
+
+      if (notification) {
+        this.show({
+          id: notification.id,
+          type: this.mapEventToType(notification.event),
+          title: notification.title,
+          message: notification.message,
+          data: notification.data
+        });
+      } else {
+        console.warn('Notification not found:', notificationId);
       }
     } catch (error) {
-      console.error('Failed to show notification from API:', error);
+      console.warn('Failed to show notification from API (network or server error):', error instanceof Error ? error.message : error);
     }
   }
 
@@ -118,15 +131,26 @@ class InAppNotificationManager {
   // Get unread notifications count
   async getUnreadCount(): Promise<number> {
     try {
-      const response = await fetch('/api/notifications/list?unread=true');
-      if (response.ok) {
-        const data = await response.json();
-        return data.unread_count || 0;
+      const response = await fetch('/api/notifications/list?unread=true', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        credentials: 'same-origin'
+      });
+
+      if (!response.ok) {
+        console.warn('Notification API response not OK:', response.status, response.statusText);
+        return 0;
       }
+
+      const data = await response.json();
+      return data.unread_count || 0;
     } catch (error) {
-      console.error('Failed to get unread count:', error);
+      console.warn('Failed to get unread count (network or server error):', error instanceof Error ? error.message : error);
+      return 0;
     }
-    return 0;
   }
 
   // Mark notifications as read
@@ -149,10 +173,38 @@ export const notificationManager = InAppNotificationManager.getInstance();
 export function useInAppNotifications() {
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [notifications, setNotifications] = React.useState<InAppNotification[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const loadUnreadCount = React.useCallback(async (retryCount = 0) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const count = await notificationManager.getUnreadCount();
+      setUnreadCount(count);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.warn('Failed to load unread count:', errorMessage);
+      setError(errorMessage);
+
+      // Retry logic for network errors (max 3 retries with exponential backoff)
+      if (retryCount < 3 && errorMessage.includes('fetch')) {
+        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        setTimeout(() => loadUnreadCount(retryCount + 1), delay);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   React.useEffect(() => {
     // Load initial unread count
-    notificationManager.getUnreadCount().then(setUnreadCount);
+    loadUnreadCount();
+
+    // Set up periodic refresh (every 30 seconds)
+    const interval = setInterval(() => {
+      loadUnreadCount();
+    }, 30000);
 
     // Subscribe to updates
     const unsubscribe = notificationManager.subscribe('react-hook', (notifs) => {
@@ -161,23 +213,30 @@ export function useInAppNotifications() {
     });
 
     return () => {
+      clearInterval(interval);
       unsubscribe();
     };
-  }, []);
+  }, [loadUnreadCount]);
 
   const show = React.useCallback((notification: InAppNotification) => {
     notificationManager.show(notification);
   }, []);
 
   const refreshUnreadCount = React.useCallback(async () => {
-    const count = await notificationManager.getUnreadCount();
-    setUnreadCount(count);
-  }, []);
+    await loadUnreadCount();
+  }, [loadUnreadCount]);
+
+  const retry = React.useCallback(() => {
+    loadUnreadCount();
+  }, [loadUnreadCount]);
 
   return {
     unreadCount,
     notifications,
+    isLoading,
+    error,
     show,
-    refreshUnreadCount
+    refreshUnreadCount,
+    retry
   };
 }
