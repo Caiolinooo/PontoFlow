@@ -1,40 +1,30 @@
 "use client";
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import Alert from "@/components/ui/Alert";
-import FloatingInput from "@/components/ui/FloatingInput";
-
-type FormValues = {
-  email: string;
-  password: string;
-};
 
 export default function SignInForm({ redirectTo }: { redirectTo: string }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const t = useTranslations('auth.signIn');
   const tErr = useTranslations('errors');
-  const tVal = useTranslations('validation');
 
-  // Build schema with i18n messages
-  const schema = z.object({
-    email: z.string().email({ message: tVal('emailInvalid') }),
-    password: z.string().min(6, { message: tVal('passwordMin', { min: 6 }) }),
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('[SignIn] Form submitted with email:', email);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      email: '',
-      password: ''
+    // Basic validation
+    if (!email || !password) {
+      setError('Por favor, preencha todos os campos');
+      return;
     }
-  });
 
-  const onSubmit = async (values: FormValues) => {
-    console.log('[SignIn] Form submitted with email:', values.email);
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
@@ -48,8 +38,8 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: values.email,
-          password: values.password,
+          email: email.trim(),
+          password: password,
         }),
       });
 
@@ -75,24 +65,46 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <FloatingInput
-        id="email"
-        type="email"
-        label={t('email')}
-        {...register('email')}
-        value={watch('email')}
-        error={errors.email ? String(errors.email.message) : null}
-      />
-      <FloatingInput
-        id="password"
-        type="password"
-        label={t('password')}
-        {...register('password')}
-        value={watch('password')}
-        error={errors.password ? String(errors.password.message) : null}
-      />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Email Input */}
+      <div>
+        <label htmlFor="email" className="block text-sm font-medium text-[var(--foreground)] mb-2">
+          {t('email')}
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-4 py-3 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent bg-[var(--background)] text-[var(--foreground)]"
+          placeholder="seu@email.com"
+          disabled={loading}
+        />
+      </div>
 
+      {/* Password Input */}
+      <div>
+        <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)] mb-2">
+          {t('password')}
+        </label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full px-4 py-3 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent bg-[var(--background)] text-[var(--foreground)]"
+          placeholder="••••••••"
+          disabled={loading}
+        />
+      </div>
+
+      {/* Error Message */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
           <p className="text-red-800 dark:text-red-200 text-sm flex items-center gap-2">
@@ -104,6 +116,7 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
         </div>
       )}
 
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={loading}
@@ -129,4 +142,3 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
     </form>
   );
 }
-
