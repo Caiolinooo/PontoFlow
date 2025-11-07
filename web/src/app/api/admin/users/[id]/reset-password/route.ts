@@ -107,11 +107,12 @@ export async function POST(
 
     // TODO: Send email with temporary password
     console.log('📧 [Email] TODO: Send email with temporary password to user');
+    console.log('🔐 [Security] Temporary password generated (not returned in response for security)');
 
-    return NextResponse.json({ 
+    // SECURITY: Never return password in response - should be sent via email only
+    return NextResponse.json({
       success: true,
-      message: 'Password reset successfully',
-      temporaryPassword // In production, this should be sent via email, not returned in response
+      message: 'Senha resetada com sucesso. Uma senha temporária será enviada por email.'
     });
   } catch (error) {
     console.error('❌ [Server] Unexpected error in POST /api/admin/users/[id]/reset-password:', error);

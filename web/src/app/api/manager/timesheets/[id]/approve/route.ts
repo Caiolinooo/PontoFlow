@@ -39,10 +39,10 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       if (!membership) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
-    // Update status to approved
+    // Update status to aprovado (approved)
     const {data: updated, error} = await supabase
       .from('timesheets')
-      .update({status: 'approved'})
+      .update({status: 'aprovado'}) // Portuguese enum value as per database schema
       .eq('id', id)
       .select('id,employee_id,periodo_ini,periodo_fim,tenant_id')
       .single();
@@ -54,7 +54,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       tenant_id: updated.tenant_id,
       timesheet_id: id,
       manager_id: user.id,
-      status: 'approved',
+      status: 'aprovado', // Portuguese enum value
       mensagem: null
     });
 
@@ -65,8 +65,8 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       action: 'approve',
       resourceType: 'timesheet',
       resourceId: id,
-      oldValues: { prev_status: 'submitted' },
-      newValues: { status: 'approved' }
+      oldValues: { prev_status: 'enviado' }, // Portuguese enum value
+      newValues: { status: 'aprovado' } // Portuguese enum value
     });
 
     // Fetch employee profile for email + locale

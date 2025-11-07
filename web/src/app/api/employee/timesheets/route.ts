@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         employee_id: employee.id,
         periodo_ini: parsed.data.periodo_ini,
         periodo_fim: parsed.data.periodo_fim,
-        status: 'draft',
+        status: 'rascunho', // Portuguese enum value as per database schema
       })
       .select('id')
       .single();

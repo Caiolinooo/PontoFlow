@@ -44,10 +44,10 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       }
     }
 
-    // Update status to 'submitted' now that lock passed
+    // Update status to 'enviado' (submitted) now that lock passed
     const { data: ts, error } = await supabase
       .from('timesheets')
-      .update({ status: 'submitted' })
+      .update({ status: 'enviado' }) // Portuguese enum value as per database schema
       .eq('id', id)
       .select('id, tenant_id, employee_id, periodo_ini, periodo_fim')
       .single();
