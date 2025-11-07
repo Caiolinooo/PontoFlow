@@ -3,6 +3,9 @@ import { requireApiAuth } from '@/lib/auth/server';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import { sendEmail } from '@/lib/notifications/email-service';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(req: NextRequest) {
   try {
     const user = await requireApiAuth();

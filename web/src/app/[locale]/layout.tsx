@@ -1,20 +1,23 @@
 import type {Metadata} from 'next';
 import {NextIntlClientProvider} from 'next-intl';
 import {getMessages} from 'next-intl/server';
-import { Inter, Roboto_Mono } from "next/font/google";
+// import { Inter, Roboto_Mono } from "next/font/google";
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import '../globals.css';
 import { ServiceWorkerRegistrar } from '../../components/ServiceWorkerRegistrar';
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
 
-const robotoMono = Roboto_Mono({
-  variable: "--font-roboto-mono",
-  subsets: ["latin"],
-});
+// Temporarily disabled Google Fonts due to network restrictions
+// Using system fonts as fallback via CSS variables
+// const inter = Inter({
+//   variable: "--font-inter",
+//   subsets: ["latin"],
+// });
+
+// const robotoMono = Roboto_Mono({
+//   variable: "--font-roboto-mono",
+//   subsets: ["latin"],
+// });
 
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -70,7 +73,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className={isDark ? 'dark' : ''} suppressHydrationWarning>
-      <body suppressHydrationWarning className={`${inter.variable} ${robotoMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}>
+      <body suppressHydrationWarning className="antialiased bg-[var(--background)] text-[var(--foreground)]" style={{fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'}}>
         {/* Inline no-FOUC script: only runs when cookie is missing, uses localStorage or prefers-color-scheme */}
         <script dangerouslySetInnerHTML={{__html: `(() => { try { const c = document.cookie.match(/(?:^|; )theme=([^;]+)/)?.[1]; if (c) return; var t = localStorage.getItem('theme'); if (!t) { t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } if (t === 'dark') document.documentElement.classList.add('dark'); } catch(_){} })();`}} />
         <NextIntlClientProvider locale={locale} messages={messages}>
