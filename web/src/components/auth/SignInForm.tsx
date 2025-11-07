@@ -34,10 +34,13 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
   });
 
   const onSubmit = async (values: FormValues) => {
+    console.log('[SignIn] Form submitted with email:', values.email);
     setError(null);
     setLoading(true);
 
     try {
+      console.log('[SignIn] Calling /api/auth/signin...');
+
       // Call custom auth API
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -50,17 +53,22 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
         }),
       });
 
+      console.log('[SignIn] Response status:', response.status);
       const data = await response.json();
+      console.log('[SignIn] Response data:', { success: data.success, error: data.error });
 
       if (!response.ok || data.error) {
+        console.error('[SignIn] Login failed:', data.error);
         setError(data.error || tErr('generic'));
         setLoading(false);
         return;
       }
 
+      console.log('[SignIn] Login successful! Redirecting to:', redirectTo);
       // Force a hard navigation to ensure middleware runs
       window.location.href = redirectTo;
-    } catch {
+    } catch (err) {
+      console.error('[SignIn] Exception during login:', err);
       setError(tErr('generic'));
       setLoading(false);
     }
