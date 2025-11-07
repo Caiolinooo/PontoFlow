@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
-import { reportToCSV } from '@/lib/reports/generator';
+import {
+  reportToCSV,
+  generateReports,
+  generateGroupedByEmployeeReport,
+  generateGroupedByVesselReport,
+  ReportFilters,
+  TimesheetBasic,
+  WorkModeConfig
+} from '@/lib/reports/generator';
 import { generateReportPDF } from '@/lib/reports/pdf-generator';
 import { generateReportExcel } from '@/lib/reports/excel-generator';
 import { validateReportParameters, validateReportsAccess, logAccessControl } from '@/lib/access-control';
+import { TimezoneType } from '@/lib/timezone/utils';
 
 export async function GET(req: NextRequest) {
   let user: any = null;
@@ -96,7 +105,7 @@ export async function GET(req: NextRequest) {
     let allowedEmployeeIds: string[] | undefined = accessResult.allowedEmployeeIds;
     let requestedEmployeeId: string | undefined = accessResult.employeeId;
 
-    // Build query for timesheets
+    // Build query for timesheets - include vessel information
     let query = supabase
       .from('timesheets')
       .select(`
@@ -107,18 +116,25 @@ export async function GET(req: NextRequest) {
         status,
         created_at,
         updated_at,
-        employee:employees(id, name, profile_id),
+        employee:employees(
+          id,
+          name,
+          profile_id,
+          vessel_id,
+          vessel:vessels!employees_vessel_id_fkey(id, name, code)
+        ),
         entries:timesheet_entries(id, data, tipo, hora_ini, hora_fim, observacao),
         annotations:timesheet_annotations(id, entry_id, field_path, message)
       `)
       .eq('tenant_id', user.tenant_id);
 
-    // Apply filters
+    // Apply filters - use same logic as generate endpoint
+    // For date filtering, check if timesheet period overlaps with filter range
     if (startDate) {
-      query = query.gte('periodo_ini', startDate);
+      query = query.gte('periodo_fim', startDate);
     }
     if (endDate) {
-      query = query.lte('periodo_fim', endDate);
+      query = query.lte('periodo_ini', endDate);
     }
     if (status) {
       query = query.eq('status', status);
@@ -141,11 +157,48 @@ export async function GET(req: NextRequest) {
 
     console.log('[REPORTS-EXPORT] Found timesheets:', timesheets?.length || 0);
 
+    // Get tenant work_mode for hours calculation
+    let tenantWorkMode: 'standard' | 'offshore' = 'standard';
+
+    try {
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('work_mode')
+        .eq('id', user.tenant_id)
+        .single();
+
+      if (tenantError && tenantError.code === '42703') {
+        console.warn('[REPORTS-EXPORT] Tenant work_mode column missing, using default standard');
+        tenantWorkMode = 'standard';
+      } else if (tenantError) {
+        console.warn('[REPORTS-EXPORT] Error fetching tenant work_mode, using default:', tenantError);
+        tenantWorkMode = 'standard';
+      } else {
+        tenantWorkMode = (tenant?.work_mode as 'standard' | 'offshore') || 'standard';
+      }
+    } catch (err) {
+      console.warn('[REPORTS-EXPORT] Could not fetch tenant work_mode, using default:', err);
+      tenantWorkMode = 'standard';
+    }
+
+    // Create work mode configuration for hours calculation
+    const workModeConfig: WorkModeConfig = tenantWorkMode === 'offshore'
+      ? { mode: 'offshore' }
+      : {
+          mode: 'standard',
+          breakRules: {
+            minHoursForBreak: 6,
+            breakDuration: 60  // 1 hour in minutes
+          }
+        };
+
+    console.log('[REPORTS-EXPORT] Work mode config:', workModeConfig);
+
     // Get profile names for employees
     const profileIds = timesheets?.flatMap(ts =>
       (ts.employee && Array.isArray(ts.employee) ? (ts.employee as any)[0]?.profile_id : (ts.employee as any)?.profile_id) || []
     ).filter(Boolean) || [];
-    
+
     let profileNames: Record<string, string> = {};
 
     if (profileIds.length > 0) {
@@ -161,72 +214,134 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Normalize data structure
-    const normalizedTimesheets = timesheets?.map((ts: any) => {
+    // Normalize timesheets data and sort entries by time (same as generate endpoint)
+    const normalizedTimesheets: TimesheetBasic[] = (timesheets || []).map((ts: any) => {
       const emp = Array.isArray(ts.employee) ? ts.employee?.[0] : ts.employee;
       const displayName = emp?.profile_id ? profileNames[emp.profile_id] : (emp?.name || 'Unknown');
-      
+
+      // Sort entries by date and then by hora_ini
+      const sortedEntries = (ts.entries || []).sort((a: any, b: any) => {
+        if (a.data !== b.data) return a.data.localeCompare(b.data);
+        const timeA = a.hora_ini || '99:99';
+        const timeB = b.hora_ini || '99:99';
+        return timeA.localeCompare(timeB);
+      });
+
       return {
         ...ts,
+        entries: sortedEntries,
         employee: {
           id: emp?.id,
-          display_name: displayName
+          display_name: displayName,
+          vessel_id: emp?.vessel_id,
+          vessel: emp?.vessel ? {
+            id: emp.vessel.id,
+            name: emp.vessel.name,
+            code: emp.vessel.code
+          } : undefined
         }
       };
-    }) || [];
+    });
 
-    // Generate report data based on type
-    let reportData;
-    
-    if (reportType === 'detailed') {
-      // Generate detailed report
-      const items = normalizedTimesheets.map(t => ({
-        timesheet: {
-          id: t.id,
-          employeeName: t.employee?.display_name || 'Unknown',
-          employeeId: t.employee_id,
-          period: `${t.periodo_ini} - ${t.periodo_fim}`,
-          status: t.status,
-          entryCount: t.entries?.length || 0,
-          submittedAt: t.created_at,
-        },
-        entries: t.entries || [],
-        annotations: t.annotations || [],
-      }));
+    // Apply scope-based filtering (same as generate endpoint)
+    let filteredTimesheets = [...normalizedTimesheets];
 
-      reportData = {
-        title: 'Timesheet Detailed Report',
-        generatedAt: new Date().toISOString(),
-        items,
-      };
-    } else {
-      // Generate summary report
-      const summary = {
-        totalTimesheets: normalizedTimesheets.length,
-        approved: normalizedTimesheets.filter(t => t.status === 'aprovado').length,
-        rejected: normalizedTimesheets.filter(t => t.status === 'recusado').length,
-        pending: normalizedTimesheets.filter(t => t.status === 'enviado').length,
-        draft: normalizedTimesheets.filter(t => t.status === 'rascunho').length,
-        locked: normalizedTimesheets.filter(t => t.status === 'bloqueado').length,
-      };
+    console.log('[REPORTS-EXPORT] Report scope:', reportScope);
+    console.log('[REPORTS-EXPORT] Total timesheets before filtering:', normalizedTimesheets.length);
 
-      const items = normalizedTimesheets.map(t => ({
-        id: t.id,
-        employeeName: t.employee?.display_name || 'Unknown',
-        employeeId: t.employee_id,
-        period: `${t.periodo_ini} - ${t.periodo_fim}`,
-        status: t.status,
-        entryCount: t.entries?.length || 0,
-        submittedAt: t.created_at,
-      }));
+    switch (reportScope) {
+      case 'approved':
+        filteredTimesheets = filteredTimesheets.filter(t =>
+          t.status === 'approved' || t.status === 'aprovado'
+        );
+        console.log('[REPORTS-EXPORT] Approved timesheets:', filteredTimesheets.length);
+        break;
 
-      reportData = {
-        title: 'Timesheet Summary Report',
-        generatedAt: new Date().toISOString(),
-        summary,
-        items,
-      };
+      case 'rejected':
+        filteredTimesheets = filteredTimesheets.filter(t =>
+          t.status === 'rejected' || t.status === 'recusado'
+        );
+        console.log('[REPORTS-EXPORT] Rejected timesheets:', filteredTimesheets.length);
+        break;
+
+      case 'pending':
+        filteredTimesheets = filteredTimesheets.filter(t =>
+          t.status === 'submitted' || t.status === 'enviado'
+        );
+        console.log('[REPORTS-EXPORT] Pending timesheets:', filteredTimesheets.length);
+        break;
+
+      case 'by-employee':
+      case 'by-vessel':
+        console.log('[REPORTS-EXPORT] Grouping scope, using all timesheets:', filteredTimesheets.length);
+        break;
+
+      default:
+        console.log('[REPORTS-EXPORT] Default scope (all timesheets):', filteredTimesheets.length);
     }
+
+    const filters: ReportFilters = {
+      startDate: validation.sanitized.startDate,
+      endDate: validation.sanitized.endDate,
+      status: validation.sanitized.status,
+      employeeId: validation.sanitized.employeeId,
+      userRole: user.role,
+    };
+
+    // Generate report using same functions as generate endpoint
+    let reportData;
+
+    if (reportScope === 'by-employee') {
+      // Generate employee-grouped report
+      if (reportType === 'summary') {
+        reportData = generateGroupedByEmployeeReport(filteredTimesheets, filters, workModeConfig);
+        reportData.title = 'Timesheet Report - Grouped by Employee';
+      } else {
+        const reports = generateReports(filteredTimesheets, filters, user.role, workModeConfig);
+        reportData = reports.detailed;
+        reportData.title = 'Timesheet Detailed Report - By Employee';
+      }
+    } else if (reportScope === 'by-vessel') {
+      // Generate vessel-grouped report
+      if (reportType === 'summary') {
+        reportData = generateGroupedByVesselReport(filteredTimesheets, filters, workModeConfig);
+        reportData.title = 'Timesheet Report - Grouped by Vessel';
+      } else {
+        const reports = generateReports(filteredTimesheets, filters, user.role, workModeConfig);
+        reportData = reports.detailed;
+        reportData.title = 'Timesheet Detailed Report - By Vessel';
+      }
+    } else {
+      // Generate regular reports for all other scopes
+      const reports = generateReports(filteredTimesheets, filters, user.role, workModeConfig);
+      reportData = reports[reportType as keyof typeof reports] || reports.summary;
+
+      // Set appropriate title based on scope
+      const scopeTitles: Record<string, string> = {
+        'timesheets': 'All Timesheets',
+        'pending': 'Pending Items',
+        'approved': 'Approved Timesheets',
+        'rejected': 'Rejected Timesheets'
+      };
+
+      const scopeTitle = scopeTitles[reportScope] || 'Timesheets';
+      if (reportType === 'summary') {
+        reportData.title = `Timesheet Summary Report - ${scopeTitle}`;
+      } else {
+        reportData.title = `Timesheet Detailed Report - ${scopeTitle}`;
+      }
+    }
+
+    // Add role-specific context to the report
+    if (user.role === 'USER') {
+      reportData.title = `Meus Relatórios - ${reportData.title}`;
+    } else if (user.role === 'MANAGER' || user.role === 'MANAGER_TIMESHEET') {
+      reportData.title = `Relatórios da Equipe - ${reportData.title}`;
+    } else if (user.role === 'ADMIN') {
+      reportData.title = `Relatórios Administrativos - ${reportData.title}`;
+    }
+
+    console.log('[REPORTS-EXPORT] Report generated successfully with work mode:', tenantWorkMode);
 
     // Get tenant settings for branding
     const { data: tenantSettings } = await supabase

@@ -49,24 +49,46 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch periods' }, { status: 500 });
     }
 
+    // Get current date for reference
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
+    // Determine date range for period calculation
+    let earliestDate: Date;
+    let latestDate: Date;
+    const yearSet = new Set<number>();
+
     if (!timesheets || timesheets.length === 0) {
-      return NextResponse.json({ years: [], periods: [], currentPeriod: null });
+      // No timesheets yet - use current year and previous year
+      earliestDate = new Date(currentYear - 1, 0, 1);
+      latestDate = new Date(currentYear, 11, 31);
+      yearSet.add(currentYear - 1);
+      yearSet.add(currentYear);
+    } else {
+      // Find earliest and latest dates from timesheets
+      const dates = timesheets.map(ts => new Date(ts.periodo_ini));
+      earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
+
+      // Extract unique years from timesheets
+      timesheets.forEach((ts) => {
+        const date = new Date(ts.periodo_ini);
+        yearSet.add(date.getFullYear());
+      });
+
+      // Always include current year even if no timesheets for it
+      yearSet.add(currentYear);
+
+      // Extend latest date to include current year if needed
+      if (latestDate.getFullYear() < currentYear) {
+        latestDate = new Date(currentYear, 11, 31);
+      }
     }
 
-    // Find earliest and latest dates
-    const dates = timesheets.map(ts => new Date(ts.periodo_ini));
-    const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
-    const latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
-
-    // Extract unique years
-    const yearSet = new Set<number>();
-    timesheets.forEach((ts) => {
-      const date = new Date(ts.periodo_ini);
-      yearSet.add(date.getFullYear());
-    });
     const years = Array.from(yearSet).sort((a, b) => b - a);
 
     // Calculate custom periods based on tenant deadline
+    // Include 1 month before earliest and 2 months after latest to ensure coverage
     const startDate = new Date(earliestDate.getFullYear(), earliestDate.getMonth() - 1, 1).toISOString().split('T')[0];
     const endDate = new Date(latestDate.getFullYear(), latestDate.getMonth() + 2, 1).toISOString().split('T')[0];
 

@@ -408,11 +408,22 @@ export async function generateReportPDF(
   report: SummaryReport | DetailedReport,
   options: PDFGenerationOptions = {}
 ): Promise<Buffer> {
+  // Try Puppeteer first (better formatting), but use PDFKit as fallback
   try {
-    return await generateReportPDFWithPuppeteer(report, options);
+    console.log('[PDF] Attempting PDF generation with Puppeteer...');
+    const pdfBuffer = await generateReportPDFWithPuppeteer(report, options);
+    console.log('[PDF] Successfully generated PDF with Puppeteer');
+    return pdfBuffer;
   } catch (error) {
     console.warn('[PDF] Puppeteer failed, falling back to PDFKit:', error);
-    return await generateReportPDFWithPDFKit(report, options);
+    try {
+      const pdfBuffer = await generateReportPDFWithPDFKit(report, options);
+      console.log('[PDF] Successfully generated PDF with PDFKit');
+      return pdfBuffer;
+    } catch (fallbackError) {
+      console.error('[PDF] Both Puppeteer and PDFKit failed:', fallbackError);
+      throw new Error('Failed to generate PDF: ' + (fallbackError instanceof Error ? fallbackError.message : 'Unknown error'));
+    }
   }
 }
 
@@ -476,78 +487,182 @@ async function generateReportPDFWithPDFKit(
   // Create a buffer to store the PDF
   const chunks: Buffer[] = [];
   doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-  const pdfPromise = new Promise<Buffer>((resolve) => {
+  const pdfPromise = new Promise<Buffer>((resolve, reject) => {
     doc.on('end', () => {
       resolve(Buffer.concat(chunks));
     });
+    doc.on('error', (err: Error) => {
+      reject(err);
+    });
   });
-
-  // Add content to the PDF
-  doc.fontSize(18).text(companyName, { align: 'left' });
-  doc.moveDown(0.5);
-  doc.fontSize(12).text(t.summaryReportTitle, { align: 'left' });
-  doc.moveDown(0.5);
-  doc.fontSize(10).text(`Generated: ${formatDate(new Date(), locale)}`, { align: 'left' });
-  doc.moveDown();
-
-  if (employeeName || employeeId) {
-    doc.fontSize(12).text('Employee Information:', { underline: true });
-    if (employeeName) doc.text(`Name: ${employeeName}`);
-    if (employeeId) doc.text(`ID: ${employeeId}`);
-    doc.moveDown();
-  }
 
   const isSummary = 'summary' in report;
 
-  if (isSummary) {
-    const summary = (report as SummaryReport).summary;
-    doc.fontSize(12).text('Summary:', { underline: true });
-    doc.text(`Total: ${summary.totalTimesheets}`);
-    doc.text(`Approved: ${summary.approved}`);
-    doc.text(`Pending: ${summary.pending}`);
-    doc.text(`Rejected: ${summary.rejected}`);
+  // Add header
+  doc.fontSize(18).fillColor('#0E6FFF').text(companyName, { align: 'left' });
+  doc.moveDown(0.5);
+  doc.fontSize(14).fillColor('#000000').text(isSummary ? t.summaryReportTitle : t.detailedReportTitle, { align: 'left' });
+  doc.moveDown(0.3);
+  doc.fontSize(9).fillColor('#666666').text(`${t.generatedAt}: ${formatDate(new Date(), locale)}`, { align: 'left' });
+  doc.moveDown(1);
+
+  if (employeeName || employeeId) {
+    doc.fontSize(11).fillColor('#000000').text(t.employeeLabel + ':', { underline: true });
+    if (employeeName) doc.fontSize(10).fillColor('#333333').text(`${t.employeeLabel}: ${employeeName}`);
+    if (employeeId) doc.fontSize(10).text(`${t.idLabel}: ${employeeId}`);
     doc.moveDown();
   }
 
-  // Add table header
-  doc.fontSize(12).text('Data', 50, doc.y, { width: 100, align: 'left' });
-  doc.text('Period', 150, doc.y, { width: 100, align: 'left' });
-  doc.text('Status', 250, doc.y, { width: 100, align: 'left' });
-  doc.text('Entries', 350, doc.y, { width: 100, align: 'left' });
-  doc.text('Total Hours', 450, doc.y, { width: 100, align: 'left' });
-  doc.moveDown();
-
-  // Add table data
   if (isSummary) {
+    const summary = (report as SummaryReport).summary;
+    doc.fontSize(11).fillColor('#000000').text(t.summary + ':', { underline: true });
+    doc.fontSize(10).fillColor('#333333');
+    doc.text(`${t.total}: ${summary.totalTimesheets}`);
+    doc.text(`${t.approved_plural}: ${summary.approved}`);
+    doc.text(`${t.pending}: ${summary.pending}`);
+    doc.text(`${t.rejected_plural}: ${summary.rejected}`);
+    if (summary.totalHours) {
+      doc.text(`${t.totalHours}: ${summary.totalHours.toFixed(2)}h`);
+    }
+    doc.moveDown(1);
+  }
+
+  // Table layout
+  const tableTop = doc.y;
+  const rowHeight = 20;
+  const margin = 50;
+
+  // Define column widths based on page width
+  const pageWidth = doc.page.width - (margin * 2);
+
+  if (isSummary) {
+    // Summary table columns
+    const colWidths = {
+      employee: pageWidth * 0.25,
+      period: pageWidth * 0.20,
+      status: pageWidth * 0.15,
+      entries: pageWidth * 0.10,
+      normal: pageWidth * 0.10,
+      extra: pageWidth * 0.10,
+      total: pageWidth * 0.10
+    };
+
+    let xPos = margin;
+
+    // Draw header
+    doc.fontSize(9).fillColor('#FFFFFF');
+    doc.rect(margin, tableTop, pageWidth, rowHeight).fillAndStroke('#0E6FFF', '#0E6FFF');
+
+    doc.text(t.employee, xPos + 5, tableTop + 5, { width: colWidths.employee - 10, align: 'left' });
+    xPos += colWidths.employee;
+    doc.text(t.period, xPos + 5, tableTop + 5, { width: colWidths.period - 10, align: 'left' });
+    xPos += colWidths.period;
+    doc.text(t.status, xPos + 5, tableTop + 5, { width: colWidths.status - 10, align: 'left' });
+    xPos += colWidths.status;
+    doc.text(t.entries, xPos + 5, tableTop + 5, { width: colWidths.entries - 10, align: 'center' });
+    xPos += colWidths.entries;
+    doc.text(t.normalHours, xPos + 5, tableTop + 5, { width: colWidths.normal - 10, align: 'right' });
+    xPos += colWidths.normal;
+    doc.text(t.extraHours, xPos + 5, tableTop + 5, { width: colWidths.extra - 10, align: 'right' });
+    xPos += colWidths.extra;
+    doc.text(t.totalHours, xPos + 5, tableTop + 5, { width: colWidths.total - 10, align: 'right' });
+
+    doc.moveDown();
+
+    // Draw rows
     const summaryReport = report as SummaryReport;
-    summaryReport.items.forEach((item) => {
-      doc.fontSize(10).text(item.employeeName, 50, doc.y, { width: 100, align: 'left' });
-      doc.text(item.period, 150, doc.y, { width: 100, align: 'left' });
-      doc.text(translateStatus(item.status, locale), 250, doc.y, { width: 100, align: 'left' });
-      doc.text(item.entryCount.toString(), 350, doc.y, { width: 100, align: 'left' });
-      doc.text(`${(item.totalHours || 0).toFixed(2)}h`, 450, doc.y, { width: 100, align: 'left' });
-      doc.moveDown();
+    let currentY = tableTop + rowHeight;
+
+    summaryReport.items.forEach((item, index) => {
+      // Check if we need a new page
+      if (currentY > doc.page.height - 100) {
+        doc.addPage();
+        currentY = margin;
+      }
+
+      xPos = margin;
+      doc.fontSize(8).fillColor('#000000');
+
+      // Alternate row background
+      if (index % 2 === 0) {
+        doc.rect(margin, currentY, pageWidth, rowHeight).fillAndStroke('#F9FAFB', '#E5E7EB');
+      } else {
+        doc.rect(margin, currentY, pageWidth, rowHeight).stroke('#E5E7EB');
+      }
+
+      doc.text(item.employeeName || 'N/A', xPos + 5, currentY + 5, { width: colWidths.employee - 10, align: 'left' });
+      xPos += colWidths.employee;
+      doc.text(item.period || 'N/A', xPos + 5, currentY + 5, { width: colWidths.period - 10, align: 'left' });
+      xPos += colWidths.period;
+      doc.text(translateStatus(item.status, locale), xPos + 5, currentY + 5, { width: colWidths.status - 10, align: 'left' });
+      xPos += colWidths.status;
+      doc.text((item.entryCount || 0).toString(), xPos + 5, currentY + 5, { width: colWidths.entries - 10, align: 'center' });
+      xPos += colWidths.entries;
+      doc.text(`${(item.normalHours || 0).toFixed(2)}h`, xPos + 5, currentY + 5, { width: colWidths.normal - 10, align: 'right' });
+      xPos += colWidths.normal;
+      doc.text(`${(item.extraHours || 0).toFixed(2)}h`, xPos + 5, currentY + 5, { width: colWidths.extra - 10, align: 'right' });
+      xPos += colWidths.extra;
+      doc.text(`${(item.totalHours || 0).toFixed(2)}h`, xPos + 5, currentY + 5, { width: colWidths.total - 10, align: 'right' });
+
+      currentY += rowHeight;
     });
   } else {
+    // Detailed report
     const detailedReport = report as DetailedReport;
+    let currentY = tableTop;
+
     detailedReport.items.forEach((item) => {
-      doc.fontSize(11).text(`${item.timesheet.employeeName} - ${item.timesheet.period}`, { underline: true });
-      doc.moveDown(0.5);
-      item.entries.forEach((entry) => {
-        doc.fontSize(9).text(formatDateOnly(entry.data, locale), 50, doc.y, { width: 100, align: 'left' });
-        doc.text(entry.hora_ini || '-', 150, doc.y, { width: 100, align: 'left' });
-        doc.text(entry.hora_fim || '-', 250, doc.y, { width: 100, align: 'left' });
-        doc.text(entry.tipo || '-', 350, doc.y, { width: 100, align: 'left' });
-        doc.text(entry.observacao || '-', 450, doc.y, { width: 100, align: 'left' });
-        doc.moveDown();
-      });
-      doc.moveDown();
+      // Check if we need a new page
+      if (currentY > doc.page.height - 150) {
+        doc.addPage();
+        currentY = margin;
+      }
+
+      // Timesheet header
+      doc.fontSize(10).fillColor('#000000');
+      doc.rect(margin, currentY, pageWidth, 25).fillAndStroke('#F3F4F6', '#E5E7EB');
+      doc.text(`${item.timesheet.employeeName} - ${item.timesheet.period}`, margin + 5, currentY + 8, { width: pageWidth - 10 });
+
+      // Show total hours for this timesheet
+      if (item.timesheet.totalHours) {
+        doc.text(`${t.totalHours}: ${item.timesheet.totalHours.toFixed(2)}h`, { align: 'right' });
+      }
+
+      currentY += 25;
+
+      // Entry rows
+      if (item.entries.length === 0) {
+        doc.fontSize(9).fillColor('#666666').text('No entries', margin + 5, currentY + 5);
+        currentY += 20;
+      } else {
+        item.entries.forEach((entry) => {
+          if (currentY > doc.page.height - 100) {
+            doc.addPage();
+            currentY = margin;
+          }
+
+          doc.fontSize(8).fillColor('#333333');
+          const entryText = `${formatDateOnly(entry.data, locale)} | ${entry.hora_ini || '-'} - ${entry.hora_fim || '-'} | ${entry.tipo || '-'}`;
+          doc.text(entryText, margin + 10, currentY + 5, { width: pageWidth - 20 });
+
+          if (entry.observacao) {
+            currentY += 15;
+            doc.fontSize(7).fillColor('#666666').text(`  ${entry.observacao}`, margin + 15, currentY, { width: pageWidth - 30 });
+          }
+
+          currentY += 20;
+        });
+      }
+
+      currentY += 10; // Space between timesheets
     });
   }
 
   // Add footer
-  doc.moveDown();
-  doc.fontSize(8).text(`${t.autoGenerated} ${companyName}`, 50, doc.page.height - 50, { align: 'center' });
+  const footerY = doc.page.height - 40;
+  doc.fontSize(8).fillColor('#9CA3AF');
+  doc.text(`${t.autoGenerated} ${companyName}`, margin, footerY, { align: 'center', width: pageWidth });
+  doc.text(`${t.pageGenerated} ${formatDate(new Date(), locale)}`, margin, footerY + 10, { align: 'center', width: pageWidth });
 
   doc.end();
 
