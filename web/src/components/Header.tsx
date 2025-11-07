@@ -197,9 +197,10 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
       />
 
       {/* Notification Modal */}
-      {showNotifications && (
-        <NotificationModal onClose={() => setShowNotifications(false)} />
-      )}
+      <NotificationModal
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
     </header>
   );
 }
