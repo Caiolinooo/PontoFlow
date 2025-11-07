@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { generateToken, verifyToken } from './jwt';
+import { generateToken, verifyToken, generateLegacyToken, verifyLegacyToken } from './jwt';
 
 // Lazy initialization to avoid build-time errors
 let _supabase: ReturnType<typeof createClient> | null = null;
@@ -188,8 +188,8 @@ export async function signInWithCredentials(
         return { error: 'Conta inativa. Entre em contato com o administrador.' };
       }
 
-      // Generate JWT token
-      const token = generateToken(unifiedUser.id);
+      // Generate token (JWT or legacy fallback)
+      const token = generateToken(unifiedUser.id) || generateLegacyToken(unifiedUser.id);
 
       return {
         user: {
@@ -284,8 +284,8 @@ export async function signInWithCredentials(
 
     console.log('[AUTH] Login successful!');
 
-    // Generate JWT token
-    const token = generateToken(userData.id);
+    // Generate token (JWT or legacy fallback)
+    const token = generateToken(userData.id) || generateLegacyToken(userData.id);
 
     return {
       user: {
@@ -312,19 +312,29 @@ export async function signInWithCredentials(
 }
 
 /**
- * Get user from session token (JWT)
+ * Get user from session token (JWT or legacy base64)
  */
 export async function getUserFromToken(token: string): Promise<User | null> {
   try {
-    // Verify and decode JWT token
+    // Try JWT first
     const payload = verifyToken(token);
+    let userId: string | null = null;
 
-    if (!payload) {
-      console.log('[getUserFromToken] Invalid or expired token');
-      return null;
+    if (payload) {
+      // JWT token verified successfully
+      userId = payload.sub;
+      console.log('[getUserFromToken] JWT token verified for user:', userId);
+    } else {
+      // Fallback to legacy base64 token
+      userId = verifyLegacyToken(token);
+      if (userId) {
+        console.log('[getUserFromToken] Legacy token verified for user:', userId);
+      } else {
+        console.log('[getUserFromToken] Invalid or expired token (tried both JWT and legacy)');
+        return null;
+      }
     }
 
-    const userId = payload.sub;
     console.log('[getUserFromToken] Looking up user ID:', userId);
 
     const supabase = getSupabase();

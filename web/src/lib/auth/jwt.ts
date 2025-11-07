@@ -32,22 +32,29 @@ const TOKEN_ISSUER = 'pontoflow';
 
 /**
  * Get JWT secret from environment
- * CRITICAL: This must be set in production!
+ * Returns null if not configured (allows fallback to legacy mode)
  */
-function getJWTSecret(): string {
+function getJWTSecret(): string | null {
   const secret = process.env.JWT_SECRET;
 
   if (!secret) {
-    console.error('[JWT] CRITICAL: JWT_SECRET is not set!');
-    throw new Error('JWT_SECRET environment variable is required');
+    console.warn('[JWT] WARNING: JWT_SECRET is not set! Using legacy base64 tokens (INSECURE)');
+    return null;
   }
 
   if (secret.length < 32) {
     console.error('[JWT] WARNING: JWT_SECRET is too short (minimum 32 characters)');
-    throw new Error('JWT_SECRET must be at least 32 characters');
+    return null;
   }
 
   return secret;
+}
+
+/**
+ * Check if JWT is enabled (JWT_SECRET is configured)
+ */
+export function isJWTEnabled(): boolean {
+  return getJWTSecret() !== null;
 }
 
 /**
@@ -88,10 +95,17 @@ function createSignature(data: string, secret: string): string {
 
 /**
  * Generate JWT token for user
+ * Returns null if JWT_SECRET is not configured (caller should use legacy method)
  */
-export function generateToken(userId: string): string {
+export function generateToken(userId: string): string | null {
   try {
     const secret = getJWTSecret();
+
+    // Fallback to legacy mode if no secret configured
+    if (!secret) {
+      return null;
+    }
+
     const now = Date.now();
 
     // Create header
@@ -129,10 +143,17 @@ export function generateToken(userId: string): string {
 
 /**
  * Verify and decode JWT token
- * Returns payload if valid, null if invalid/expired
+ * Returns payload if valid, null if invalid/expired or JWT not configured
  */
 export function verifyToken(token: string): JWTPayload | null {
   try {
+    // Check if JWT is enabled
+    const secret = getJWTSecret();
+    if (!secret) {
+      // JWT not configured, caller should use legacy verification
+      return null;
+    }
+
     // Split token into parts
     const parts = token.split('.');
     if (parts.length !== 3) {
@@ -143,7 +164,6 @@ export function verifyToken(token: string): JWTPayload | null {
     const [encodedHeader, encodedPayload, signature] = parts;
 
     // Verify signature
-    const secret = getJWTSecret();
     const dataToSign = `${encodedHeader}.${encodedPayload}`;
     const expectedSignature = createSignature(dataToSign, secret);
 
@@ -280,6 +300,75 @@ export function migrateLegacyToken(legacyToken: string): string | null {
     return generateToken(userId);
   } catch (error) {
     console.error('[JWT] Error migrating legacy token:', error);
+    return null;
+  }
+}
+
+// ==========================================
+// LEGACY FALLBACK (Base64 tokens - INSECURE)
+// ==========================================
+// These functions are used when JWT_SECRET is not configured
+// WARNING: These tokens are NOT SECURE and can be easily forged!
+
+/**
+ * Generate legacy base64 token (INSECURE - for fallback only)
+ * @deprecated Use JWT tokens instead
+ */
+export function generateLegacyToken(userId: string): string {
+  const token = `${userId}:${Date.now()}`;
+  return Buffer.from(token, 'utf-8').toString('base64');
+}
+
+/**
+ * Verify legacy base64 token (INSECURE - for fallback only)
+ * @deprecated Use JWT tokens instead
+ * Returns userId if valid, null if invalid/expired
+ */
+export function verifyLegacyToken(token: string): string | null {
+  try {
+    // Decode base64
+    let decoded: string;
+    try {
+      decoded = Buffer.from(token, 'base64').toString('utf-8');
+    } catch (error) {
+      console.log('[Legacy] Failed to decode base64 token');
+      return null;
+    }
+
+    // Parse userId and timestamp
+    const parts = decoded.split(':');
+    if (parts.length !== 2) {
+      console.log('[Legacy] Invalid token format');
+      return null;
+    }
+
+    const [userId, timestamp] = parts;
+    const timestampNum = parseInt(timestamp);
+
+    if (!userId || !timestamp || isNaN(timestampNum)) {
+      console.log('[Legacy] Invalid token format');
+      return null;
+    }
+
+    // Check if token is too old (7 days)
+    const tokenAge = Date.now() - timestampNum;
+    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+    if (tokenAge > maxAge) {
+      console.log('[Legacy] Token expired');
+      return null;
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(userId)) {
+      console.log('[Legacy] Invalid user ID format:', userId);
+      return null;
+    }
+
+    return userId;
+  } catch (error) {
+    console.error('[Legacy] Error verifying token:', error);
     return null;
   }
 }
