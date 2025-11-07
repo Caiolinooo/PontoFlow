@@ -316,32 +316,20 @@ export async function signInWithCredentials(
  */
 export async function getUserFromToken(token: string): Promise<User | null> {
   try {
-    console.log('[getUserFromToken] ========== GET USER FROM TOKEN START ==========');
-    console.log('[getUserFromToken] Token (first 30 chars):', token.substring(0, 30) + '...');
-    console.log('[getUserFromToken] Token length:', token.length);
-
     // Try JWT first
-    console.log('[getUserFromToken] Trying JWT verification...');
     const payload = verifyToken(token);
     let userId: string | null = null;
 
     if (payload) {
       // JWT token verified successfully
       userId = payload.sub;
-      console.log('[getUserFromToken] ✓ JWT token verified for user:', userId);
     } else {
       // Fallback to legacy base64 token
-      console.log('[getUserFromToken] JWT failed, trying legacy token...');
       userId = verifyLegacyToken(token);
-      if (userId) {
-        console.log('[getUserFromToken] ✓ Legacy token verified for user:', userId);
-      } else {
-        console.log('[getUserFromToken] ✗ Invalid or expired token (tried both JWT and legacy)');
+      if (!userId) {
         return null;
       }
     }
-
-    console.log('[getUserFromToken] Looking up user ID:', userId);
 
     const supabase = getSupabase();
     const supabaseAdmin = getSupabaseAdmin();

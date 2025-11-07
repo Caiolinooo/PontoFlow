@@ -90,7 +90,13 @@ function base64UrlDecode(str: string): string {
 function createSignature(data: string, secret: string): string {
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(data);
-  return base64UrlEncode(hmac.digest().toString('base64'));
+  const digest = hmac.digest(); // Get Buffer directly
+  // Convert Buffer to base64url (not double-encoded)
+  return digest
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 }
 
 /**
