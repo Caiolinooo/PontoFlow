@@ -27,11 +27,16 @@ function getSupabaseAdmin() {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!url) {
+      console.error('[AUTH] CRITICAL: NEXT_PUBLIC_SUPABASE_URL is not set!');
+      console.error('[AUTH] Configure environment variables in Netlify: Site Settings → Environment Variables');
       throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
     }
 
     if (!serviceKey) {
       console.error('[AUTH] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not set!');
+      console.error('[AUTH] This is required for authentication to work in production.');
+      console.error('[AUTH] Get it from: Supabase Dashboard → Project Settings → API → service_role key');
+      console.error('[AUTH] Configure it in Netlify: Site Settings → Environment Variables');
       throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
     }
 
