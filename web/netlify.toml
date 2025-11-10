@@ -1,0 +1,25 @@
+# Netlify Configuration File
+
+[build]
+  # Next.js build command
+  command = "npm run build"
+  publish = ".next"
+
+[functions]
+  # Directory for serverless functions
+  directory = "netlify/functions"
+  # Node.js version
+  node_bundler = "esbuild"
+
+# Redirect all requests to Next.js
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/___netlify-handler"
+  status = 200
+
+# Environment variables (configure in Netlify dashboard)
+# Required:
+# - CRON_SECRET
+# - NEXT_PUBLIC_SUPABASE_URL
+# - NEXT_PUBLIC_SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_ROLE_KEY
