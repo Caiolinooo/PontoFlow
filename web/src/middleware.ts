@@ -56,14 +56,9 @@ export async function middleware(request: NextRequest) {
     } else {
       // Clear invalid token if exists
       if (token) {
+        console.log('[MIDDLEWARE] Invalid token at root, clearing cookie');
         const response = NextResponse.redirect(new URL(`/${locale}/auth/signin`, request.url));
-        response.cookies.set('timesheet_session', '', {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          expires: new Date(0),
-          path: '/',
-        });
+        response.cookies.delete('timesheet_session');
         return response;
       }
       return NextResponse.redirect(new URL(`/${locale}/auth/signin`, request.url));
@@ -92,14 +87,9 @@ export async function middleware(request: NextRequest) {
 
       // Clear invalid token if exists
       if (token) {
+        console.log('[MIDDLEWARE] Invalid token on protected route, clearing cookie');
         const response = NextResponse.redirect(signInUrl);
-        response.cookies.set('timesheet_session', '', {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          expires: new Date(0),
-          path: '/',
-        });
+        response.cookies.delete('timesheet_session');
         return response;
       }
 
