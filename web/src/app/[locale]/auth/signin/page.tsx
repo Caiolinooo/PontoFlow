@@ -22,6 +22,12 @@ export default async function SignInPage({
   const token = cookieStore.get('timesheet_session')?.value;
   const user = token ? await getUserFromToken(token) : null;
 
+  // If token exists but user is invalid, clear the cookie
+  if (token && !user) {
+    console.log('[SIGNIN PAGE] Found invalid token, clearing cookie');
+    cookieStore.delete('timesheet_session');
+  }
+
   if (user) {
     redirect(redirectParam || `/${locale}/dashboard`);
   }
