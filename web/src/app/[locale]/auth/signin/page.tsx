@@ -20,11 +20,20 @@ export default async function SignInPage({
   // Check if user is already logged in
   const cookieStore = await cookies();
   const token = cookieStore.get('timesheet_session')?.value;
+
+  console.log('[SIGNIN_PAGE] Checking existing session:', {
+    hasToken: !!token,
+    tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
+  });
+
   const user = token ? await getUserFromToken(token) : null;
 
   if (user) {
+    console.log('[SIGNIN_PAGE] User already logged in, redirecting to:', redirectParam || `/${locale}/dashboard`);
     redirect(redirectParam || `/${locale}/dashboard`);
   }
+
+  console.log('[SIGNIN_PAGE] No existing session, showing login form');
 
   const redirectTo = redirectParam || `/${locale}/dashboard`;
   const t = await getTranslations({ locale, namespace: 'auth' });

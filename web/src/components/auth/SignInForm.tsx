@@ -38,6 +38,9 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
     setLoading(true);
 
     try {
+      console.log('[SIGNIN_FORM] Submitting login for:', values.email);
+      console.log('[SIGNIN_FORM] Redirect target:', redirectTo);
+
       // Call custom auth API
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -48,19 +51,46 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
           email: values.email,
           password: values.password,
         }),
+        credentials: 'same-origin', // Ensure cookies are sent/received
       });
 
+      console.log('[SIGNIN_FORM] Response status:', response.status);
+      console.log('[SIGNIN_FORM] Response headers:', Object.fromEntries(response.headers.entries()));
+
       const data = await response.json();
+      console.log('[SIGNIN_FORM] Response data:', {
+        success: data.success,
+        hasUser: !!data.user,
+        error: data.error
+      });
 
       if (!response.ok || data.error) {
-        setError(data.error || tErr('generic'));
+        console.error('[SIGNIN_FORM] Login failed:', data.error);
+        const errorMessage = data.error || tErr('generic');
+        console.error('[SIGNIN_FORM] Showing error to user:', errorMessage);
+        setError(errorMessage);
         setLoading(false);
         return;
       }
 
-      // Force a hard navigation to ensure middleware runs
-      window.location.href = redirectTo;
-    } catch {
+      if (!data.success || !data.user) {
+        console.error('[SIGNIN_FORM] Invalid response format:', data);
+        setError(tErr('generic'));
+        setLoading(false);
+        return;
+      }
+
+      console.log('[SIGNIN_FORM] Login successful, redirecting to:', redirectTo);
+      console.log('[SIGNIN_FORM] Current cookies (httpOnly cookies won\'t show):', document.cookie);
+
+      // Small delay to ensure cookie is set before redirecting
+      // This helps avoid race conditions on some browsers
+      setTimeout(() => {
+        console.log('[SIGNIN_FORM] Executing redirect now...');
+        window.location.href = redirectTo;
+      }, 100);
+    } catch (error) {
+      console.error('[SIGNIN_FORM] Exception during login:', error);
       setError(tErr('generic'));
       setLoading(false);
     }
