@@ -34,9 +34,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Set session cookie on the response
+    // IMPORTANT: secure should be false in development (HTTP) and true in production (HTTPS)
+    // If NODE_ENV is not set, assume development
+    const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
@@ -44,7 +47,9 @@ export async function POST(request: NextRequest) {
 
     console.log('[SIGNIN] Setting cookie with options:', {
       ...cookieOptions,
-      token: result.token.substring(0, 20) + '...'
+      token: result.token.substring(0, 20) + '...',
+      nodeEnv: process.env.NODE_ENV || 'undefined',
+      isProduction: isProduction
     });
 
     response.cookies.set('timesheet_session', result.token, cookieOptions);

@@ -66,16 +66,29 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
 
       if (!response.ok || data.error) {
         console.error('[SIGNIN_FORM] Login failed:', data.error);
-        setError(data.error || tErr('generic'));
+        const errorMessage = data.error || tErr('generic');
+        console.error('[SIGNIN_FORM] Showing error to user:', errorMessage);
+        setError(errorMessage);
+        setLoading(false);
+        return;
+      }
+
+      if (!data.success || !data.user) {
+        console.error('[SIGNIN_FORM] Invalid response format:', data);
+        setError(tErr('generic'));
         setLoading(false);
         return;
       }
 
       console.log('[SIGNIN_FORM] Login successful, redirecting to:', redirectTo);
-      console.log('[SIGNIN_FORM] Current cookies:', document.cookie);
+      console.log('[SIGNIN_FORM] Current cookies (httpOnly cookies won\'t show):', document.cookie);
 
-      // Force a hard navigation to ensure middleware runs
-      window.location.href = redirectTo;
+      // Small delay to ensure cookie is set before redirecting
+      // This helps avoid race conditions on some browsers
+      setTimeout(() => {
+        console.log('[SIGNIN_FORM] Executing redirect now...');
+        window.location.href = redirectTo;
+      }, 100);
     } catch (error) {
       console.error('[SIGNIN_FORM] Exception during login:', error);
       setError(tErr('generic'));
