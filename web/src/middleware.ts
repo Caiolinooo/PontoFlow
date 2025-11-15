@@ -125,11 +125,21 @@ export async function middleware(request: NextRequest) {
   // If user is authenticated and trying to access signin/signup, redirect to dashboard
   if (isPublicRoute && (pathnameWithoutLocale === '/auth/signin' || pathnameWithoutLocale === '/auth/signup')) {
     const token = request.cookies.get('timesheet_session')?.value;
+
+    console.log('[MIDDLEWARE] Auth page access:', {
+      path: pathnameWithoutLocale,
+      hasToken: !!token,
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
+    });
+
     const user = token ? await getUserFromToken(token) : null;
 
     if (user) {
+      console.log('[MIDDLEWARE] User already authenticated, redirecting to dashboard:', user.email);
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
+
+    console.log('[MIDDLEWARE] No valid user, allowing access to auth page');
   }
 
   // Return intl response for all other routes

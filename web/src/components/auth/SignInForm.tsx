@@ -38,6 +38,9 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
     setLoading(true);
 
     try {
+      console.log('[SIGNIN_FORM] Submitting login for:', values.email);
+      console.log('[SIGNIN_FORM] Redirect target:', redirectTo);
+
       // Call custom auth API
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -48,19 +51,33 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
           email: values.email,
           password: values.password,
         }),
+        credentials: 'same-origin', // Ensure cookies are sent/received
       });
 
+      console.log('[SIGNIN_FORM] Response status:', response.status);
+      console.log('[SIGNIN_FORM] Response headers:', Object.fromEntries(response.headers.entries()));
+
       const data = await response.json();
+      console.log('[SIGNIN_FORM] Response data:', {
+        success: data.success,
+        hasUser: !!data.user,
+        error: data.error
+      });
 
       if (!response.ok || data.error) {
+        console.error('[SIGNIN_FORM] Login failed:', data.error);
         setError(data.error || tErr('generic'));
         setLoading(false);
         return;
       }
 
+      console.log('[SIGNIN_FORM] Login successful, redirecting to:', redirectTo);
+      console.log('[SIGNIN_FORM] Current cookies:', document.cookie);
+
       // Force a hard navigation to ensure middleware runs
       window.location.href = redirectTo;
-    } catch {
+    } catch (error) {
+      console.error('[SIGNIN_FORM] Exception during login:', error);
       setError(tErr('generic'));
       setLoading(false);
     }

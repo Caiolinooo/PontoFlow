@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[SIGNIN] Login successful for user:', result.user.email);
+    console.log('[SIGNIN] Generated token (first 20 chars):', result.token.substring(0, 20) + '...');
+    console.log('[SIGNIN] User ID:', result.user.id);
+    console.log('[SIGNIN] User role:', result.user.role);
 
     // Create response with user data
     const response = NextResponse.json({
@@ -31,14 +34,22 @@ export async function POST(request: NextRequest) {
     });
 
     // Set session cookie on the response
-    response.cookies.set('timesheet_session', result.token, {
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
+    };
+
+    console.log('[SIGNIN] Setting cookie with options:', {
+      ...cookieOptions,
+      token: result.token.substring(0, 20) + '...'
     });
 
+    response.cookies.set('timesheet_session', result.token, cookieOptions);
+
+    console.log('[SIGNIN] Cookie set successfully, returning response');
     return response;
   } catch (error) {
     console.error('[SIGNIN] Error:', error);
