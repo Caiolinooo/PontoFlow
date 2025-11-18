@@ -4,6 +4,21 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if environment variables are configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[SIGNIN] CRITICAL: Environment variables not configured!', {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey
+      });
+      return NextResponse.json(
+        { error: 'Configuração do servidor incompleta. Entre em contato com o administrador.' },
+        { status: 500 }
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -35,8 +50,8 @@ export async function POST(request: NextRequest) {
 
     // Set session cookie on the response
     // IMPORTANT: secure should be false in development (HTTP) and true in production (HTTPS)
-    // If NODE_ENV is not set, assume development
     const isProduction = process.env.NODE_ENV === 'production';
+
     const cookieOptions = {
       httpOnly: true,
       secure: isProduction,

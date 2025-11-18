@@ -15,6 +15,7 @@ type FormValues = {
 export default function SignInForm({ redirectTo }: { redirectTo: string }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const t = useTranslations('auth.signIn');
   const tErr = useTranslations('errors');
   const tVal = useTranslations('validation');
@@ -36,10 +37,13 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
   const onSubmit = async (values: FormValues) => {
     setError(null);
     setLoading(true);
+    setDebugInfo('Starting login...');
 
     try {
-      console.log('[SIGNIN_FORM] Submitting login for:', values.email);
-      console.log('[SIGNIN_FORM] Redirect target:', redirectTo);
+      // Force console.log to always appear
+      window.console.log('[SIGNIN_FORM] Submitting login for:', values.email);
+      window.console.log('[SIGNIN_FORM] Redirect target:', redirectTo);
+      setDebugInfo('Sending request to /api/auth/signin...');
 
       // Call custom auth API
       const response = await fetch('/api/auth/signin', {
@@ -51,46 +55,44 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
           email: values.email,
           password: values.password,
         }),
-        credentials: 'same-origin', // Ensure cookies are sent/received
+        credentials: 'include', // Changed from 'same-origin' to 'include' for better cross-origin support
       });
 
-      console.log('[SIGNIN_FORM] Response status:', response.status);
-      console.log('[SIGNIN_FORM] Response headers:', Object.fromEntries(response.headers.entries()));
+      window.console.log('[SIGNIN_FORM] Response status:', response.status);
+      setDebugInfo(`Response status: ${response.status}`);
 
       const data = await response.json();
-      console.log('[SIGNIN_FORM] Response data:', {
-        success: data.success,
-        hasUser: !!data.user,
-        error: data.error
-      });
+      window.console.log('[SIGNIN_FORM] Response data:', data);
+      setDebugInfo(`Response: ${JSON.stringify(data).substring(0, 100)}...`);
 
       if (!response.ok || data.error) {
-        console.error('[SIGNIN_FORM] Login failed:', data.error);
+        window.console.error('[SIGNIN_FORM] Login failed:', data.error);
         const errorMessage = data.error || tErr('generic');
-        console.error('[SIGNIN_FORM] Showing error to user:', errorMessage);
+        setDebugInfo(`ERROR: ${errorMessage}`);
         setError(errorMessage);
         setLoading(false);
         return;
       }
 
       if (!data.success || !data.user) {
-        console.error('[SIGNIN_FORM] Invalid response format:', data);
+        window.console.error('[SIGNIN_FORM] Invalid response format:', data);
+        setDebugInfo('ERROR: Invalid response from server');
         setError(tErr('generic'));
         setLoading(false);
         return;
       }
 
-      console.log('[SIGNIN_FORM] Login successful, redirecting to:', redirectTo);
-      console.log('[SIGNIN_FORM] Current cookies (httpOnly cookies won\'t show):', document.cookie);
+      window.console.log('[SIGNIN_FORM] Login successful, redirecting to:', redirectTo);
+      setDebugInfo('Login successful! Redirecting...');
 
       // Small delay to ensure cookie is set before redirecting
-      // This helps avoid race conditions on some browsers
       setTimeout(() => {
-        console.log('[SIGNIN_FORM] Executing redirect now...');
+        window.console.log('[SIGNIN_FORM] Executing redirect now...');
         window.location.href = redirectTo;
-      }, 100);
+      }, 200); // Increased delay for Netlify
     } catch (error) {
-      console.error('[SIGNIN_FORM] Exception during login:', error);
+      window.console.error('[SIGNIN_FORM] Exception during login:', error);
+      setDebugInfo(`EXCEPTION: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setError(tErr('generic'));
       setLoading(false);
     }
@@ -148,6 +150,15 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
           </>
         )}
       </button>
+
+      {/* Debug info - visible on screen */}
+      {debugInfo && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-2">
+          <p className="text-blue-800 dark:text-blue-200 text-xs font-mono">
+            🔍 Debug: {debugInfo}
+          </p>
+        </div>
+      )}
     </form>
   );
 }
