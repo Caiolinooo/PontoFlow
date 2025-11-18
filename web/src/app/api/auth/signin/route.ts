@@ -4,6 +4,21 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if environment variables are configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[SIGNIN] CRITICAL: Environment variables not configured!', {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey
+      });
+      return NextResponse.json(
+        { error: 'Configuração do servidor incompleta. Entre em contato com o administrador.' },
+        { status: 500 }
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {
@@ -23,6 +38,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[SIGNIN] Login successful for user:', result.user.email);
+    console.log('[SIGNIN] Generated token (first 20 chars):', result.token.substring(0, 20) + '...');
+    console.log('[SIGNIN] User ID:', result.user.id);
+    console.log('[SIGNIN] User role:', result.user.role);
 
     // Create response with user data
     const response = NextResponse.json({
@@ -31,14 +49,27 @@ export async function POST(request: NextRequest) {
     });
 
     // Set session cookie on the response
-    response.cookies.set('timesheet_session', result.token, {
+    // IMPORTANT: secure should be false in development (HTTP) and true in production (HTTPS)
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProduction,
+      sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
+    };
+
+    console.log('[SIGNIN] Setting cookie with options:', {
+      ...cookieOptions,
+      token: result.token.substring(0, 20) + '...',
+      nodeEnv: process.env.NODE_ENV || 'undefined',
+      isProduction: isProduction
     });
 
+    response.cookies.set('timesheet_session', result.token, cookieOptions);
+
+    console.log('[SIGNIN] Cookie set successfully, returning response');
     return response;
   } catch (error) {
     console.error('[SIGNIN] Error:', error);
