@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { generateToken, verifyToken, generateLegacyToken, verifyLegacyToken } from './jwt';
+import { generateToken, verifyToken, generateLegacyToken, verifyLegacyToken, isJWTEnabled } from './jwt';
 
 // Lazy initialization to avoid build-time errors
 let _supabase: ReturnType<typeof createClient> | null = null;
@@ -312,7 +312,7 @@ export async function signInWithCredentials(
 }
 
 /**
- * Get user from session token (JWT or legacy base64)
+ * Get user from session token (JWT, or legacy base64 only when JWT is disabled)
  */
 export async function getUserFromToken(token: string): Promise<User | null> {
   try {
@@ -323,12 +323,15 @@ export async function getUserFromToken(token: string): Promise<User | null> {
     if (payload) {
       // JWT token verified successfully
       userId = payload.sub;
-    } else {
-      // Fallback to legacy base64 token
+    } else if (!isJWTEnabled()) {
+      // Legacy base64 tokens are unsigned/forgeable — only when JWT_SECRET is unset
       userId = verifyLegacyToken(token);
       if (!userId) {
         return null;
       }
+    } else {
+      // JWT is configured: reject unsigned/legacy tokens (auth bypass otherwise)
+      return null;
     }
 
     const supabase = getSupabase();
