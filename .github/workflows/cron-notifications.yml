@@ -18,7 +18,8 @@ jobs:
           echo "🔔 Enviando notificações de deadline..."
           response=$(curl -s -w "\n%{http_code}" -X POST \
             ${{ secrets.APP_URL }}/api/cron/deadline-reminders \
-            -H "Content-Type: application/json")
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
