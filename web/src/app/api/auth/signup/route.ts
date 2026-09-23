@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
 
     // Create user in users_unified
     // Note: 'name' is a generated column (first_name || ' ' || last_name), so we don't insert it
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newUser, error: createError } = await (supabase as any)
       .from('users_unified')
       .insert({

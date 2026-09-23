@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireApiAuth } from '@/lib/auth/server';
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anon) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(url, anon);
-}
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const subscription = await req.json();
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     console.log('[SUBSCRIBE] User:', user.id, user.email);
     console.log('[SUBSCRIBE] Subscription:', subscription);
@@ -80,7 +69,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const user = await requireApiAuth();
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     console.log('[UNSUBSCRIBE] User:', user.id, user.email);
 

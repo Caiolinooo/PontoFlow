@@ -2,6 +2,8 @@
 // Enhanced calendar with modern UI - v2.0
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import BiometricSetup from './BiometricSetup';
+import BiometricVerify from './BiometricVerify';
 
 type Entry = {
   id: string;
@@ -10,6 +12,7 @@ type Entry = {
   hora_fim?: string | null;
   observacao?: string | null;
   environment_id?: string | null;
+  face_score?: number;
 };
 
 type Environment = {
@@ -65,6 +68,11 @@ export default function TimesheetCalendar({
   const [error, setError] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [selectedEnvironment, setSelectedEnvironment] = useState<string>('');
+  
+  const [isBiometricRegistered, setIsBiometricRegistered] = useState(false);
+  const [cachedDescriptor, setCachedDescriptor] = useState<Float32Array | null>(null);
+  const [showBiometricSetup, setShowBiometricSetup] = useState(false);
+  const [showBiometricVerify, setShowBiometricVerify] = useState(false);
 
   // Batch operations queue
   const [pendingOperations, setPendingOperations] = useState<PendingOperation[]>([]);
@@ -76,6 +84,89 @@ export default function TimesheetCalendar({
     hora_ini: '',
     observacao: '',
   });
+
+  const [isOfflineLoaded, setIsOfflineLoaded] = useState(false);
+
+  // Load pending operations from IndexedDB on mount
+  useEffect(() => {
+    async function loadOffline() {
+      try {
+        const { getOfflineStorage } = await import('@/lib/offline/storage');
+        const storage = getOfflineStorage();
+        const ops = await storage.getTimesheetOps(timesheetId);
+        if (ops && ops.length > 0) {
+          console.log(`[Offline] Loaded ${ops.length} pending operations for timesheet ${timesheetId}`);
+          setPendingOperations(ops as PendingOperation[]);
+        }
+      } catch (err) {
+        console.error('[Offline] Failed to load offline operations:', err);
+      } finally {
+        setIsOfflineLoaded(true);
+      }
+    }
+    loadOffline();
+  }, [timesheetId]);
+
+  // Sync state changes to IndexedDB
+  useEffect(() => {
+    if (!isOfflineLoaded) return;
+    
+    async function saveOffline() {
+      try {
+        const { getOfflineStorage } = await import('@/lib/offline/storage');
+        const storage = getOfflineStorage();
+        await storage.syncTimesheetOpsState(timesheetId, pendingOperations);
+      } catch (err) {
+        console.error('[Offline] Failed to save operations state:', err);
+      }
+    }
+    
+    saveOffline();
+  }, [pendingOperations, isOfflineLoaded, timesheetId]);
+
+  // Load face descriptor for offline validation
+  useEffect(() => {
+    async function loadFaceDescriptor() {
+      try {
+        // Fetch from API
+        const res = await fetch(`/api/employee/face-recognition/status/${employeeId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.is_registered && data.face_data?.face_encoding) {
+            // Parse decoding which might be JSON string
+            const encoding = typeof data.face_data.face_encoding === 'string' 
+              ? JSON.parse(data.face_data.face_encoding)
+              : data.face_data.face_encoding;
+              
+            // Cache it offline
+            const { getOfflineStorage } = await import('@/lib/offline/storage');
+            await getOfflineStorage().saveFaceDescriptor(employeeId, encoding);
+            console.log('[Offline] Face descriptor cached for offline verifications');
+            setIsBiometricRegistered(true);
+            setCachedDescriptor(new Float32Array(encoding));
+          } else {
+            setIsBiometricRegistered(false);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch face descriptor online, assuming offline mode');
+      }
+    }
+    loadFaceDescriptor();
+  }, [employeeId]);
+
+  // Load descriptor purely from offline storage on mount
+  useEffect(() => {
+    async function loadOfflineDesc() {
+       const { getOfflineStorage } = await import('@/lib/offline/storage');
+       const desc = await getOfflineStorage().getFaceDescriptor(employeeId);
+       if (desc) {
+          setIsBiometricRegistered(true);
+          setCachedDescriptor(desc);
+       }
+    }
+    loadOfflineDesc();
+  }, [employeeId]);
 
   // Load environments on mount
   useEffect(() => {
@@ -371,16 +462,18 @@ export default function TimesheetCalendar({
       setSuggestedEntries(suggestions);
       setShowAutoFillModal(true);
     } else {
-      // Create single entry without auto-fill
-      // This is used for:
-      // - Standard work mode (daily clock-in/out)
-      // - Flexible work mode
-      // - Offshore mode but not embarque/desembarque
-      await createSingleEntry();
+      // Biometric Challenge Before Punch
+      if (!isBiometricRegistered || !cachedDescriptor) {
+        setShowBiometricSetup(true);
+        return;
+      }
+      
+      setShowModal(false); // Temporarily hide the entry modal for camera view
+      setShowBiometricVerify(true);
     }
   };
 
-  const createSingleEntry = () => {
+  const createSingleEntry = (score?: number) => {
     if (!selectedDate) return;
 
     setError(null);
@@ -396,6 +489,7 @@ export default function TimesheetCalendar({
       hora_ini: form.hora_ini || null,
       hora_fim: null,
       observacao: form.observacao || null,
+      face_score: score,
     };
 
     // Add to pending operations
@@ -1437,6 +1531,46 @@ export default function TimesheetCalendar({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Biometric Modals */}
+      {showBiometricSetup && (
+        <BiometricSetup
+          locale={locale}
+          employeeId={employeeId}
+          onSuccess={() => {
+            setShowBiometricSetup(false);
+            // Quick reload to get the new descriptor for immediate use
+            fetch(`/api/employee/face-recognition/status/${employeeId}`)
+              .then(r => r.json())
+              .then(async data => {
+                 if (data.is_registered && data.face_data?.face_encoding) {
+                    const encoding = typeof data.face_data.face_encoding === 'string' ? JSON.parse(data.face_data.face_encoding) : data.face_data.face_encoding;
+                    const { getOfflineStorage } = await import('@/lib/offline/storage');
+                    await getOfflineStorage().saveFaceDescriptor(employeeId, encoding);
+                    setIsBiometricRegistered(true);
+                    setCachedDescriptor(new Float32Array(encoding));
+                    setShowBiometricVerify(true);
+                 }
+              }).catch(e => console.error(e));
+          }}
+          onCancel={() => setShowBiometricSetup(false)}
+        />
+      )}
+
+      {showBiometricVerify && cachedDescriptor && (
+        <BiometricVerify
+          locale={locale}
+          cachedDescriptor={cachedDescriptor}
+          onSuccess={(score) => {
+            setShowBiometricVerify(false);
+            createSingleEntry(score);
+          }}
+          onCancel={() => {
+             setShowBiometricVerify(false);
+             setShowModal(true);
+          }}
+        />
       )}
     </div>
   );

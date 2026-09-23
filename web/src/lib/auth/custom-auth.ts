@@ -137,11 +137,8 @@ export async function signInWithCredentials(
       console.log('[AUTH] users_unified authentication successful for:', unifiedUser.email);
 
       // Get additional data for unified user
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let profile: any = null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let tenantRole: any = null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let employee: any = null;
 
       try {
@@ -189,7 +186,7 @@ export async function signInWithCredentials(
       }
 
       // Generate token (JWT or legacy fallback)
-      const token = generateToken(unifiedUser.id) || generateLegacyToken(unifiedUser.id);
+      const token = (await generateToken(unifiedUser.id)) || generateLegacyToken(unifiedUser.id);
 
       return {
         user: {
@@ -228,11 +225,8 @@ export async function signInWithCredentials(
     };
 
     // Get profile data separately (if exists)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let profile: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let tenantRole: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let employee: any = null;
 
     try {
@@ -285,7 +279,7 @@ export async function signInWithCredentials(
     console.log('[AUTH] Login successful!');
 
     // Generate token (JWT or legacy fallback)
-    const token = generateToken(userData.id) || generateLegacyToken(userData.id);
+    const token = (await generateToken(userData.id)) || generateLegacyToken(userData.id);
 
     return {
       user: {
@@ -317,7 +311,7 @@ export async function signInWithCredentials(
 export async function getUserFromToken(token: string): Promise<User | null> {
   try {
     // Try JWT first
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     let userId: string | null = null;
 
     if (payload) {
@@ -359,11 +353,8 @@ export async function getUserFromToken(token: string): Promise<User | null> {
       console.log('[getUserFromToken] User found in users_unified:', unifiedUser.email);
 
       // Get additional data for unified user
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let profile: any = null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let tenantRole: any = null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let employee: any = null;
 
       try {
@@ -439,11 +430,8 @@ export async function getUserFromToken(token: string): Promise<User | null> {
     const authEmail = authUser.user.email || '';
 
     // Secondary source: Custom application tables (if they exist)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let profile: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let tenantRole: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let employee: any = null;
 
     try {

@@ -8,9 +8,8 @@
  * - Expiration validation
  * - Issuer validation
  * - Type-safe payload
+ * - Edge Runtime compatible (No Node.js polyfills needed)
  */
-
-import crypto from 'crypto';
 
 // JWT Header (Base64URL encoded)
 interface JWTHeader {
@@ -58,52 +57,94 @@ export function isJWTEnabled(): boolean {
 }
 
 /**
- * Base64URL encode (URL-safe base64)
+ * Base64URL encode (URL-safe base64) - Edge compatible
  */
 function base64UrlEncode(str: string): string {
-  return Buffer.from(str)
-    .toString('base64')
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = '';
+  // Optimization for large strings
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  return btoa(binary)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
 }
 
 /**
- * Base64URL decode
+ * Base64URL decode - Edge compatible
  */
 function base64UrlDecode(str: string): string {
-  // Add padding if necessary
   let padded = str;
   while (padded.length % 4) {
     padded += '=';
   }
-
-  // Replace URL-safe characters
   const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
-
-  return Buffer.from(base64, 'base64').toString('utf-8');
+  
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const decoder = new TextDecoder();
+  return decoder.decode(bytes);
 }
 
 /**
- * Create HMAC-SHA256 signature
+ * Create HMAC-SHA256 signature using Web Crypto API
  */
-function createSignature(data: string, secret: string): string {
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(data);
-  const digest = hmac.digest(); // Get Buffer directly
-  // Convert Buffer to base64url (not double-encoded)
-  return digest
-    .toString('base64')
+async function createSignature(data: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signatureBuffer = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(data)
+  );
+  
+  const bytes = new Uint8Array(signatureBuffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  
+  return btoa(binary)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
+}
+
+/**
+ * Constant time string comparison to prevent timing attacks
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 /**
  * Generate JWT token for user
  * Returns null if JWT_SECRET is not configured (caller should use legacy method)
  */
-export function generateToken(userId: string): string | null {
+export async function generateToken(userId: string): Promise<string | null> {
   try {
     const secret = getJWTSecret();
 
@@ -134,7 +175,7 @@ export function generateToken(userId: string): string | null {
 
     // Create signature
     const dataToSign = `${encodedHeader}.${encodedPayload}`;
-    const signature = createSignature(dataToSign, secret);
+    const signature = await createSignature(dataToSign, secret);
 
     // Return complete JWT
     const token = `${encodedHeader}.${encodedPayload}.${signature}`;
@@ -151,7 +192,7 @@ export function generateToken(userId: string): string | null {
  * Verify and decode JWT token
  * Returns payload if valid, null if invalid/expired or JWT not configured
  */
-export function verifyToken(token: string): JWTPayload | null {
+export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     // Check if JWT is enabled
     const secret = getJWTSecret();
@@ -171,13 +212,10 @@ export function verifyToken(token: string): JWTPayload | null {
 
     // Verify signature
     const dataToSign = `${encodedHeader}.${encodedPayload}`;
-    const expectedSignature = createSignature(dataToSign, secret);
+    const expectedSignature = await createSignature(dataToSign, secret);
 
     // Timing-safe comparison to prevent timing attacks
-    if (!crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    )) {
+    if (!constantTimeEqual(signature, expectedSignature)) {
       console.log('[JWT] Invalid signature');
       return null;
     }
@@ -269,20 +307,21 @@ export function decodeTokenUnsafe(token: string): JWTPayload | null {
  * @param legacyToken Old base64 token (format: "userId:timestamp")
  * @returns New JWT token or null if invalid
  */
-export function migrateLegacyToken(legacyToken: string): string | null {
+export async function migrateLegacyToken(legacyToken: string): Promise<string | null> {
   try {
     // Decode base64
     let decoded: string;
     try {
-      decoded = Buffer.from(legacyToken, 'base64').toString('utf-8');
-    } catch (error) {
-      // Try browser atob as fallback
-      if (typeof atob === 'function') {
-        decoded = atob(legacyToken);
-      } else {
-        console.log('[JWT] Failed to decode legacy token');
-        return null;
+      const binary = atob(legacyToken);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
       }
+      const decoder = new TextDecoder();
+      decoded = decoder.decode(bytes);
+    } catch (error) {
+      console.log('[JWT] Failed to decode legacy token');
+      return null;
     }
 
     // Parse userId from legacy format
@@ -303,7 +342,7 @@ export function migrateLegacyToken(legacyToken: string): string | null {
 
     // Generate new JWT
     console.log('[JWT] Migrating legacy token for user:', userId);
-    return generateToken(userId);
+    return await generateToken(userId);
   } catch (error) {
     console.error('[JWT] Error migrating legacy token:', error);
     return null;
@@ -322,7 +361,7 @@ export function migrateLegacyToken(legacyToken: string): string | null {
  */
 export function generateLegacyToken(userId: string): string {
   const token = `${userId}:${Date.now()}`;
-  return Buffer.from(token, 'utf-8').toString('base64');
+  return btoa(token);
 }
 
 /**
@@ -335,7 +374,13 @@ export function verifyLegacyToken(token: string): string | null {
     // Decode base64
     let decoded: string;
     try {
-      decoded = Buffer.from(token, 'base64').toString('utf-8');
+      const binary = atob(token);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const decoder = new TextDecoder();
+      decoded = decoder.decode(bytes);
     } catch (error) {
       console.log('[Legacy] Failed to decode base64 token');
       return null;

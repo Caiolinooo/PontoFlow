@@ -5,7 +5,6 @@ import { generateInvoice, validateInvoice, invoiceToJSON, invoiceToPDF } from '@
 
 export async function POST(req: NextRequest) {
   const user = await requireApiAuth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = getSupabase() as any;
 
   try {
@@ -33,7 +32,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate total hours
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const totalHours = timesheet.entries?.reduce((sum: number, entry: any) => {
       if (entry.tipo === 'embarque' || entry.tipo === 'desembarque') {
         return sum + 1;

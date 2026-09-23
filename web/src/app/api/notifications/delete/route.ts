@@ -6,7 +6,6 @@ export async function DELETE(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const { searchParams } = new URL(req.url);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = getSupabase() as any;
     
     const notificationId = searchParams.get('id');

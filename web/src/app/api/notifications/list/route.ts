@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
     const unreadOnly = searchParams.get('unread') === 'true';
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = getSupabase() as any;
     let query = supabase
       .from('notifications')

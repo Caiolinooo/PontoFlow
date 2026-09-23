@@ -43,7 +43,6 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString()
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = getSupabase() as any;
     const { data, error } = await supabase
       .from('notifications')

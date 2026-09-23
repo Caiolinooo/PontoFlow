@@ -45,6 +45,24 @@ interface TimesheetManagerDB extends DBSchema {
     };
     indexes: { 'by-expiry': number };
   };
+  timesheetOps: {
+    key: string;
+    value: {
+      id: string;
+      timesheetId: string;
+      operation: unknown;
+      timestamp: number;
+    };
+    indexes: { 'by-timesheet': string };
+  };
+  faceDescriptors: {
+    key: string;
+    value: {
+      employee_id: string;
+      descriptor: number[];
+      updated_at: number;
+    };
+  };
 }
 
 const DB_NAME = 'timesheet-manager';
@@ -85,6 +103,17 @@ export class OfflineStorage {
         if (!db.objectStoreNames.contains('cache')) {
           const cacheStore = db.createObjectStore('cache', { keyPath: 'url' });
           cacheStore.createIndex('by-expiry', 'expiresAt');
+        }
+
+        // Timesheet specific operations (for UI reconstruction)
+        if (!db.objectStoreNames.contains('timesheetOps')) {
+          const opsStore = db.createObjectStore('timesheetOps', { keyPath: 'id' });
+          opsStore.createIndex('by-timesheet', 'timesheetId');
+        }
+
+        // Face descriptors for offline biometrics
+        if (!db.objectStoreNames.contains('faceDescriptors')) {
+          db.createObjectStore('faceDescriptors', { keyPath: 'employee_id' });
         }
       },
     });
@@ -237,6 +266,101 @@ export class OfflineStorage {
   }
 
   /**
+   * Save a timesheet operation for offline sync to maintain UI state
+   */
+  async saveTimesheetOp(timesheetId: string, operation: any): Promise<void> {
+    if (!this.db) await this.init();
+    
+    // Extract ID from operation depending on its type
+    const opId = operation.type === 'create' ? operation.tempId : `del-${operation.entryId}`;
+    
+    await this.db!.put('timesheetOps', {
+      id: opId,
+      timesheetId,
+      operation,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Get all pending operations for a specific timesheet
+   */
+  async getTimesheetOps(timesheetId: string): Promise<any[]> {
+    if (!this.db) await this.init();
+    const ops = await this.db!.getAllFromIndex('timesheetOps', 'by-timesheet', timesheetId);
+    return ops.sort((a, b) => a.timestamp - b.timestamp).map(op => op.operation);
+  }
+
+  /**
+   * Sync entire array of operations for a timesheet (replaces old ops)
+   */
+  async syncTimesheetOpsState(timesheetId: string, operations: any[]): Promise<void> {
+    if (!this.db) await this.init();
+    
+    // First, get old ops to delete them
+    const oldOps = await this.getTimesheetOps(timesheetId);
+    
+    const tx = this.db!.transaction('timesheetOps', 'readwrite');
+    const store = tx.objectStore('timesheetOps');
+    
+    // Delete existing
+    for (const oldOp of oldOps) {
+      const id = oldOp.type === 'create' ? oldOp.tempId : `del-${oldOp.entryId}`;
+      await store.delete(id);
+    }
+    
+    // Put new
+    for (const op of operations) {
+      const id = op.type === 'create' ? op.tempId : `del-${op.entryId}`;
+      await store.put({
+        id,
+        timesheetId,
+        operation: op,
+        timestamp: Date.now(),
+      });
+    }
+    
+    await tx.done;
+  }
+
+  /**
+   * Delete a pending timesheet operation
+   */
+  async deleteTimesheetOp(opId: string): Promise<void> {
+    if (!this.db) await this.init();
+    await this.db!.delete('timesheetOps', opId);
+  }
+
+  /**
+   * Save face descriptor for offline biometric validation
+   */
+  async saveFaceDescriptor(employee_id: string, descriptor: number[] | Float32Array): Promise<void> {
+    if (!this.db) await this.init();
+    await this.db!.put('faceDescriptors', {
+      employee_id,
+      descriptor: Array.from(descriptor),
+      updated_at: Date.now(),
+    });
+  }
+
+  /**
+   * Get face descriptor for offline biometric validation
+   */
+  async getFaceDescriptor(employee_id: string): Promise<Float32Array | null> {
+    if (!this.db) await this.init();
+    const result = await this.db!.get('faceDescriptors', employee_id);
+    return result ? new Float32Array(result.descriptor) : null;
+  }
+
+  /**
+   * Clear all pending timesheet ops
+   */
+  async clearTimesheetOps(): Promise<void> {
+    if (!this.db) await this.init();
+    await this.db!.clear('timesheetOps');
+  }
+
+  /**
    * Clear all data
    */
   async clearAll(): Promise<void> {
@@ -245,6 +369,8 @@ export class OfflineStorage {
     await this.db!.clear('pendingActions');
     await this.db!.clear('preferences');
     await this.db!.clear('cache');
+    await this.db!.clear('timesheetOps');
+    await this.db!.clear('faceDescriptors');
   }
 }
 

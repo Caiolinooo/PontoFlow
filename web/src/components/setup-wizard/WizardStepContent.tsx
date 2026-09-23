@@ -341,7 +341,7 @@ export default function WizardStepContent({
 
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
             <h3 className="font-medium text-green-900 dark:text-green-100 mb-2">
-              What's Next?
+              What&apos;s Next?
             </h3>
             <ul className="text-sm text-green-800 dark:text-green-200 space-y-1">
               <li>• The database is now ready for use</li>

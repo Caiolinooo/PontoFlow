@@ -10,7 +10,8 @@ const EntrySchema = z.object({
   environment_id: z.string().uuid(),
   hora_ini: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
   hora_fim: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
-  observacao: z.string().max(1000).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v)
+  observacao: z.string().max(1000).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
+  face_score: z.number().min(0).max(1).optional()
 });
 
 // Support both single entry and batch insert
@@ -175,6 +176,31 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     if (insertError || !insertedEntries) {
       console.error('❌ Failed to insert entries:', insertError);
       return NextResponse.json({error: insertError?.message ?? 'Failed to create entries'}, {status: 400});
+    }
+
+    // Insert face verification records if scores are provided
+    const verificationsData = insertedEntries.map((inserted, index) => {
+       const score = entriesToCreate[index].face_score;
+       if (score !== undefined && score !== null) {
+          return {
+             entry_id: inserted.id,
+             employee_id: emp.id,
+             verification_method: 'facial_recognition',
+             face_match_score: score,
+             is_verified: true,
+             verified_at: new Date().toISOString()
+          };
+       }
+       return null;
+    }).filter(Boolean);
+
+    if (verificationsData.length > 0) {
+       const { error: verifyError } = await supabase.from('timesheet_entry_verifications').insert(verificationsData);
+       if (verifyError) {
+          console.error('❌ Failed to insert verifications:', verifyError);
+       } else {
+          console.log(`✅ Logged ${verificationsData.length} biometric verifications.`);
+       }
     }
 
     // Audit log for batch (non-blocking)

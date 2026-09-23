@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as serverAuth from '@/lib/auth/server';
 
 vi.mock('@/lib/auth/server', () => ({
@@ -27,7 +27,13 @@ function makeRequest(body?: Record<string, unknown>) {
 
 describe('Notifications Preferences API', () => {
   beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-anon-key');
     (serverAuth.requireApiAuth as any).mockResolvedValue({ id: 'user-1' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('GET returns default preferences when none stored', async () => {

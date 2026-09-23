@@ -74,7 +74,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    const inputId = id || `input-${React.useId()}`;
+    const generatedId = React.useId();
+    const inputId = id || `input-${generatedId}`;
     const errorId = `${inputId}-error`;
     const helperId = `${inputId}-helper`;
 
@@ -216,7 +217,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     },
     ref
   ) => {
-    const textareaId = id || `textarea-${React.useId()}`;
+    const generatedId = React.useId();
+    const textareaId = id || `textarea-${generatedId}`;
     const errorId = `${textareaId}-error`;
     const helperId = `${textareaId}-helper`;
 

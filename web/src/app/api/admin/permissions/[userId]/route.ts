@@ -20,11 +20,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ userId
   const user = await requireApiRole(['ADMIN']);
   const { userId } = await context.params;
   const body = await req.json().catch(() => ({}));
-  const module = (body?.module as string)?.trim();
+  const moduleName = (body?.module as string)?.trim();
   const permission = (body?.permission as string)?.trim();
   const resource = (body?.resource as string | undefined) ?? null;
 
-  if (!module || !permission) {
+  if (!moduleName || !permission) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
@@ -41,11 +41,11 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ user
   const user = await requireApiRole(['ADMIN']);
   const { userId } = await context.params;
   const body = await req.json().catch(() => ({}));
-  const module = (body?.module as string)?.trim();
+  const moduleName = (body?.module as string)?.trim();
   const permission = (body?.permission as string)?.trim();
   const resource = (body?.resource as string | undefined) ?? null;
 
-  if (!module || !permission) {
+  if (!moduleName || !permission) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
@@ -55,7 +55,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ user
     .delete()
     .eq('tenant_id', user.tenant_id as string)
     .eq('user_id', userId)
-    .eq('module', module)
+    .eq('module', moduleName)
     .eq('permission', permission);
 
   if (resource === null) {

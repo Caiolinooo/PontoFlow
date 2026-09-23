@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireApiAuth } from '@/lib/auth/server';
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anon) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(url, anon);
-}
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const { endpoint } = await req.json();
-    const supabase = getSupabase();
+    const supabase = getServiceSupabase();
 
     if (!endpoint) {
       return NextResponse.json({ error: 'Invalid endpoint' }, { status: 400 });

@@ -50,6 +50,7 @@ export async function GET(
         last_verified_at: faceData.last_verified_at,
         confidence_score: faceData.confidence_score,
         face_image_url: faceData.face_image_url,
+        face_encoding: faceData.face_encoding,
       } : null,
       recent_verifications: verifications || [],
       verification_stats: {

@@ -1,0 +1,8 @@
+{
+  "appId": "com.abzgroup.com.br",
+  "appName": "TimeSheet Manager",
+  "webDir": "../www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

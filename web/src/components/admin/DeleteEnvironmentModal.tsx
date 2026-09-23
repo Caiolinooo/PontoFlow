@@ -101,7 +101,7 @@ export default function DeleteEnvironmentModal({
         {/* Confirmation Input */}
         <div className="space-y-2">
           <label htmlFor="confirm-delete" className="block text-sm font-medium text-[var(--foreground)]">
-            {t('deleteConfirmLabel')} <span className="font-semibold text-red-600">"{environment.name}"</span>
+            {t('deleteConfirmLabel')} <span className="font-semibold text-red-600">&quot;{environment.name}&quot;</span>
           </label>
           <input
             id="confirm-delete"
