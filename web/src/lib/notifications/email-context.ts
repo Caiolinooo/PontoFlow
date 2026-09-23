@@ -3,12 +3,15 @@
  * Fetches tenant branding and user locale for multi-tenant, multi-language emails
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+let _supabase: SupabaseClient | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  }
+  return _supabase;
+}
 
 export type EmailLocale = 'pt-BR' | 'en-GB';
 
@@ -33,7 +36,7 @@ export interface EmailContext {
  */
 export async function getTenantBranding(tenantId: string): Promise<TenantBranding> {
   try {
-    const { data: tenant, error } = await supabase
+    const { data: tenant, error } = await getSupabase()
       .from('tenants')
       .select('id, name, settings')
       .eq('id', tenantId)
@@ -73,7 +76,7 @@ export async function getTenantBranding(tenantId: string): Promise<TenantBrandin
  */
 export async function getUserLocale(userId: string): Promise<EmailLocale> {
   try {
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await getSupabase()
       .from('profiles')
       .select('locale')
       .eq('user_id', userId)
@@ -98,7 +101,7 @@ export async function getUserLocale(userId: string): Promise<EmailLocale> {
  */
 export async function getUserLocaleByEmail(email: string): Promise<EmailLocale> {
   try {
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await getSupabase()
       .from('profiles')
       .select('locale')
       .eq('email', email.toLowerCase())

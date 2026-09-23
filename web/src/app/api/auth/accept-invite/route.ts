@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+let _sb: SupabaseClient | null = null;
+function getSupabase() {
+  return (_sb ??= createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  ));
+}
 
 // GET - Validate token and get invitation details
 export async function GET(request: NextRequest) {
@@ -21,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get invitation
-    const { data: invitation, error } = await supabase
+    const { data: invitation, error } = await getSupabase()
       .from('user_invitations')
       .select('*')
       .eq('token', token)
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     if (new Date(invitation.expires_at) < new Date()) {
       // Mark as expired
-      await supabase
+      await getSupabase()
         .from('user_invitations')
         .update({ status: 'expired' })
         .eq('id', invitation.id);
@@ -105,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get invitation
-    const { data: invitation, error: inviteError } = await supabase
+    const { data: invitation, error: inviteError } = await getSupabase()
       .from('user_invitations')
       .select('*')
       .eq('token', token)
@@ -127,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (new Date(invitation.expires_at) < new Date()) {
-      await supabase
+      await getSupabase()
         .from('user_invitations')
         .update({ status: 'expired' })
         .eq('id', invitation.id);
@@ -139,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const { data: existingUser } = await supabase
+    const { data: existingUser } = await getSupabase()
       .from('users_unified')
       .select('id')
       .eq('email', invitation.email.toLowerCase())
@@ -157,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     // Create user
     // Note: 'name' is a generated column (first_name || ' ' || last_name), so we don't insert it
-    const { data: newUser, error: createError } = await supabase
+    const { data: newUser, error: createError } = await getSupabase()
       .from('users_unified')
       .insert({
         email: invitation.email.toLowerCase(),
@@ -188,7 +191,7 @@ export async function POST(request: NextRequest) {
     // Create or update profile (handle orphaned profiles from trigger)
     try {
       // Check if profile already exists (orphaned profile from trigger)
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile } = await getSupabase()
         .from('profiles')
         .select('user_id')
         .eq('email', invitation.email.toLowerCase())
@@ -202,14 +205,14 @@ export async function POST(request: NextRequest) {
           console.log('   Deleting orphaned profile and creating new one with user_id:', newUser.id);
           
           // Delete the orphaned profile
-          await supabase
+          await getSupabase()
             .from('profiles')
             .delete()
             .eq('user_id', existingProfile.user_id);
         }
         
         // Create or update profile with correct user_id
-        await supabase
+        await getSupabase()
           .from('profiles')
           .upsert({
             user_id: newUser.id,
@@ -224,7 +227,7 @@ export async function POST(request: NextRequest) {
           });
       } else {
         // No profile exists, create new one
-        await supabase.from('profiles').insert({
+        await getSupabase().from('profiles').insert({
           user_id: newUser.id,
           display_name: `${invitation.first_name} ${invitation.last_name}`,
           email: invitation.email.toLowerCase(),
@@ -248,7 +251,7 @@ export async function POST(request: NextRequest) {
                 invitation.role === 'MANAGER' ? 'GERENTE' : 'COLAB',
         }));
 
-        await supabase.from('tenant_user_roles').insert(tenantRoles);
+        await getSupabase().from('tenant_user_roles').insert(tenantRoles);
       } catch (tenantError) {
         console.error('Error assigning tenants:', tenantError);
         // Continue even if tenant assignment fails
@@ -259,14 +262,14 @@ export async function POST(request: NextRequest) {
     if (invitation.group_ids && invitation.group_ids.length > 0) {
       try {
         // First, get tenant_id for each group to populate the tenant_id field
-        const { data: groupsData } = await supabase
+        const { data: groupsData } = await getSupabase()
           .from('groups')
           .select('id, tenant_id')
           .in('id', invitation.group_ids);
 
         if (groupsData && groupsData.length > 0) {
           // Create employee record first if needed
-          const { data: employee } = await supabase
+          const { data: employee } = await getSupabase()
             .from('employees')
             .select('id, tenant_id')
             .eq('profile_id', newUser.id)
@@ -276,7 +279,7 @@ export async function POST(request: NextRequest) {
 
           // If no employee exists, create one for the first tenant
           if (!employee && invitation.tenant_ids && invitation.tenant_ids.length > 0) {
-            const { data: newEmployee } = await supabase
+            const { data: newEmployee } = await getSupabase()
               .from('employees')
               .insert({
                 tenant_id: invitation.tenant_ids[0],
@@ -298,7 +301,7 @@ export async function POST(request: NextRequest) {
               tenant_id: group.tenant_id, // Required by phase-22 migration
             }));
 
-            const { error: memberError } = await supabase
+            const { error: memberError } = await getSupabase()
               .from('employee_group_members')
               .insert(groupMembers);
 
@@ -319,7 +322,7 @@ export async function POST(request: NextRequest) {
       if (invitation.role === 'MANAGER' || invitation.role === 'MANAGER_TIMESHEET') {
         try {
           // Get tenant_id for each group to populate the tenant_id field
-          const { data: groupsData } = await supabase
+          const { data: groupsData } = await getSupabase()
             .from('groups')
             .select('id, tenant_id')
             .in('id', invitation.managed_group_ids);
@@ -331,7 +334,7 @@ export async function POST(request: NextRequest) {
               tenant_id: group.tenant_id, // Required by phase-22 migration
             }));
 
-            const { error: managerError } = await supabase
+            const { error: managerError } = await getSupabase()
               .from('manager_group_assignments')
               .insert(managerAssignments);
 
@@ -349,7 +352,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark invitation as accepted
-    await supabase
+    await getSupabase()
       .from('user_invitations')
       .update({
         status: 'accepted',
