@@ -4,6 +4,7 @@ import {getServiceSupabase} from '@/lib/supabase/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
 import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatcher';
 import { logAudit } from '@/lib/audit/logger';
+import { fileTimesheetForDp } from '@/lib/dp/delivery';
 
 export async function POST(_req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
@@ -19,6 +20,15 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       .eq('id', id)
       .single();
     if (eTs || !ts) return NextResponse.json({ error: eTs?.message ?? 'not_found' }, { status: 404 });
+
+    // Departamento Pessoal: colaborador sem centro de custo nao pode ser aprovado
+    const { data: emp, error: e1 } = await supabase
+      .from('employees')
+      .select('id, display_name, profile_id, centro_custo')
+      .eq('id', ts.employee_id)
+      .single();
+    if (e1 || !emp) return NextResponse.json({ error: e1?.message ?? 'employee_not_found' }, { status: 500 });
+    if (!emp.centro_custo) return NextResponse.json({ error: 'centro_custo_required' }, { status: 400 });
 
     if (user.role !== 'ADMIN') {
       const { data: mgrGroups } = await supabase
@@ -69,14 +79,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       newValues: { status: 'aprovado' } // Portuguese enum value
     });
 
-    // Fetch employee profile for email + locale
-    const {data: emp, error: e1} = await supabase
-      .from('employees')
-      .select('id, display_name, profile_id')
-      .eq('id', updated.employee_id)
-      .single();
-    if (e1) return NextResponse.json({error: e1.message}, {status: 500});
-
+    // Fetch profile for email + locale (emp já carregado no gate de centro de custo)
     const {data: prof, error: e2} = await supabase
       .from('profiles')
       .select('email, locale')
@@ -102,7 +105,11 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       });
     } catch {}
 
-    return NextResponse.json({ok: true, id});
+    // Departamento Pessoal: gera PDF, agrupa por centro de custo e registra na fila.
+    // Falha aqui nao desfaz a aprovacao; a fila fica 'pendente' para reprocesso.
+    const dp = await fileTimesheetForDp(supabase, id);
+
+    return NextResponse.json({ok: true, id, dp: dp.status});
   } catch (error) {
     if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
       return NextResponse.json({error: 'unauthorized'}, {status: 401});

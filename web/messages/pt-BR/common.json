@@ -88,6 +88,7 @@
     "workSchedules": "Escalas",
     "periods": "Períodos",
     "timesheets": "Timesheets",
+    "dp": "Departamento Pessoal",
     "audit": "Auditoria",
     "importExport": "Import/Export",
     "settings": "Configurações",
@@ -417,7 +418,8 @@
     "saved": "Preferências salvas com sucesso."
   },
   "errors": {
-    "generic": "Ocorreu um erro inesperado. Entre em contato com o suporte técnico se o problema persistir."
+    "generic": "Ocorreu um erro inesperado. Entre em contato com o suporte técnico se o problema persistir.",
+    "centroCustoRequired": "Colaborador sem centro de custo cadastrado. Cadastre o centro de custo do colaborador antes de aprovar a folha de ponto."
   },
   "validation": {
     "emailInvalid": "Formato de e-mail inválido",
@@ -431,6 +433,34 @@
     "lastNameTooShort": "Sobrenome muito curto"
   },
   "admin": {
+    "dp": {
+      "title": "Departamento Pessoal",
+      "subtitle": "Folhas de ponto aprovadas, agrupadas por centro de custo para o Portal ABZ",
+      "filters": {
+        "month": "Mês",
+        "costCenter": "Centro de custo",
+        "status": "Status",
+        "all": "Todos"
+      },
+      "table": {
+        "employee": "Colaborador",
+        "costCenter": "Centro de custo",
+        "period": "Período",
+        "status": "Status",
+        "updatedAt": "Atualizado",
+        "actions": "Ações"
+      },
+      "status": {
+        "pendente": "Pendente",
+        "entregue": "Entregue"
+      },
+      "actions": {
+        "download": "Baixar",
+        "retry": "Reprocessar"
+      },
+      "empty": "Nenhuma entrega encontrada para os filtros",
+      "loading": "Carregando..."
+    },
     "currentTenant": "Tenant Atual",
     "dashboard": {
       "title": "Administração",

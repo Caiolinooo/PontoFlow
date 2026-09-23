@@ -12,6 +12,7 @@ type Props = {
 export default function ReviewActions({timesheetId, entries}: Props) {
   const t = useTranslations('manager.review');
   const tActions = useTranslations('actions');
+  const tErr = useTranslations('errors');
   const [open, setOpen] = React.useState(false);
   const [reason, setReason] = React.useState("");
   const [annotations, setAnnotations] = React.useState<Array<{entry_id?: string; field?: string; message: string}>>([]);
@@ -27,7 +28,15 @@ export default function ReviewActions({timesheetId, entries}: Props) {
     setLoading(true);
     try {
       const res = await fetch(`/api/manager/timesheets/${timesheetId}/approve`, {method: 'POST'});
-      if (!res.ok) throw new Error('approve_failed');
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        if (j?.error === 'centro_custo_required') {
+          alert(tErr('centroCustoRequired'));
+          setLoading(false);
+          return;
+        }
+        throw new Error('approve_failed');
+      }
       window.location.reload();
     } catch {
       setLoading(false);

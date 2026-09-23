@@ -37,6 +37,7 @@ export default function AdminNav({ locale }: { locale?: string }) {
       icon: '⚙️',
       items: [
         { href: `/${currentLocale}/admin/timesheets`, label: t('timesheets') },
+        { href: `/${currentLocale}/admin/dp`, label: t('dp') },
         { href: `/${currentLocale}/admin/work-schedules`, label: t('workSchedules') },
         { href: `/${currentLocale}/admin/periods`, label: t('periods') },
       ],
