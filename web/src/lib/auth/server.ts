@@ -1,20 +1,23 @@
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { getUserFromToken, type User } from './custom-auth';
 
 /**
  * Get the current authenticated user from the session cookie
  * Returns null if not authenticated
+ * Memoized per request (React cache): RSC layout + page share one auth resolution
+ * instead of re-running the token verification cascade for every component.
  */
-export async function getCurrentUser(): Promise<User | null> {
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get('timesheet_session')?.value;
-  
+
   if (!token) {
     return null;
   }
-  
+
   return getUserFromToken(token);
-}
+});
 
 /**
  * Require authentication - throws redirect if not authenticated
@@ -53,7 +56,7 @@ export async function requireRole(
  * Get authenticated user from API request
  * Returns user or null if not authenticated
  */
-export async function getApiUser(): Promise<User | null> {
+export const getApiUser = cache(async (): Promise<User | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get('timesheet_session')?.value;
 
@@ -68,7 +71,7 @@ export async function getApiUser(): Promise<User | null> {
   }
 
   return user;
-}
+});
 
 /**
  * Require authentication in API route

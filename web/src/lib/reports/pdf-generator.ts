@@ -401,90 +401,26 @@ export function generateReportHTML(
 }
 
 /**
- * Generate PDF from report using Puppeteer (more reliable for standalone builds)
+ * Generate PDF from report using PDFKit.
+ * Puppeteer path was removed: it downloaded Chrome at install time (breaks CI/sandboxed
+ * builds) and froze serverless invocations; PDFKit is the primary and only path.
  */
 export async function generateReportPDF(
   report: SummaryReport | DetailedReport,
   options: PDFGenerationOptions = {}
 ): Promise<Buffer> {
-  // Check if we're in a serverless environment (Netlify, Vercel, etc.)
-  const isServerless = process.env.NETLIFY === 'true' ||
-                       process.env.VERCEL === '1' ||
-                       process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
-
-  // In serverless environments, skip Puppeteer entirely and use PDFKit
-  if (isServerless) {
-    console.log('[PDF] Serverless environment detected, using PDFKit directly');
-    try {
-      const pdfBuffer = await generateReportPDFWithPDFKit(report, options);
-      console.log('[PDF] Successfully generated PDF with PDFKit');
-      return pdfBuffer;
-    } catch (error) {
-      console.error('[PDF] PDFKit generation failed:', error);
-      throw new Error('Failed to generate PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    }
-  }
-
-  // In non-serverless environments, try Puppeteer first with PDFKit fallback
   try {
-    console.log('[PDF] Attempting PDF generation with Puppeteer...');
-    const pdfBuffer = await generateReportPDFWithPuppeteer(report, options);
-    console.log('[PDF] Successfully generated PDF with Puppeteer');
+    const pdfBuffer = await generateReportPDFWithPDFKit(report, options);
+    console.log('[PDF] Successfully generated PDF with PDFKit');
     return pdfBuffer;
   } catch (error) {
-    console.warn('[PDF] Puppeteer failed, falling back to PDFKit:', error);
-    try {
-      const pdfBuffer = await generateReportPDFWithPDFKit(report, options);
-      console.log('[PDF] Successfully generated PDF with PDFKit');
-      return pdfBuffer;
-    } catch (fallbackError) {
-      console.error('[PDF] Both Puppeteer and PDFKit failed:', fallbackError);
-      throw new Error('Failed to generate PDF: ' + (fallbackError instanceof Error ? fallbackError.message : 'Unknown error'));
-    }
+    console.error('[PDF] PDFKit generation failed:', error);
+    throw new Error('Failed to generate PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 }
 
 /**
- * Generate PDF using Puppeteer browser automation
- */
-async function generateReportPDFWithPuppeteer(
-  report: SummaryReport | DetailedReport,
-  options: PDFGenerationOptions = {}
-): Promise<Buffer> {
-  const puppeteer = require('puppeteer');
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-
-  try {
-    const page = await browser.newPage();
-
-    // Generate HTML content
-    const html = generateReportHTML(report, options);
-
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '50px',
-        right: '50px',
-        bottom: '50px',
-        left: '50px'
-      }
-    });
-
-    return pdfBuffer;
-  } finally {
-    await browser.close();
-  }
-}
-
-/**
- * Generate PDF from report using PDFKit (fallback)
+ * Generate PDF from report using PDFKit.
  */
 async function generateReportPDFWithPDFKit(
   report: SummaryReport | DetailedReport,

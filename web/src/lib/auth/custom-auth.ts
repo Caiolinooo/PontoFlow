@@ -185,8 +185,13 @@ export async function signInWithCredentials(
         return { error: 'Conta inativa. Entre em contato com o administrador.' };
       }
 
-      // Generate token (JWT or legacy fallback)
-      const token = (await generateToken(unifiedUser.id)) || generateLegacyToken(unifiedUser.id);
+      // Generate token (JWT or legacy fallback) with login-time claims for DB-less auth
+      const token = (await generateToken(unifiedUser.id, {
+        role: userRole,
+        tenant_id: unifiedUser.tenant_id || tenantRole?.tenant_id || profile?.tenant_id,
+        email: unifiedUser.email,
+        name: unifiedUser.name || profile?.display_name || unifiedUser.email.split('@')[0],
+      })) || generateLegacyToken(unifiedUser.id);
 
       return {
         user: {
@@ -278,8 +283,13 @@ export async function signInWithCredentials(
 
     console.log('[AUTH] Login successful!');
 
-    // Generate token (JWT or legacy fallback)
-    const token = (await generateToken(userData.id)) || generateLegacyToken(userData.id);
+    // Generate token (JWT or legacy fallback) with login-time claims for DB-less auth
+    const token = (await generateToken(userData.id, {
+      role: userRole,
+      tenant_id: tenantRole?.tenant_id || profile?.tenant_id,
+      email: authEmail,
+      name: profile?.display_name || authEmail.split('@')[0],
+    })) || generateLegacyToken(userData.id);
 
     return {
       user: {
@@ -581,8 +591,31 @@ export async function getUserFromToken(token: string): Promise<User | null> {
 }
 
 /**
- * Sign out user
+ * Fast path: resolve the user from JWT claims with zero DB roundtrips.
+ * Returns null for legacy/claim-less tokens (caller falls back to getUserFromToken).
+ * Claims are a login-time snapshot: role/tenant changes take effect on next login.
  */
+export async function getUserFromTokenFast(token: string): Promise<User | null> {
+  const payload = await verifyToken(token);
+  if (!payload?.role) return null;
+  return {
+    id: payload.sub,
+    email: payload.email || '',
+    first_name: payload.name || '',
+    last_name: '',
+    name: payload.name || payload.email || '',
+    role: payload.role as User['role'],
+    tenant_id: payload.tenant_id,
+    phone_number: '',
+    position: '',
+    department: '',
+    active: true,
+  };
+}
+
+/**
+* Sign out user
+*/
 export async function signOut(): Promise<void> {
   // Clear session cookie (handled by the component)
 }

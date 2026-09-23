@@ -23,6 +23,11 @@ export interface JWTPayload {
   iat: number; // Issued at (timestamp)
   exp: number; // Expiration (timestamp)
   iss: string; // Issuer
+  // Login-time snapshot claims: let middleware resolve the user without DB roundtrips.
+  role?: string;
+  tenant_id?: string;
+  email?: string;
+  name?: string;
 }
 
 // Token expiration: 7 days (same as before)
@@ -144,7 +149,10 @@ function constantTimeEqual(a: string, b: string): boolean {
  * Generate JWT token for user
  * Returns null if JWT_SECRET is not configured (caller should use legacy method)
  */
-export async function generateToken(userId: string): Promise<string | null> {
+export async function generateToken(
+  userId: string,
+  claims?: { role?: string; tenant_id?: string; email?: string; name?: string }
+): Promise<string | null> {
   try {
     const secret = getJWTSecret();
 
@@ -166,7 +174,8 @@ export async function generateToken(userId: string): Promise<string | null> {
       sub: userId,
       iat: Math.floor(now / 1000), // JWT standard uses seconds
       exp: Math.floor((now + TOKEN_EXPIRATION_MS) / 1000),
-      iss: TOKEN_ISSUER
+      iss: TOKEN_ISSUER,
+      ...claims
     };
 
     // Encode header and payload

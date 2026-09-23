@@ -1,4 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server';
+import {waitUntil} from '@vercel/functions';
 import {requireApiRole} from '@/lib/auth/server';
 import {getServiceSupabase} from '@/lib/supabase/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
@@ -79,37 +80,42 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       newValues: { status: 'aprovado' } // Portuguese enum value
     });
 
-    // Fetch profile for email + locale (emp já carregado no gate de centro de custo)
-    const {data: prof, error: e2} = await supabase
-      .from('profiles')
-      .select('email, locale')
-      .eq('user_id', emp.profile_id)
-      .single();
-    if (e2) return NextResponse.json({error: e2.message}, {status: 500});
-
-    // Send notifications (both email and in-app)
-    try {
-      await dispatchEnhancedNotification({
-        type: 'timesheet_approved',
-        to: prof.email,
-        user_id: emp.profile_id,
-        payload: {
-          employeeName: emp.display_name ?? 'Colaborador',
-          managerName: user.name,
-          period: `${updated.periodo_ini} - ${updated.periodo_fim}`,
-          url: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/timesheets/${id}`,
-          locale: (prof.locale as 'pt-BR' | 'en-GB') ?? 'pt-BR',
-          tenantId: updated.tenant_id,
-          email: prof.email
+    // Notificacao (email/in-app) + arquivamento DP rodam APOS a resposta:
+    // gerar PDF + upload + SMTP sincronos congelavam a aprovacao por 5-15s
+    // em serverless. waitUntil mantem a funcao viva em background na Vercel.
+    waitUntil((async () => {
+      try {
+        const {data: prof} = await supabase
+          .from('profiles')
+          .select('email, locale')
+          .eq('user_id', emp.profile_id)
+          .single();
+        if (prof) {
+          await dispatchEnhancedNotification({
+            type: 'timesheet_approved',
+            to: prof.email,
+            user_id: emp.profile_id,
+            payload: {
+              employeeName: emp.display_name ?? 'Colaborador',
+              managerName: user.name,
+              period: `${updated.periodo_ini} - ${updated.periodo_fim}`,
+              url: `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/timesheets/${id}`,
+              locale: (prof.locale as 'pt-BR' | 'en-GB') ?? 'pt-BR',
+              tenantId: updated.tenant_id,
+              email: prof.email
+            }
+          });
         }
-      });
-    } catch {}
+      } catch {}
 
-    // Departamento Pessoal: gera PDF, agrupa por centro de custo e registra na fila.
-    // Falha aqui nao desfaz a aprovacao; a fila fica 'pendente' para reprocesso.
-    const dp = await fileTimesheetForDp(supabase, id);
+      // Departamento Pessoal: gera PDF, agrupa por centro de custo e registra na fila.
+      // Falha nao desfaz a aprovacao; a fila fica 'pendente' para reprocesso.
+      try {
+        await fileTimesheetForDp(supabase, id);
+      } catch {}
+    })());
 
-    return NextResponse.json({ok: true, id, dp: dp.status});
+    return NextResponse.json({ok: true, id, dp: 'pendente'});
   } catch (error) {
     if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
       return NextResponse.json({error: 'unauthorized'}, {status: 401});

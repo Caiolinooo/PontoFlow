@@ -167,26 +167,9 @@ export async function GET(req: NextRequest) {
         .select('group_id, tenant_id')
         .eq('manager_id', user.id);
 
-      // Check if tenant_id column exists (after migration) with fallback
-      try {
-        // Dynamic column detection to support both pre and post-migration databases
-        const { data: hasTenantId } = await supabase
-          .from('information_schema.columns')
-          .select('column_name')
-          .eq('table_name', 'manager_group_assignments')
-          .eq('column_name', 'tenant_id')
-          .maybeSingle();
-
-        if (hasTenantId) {
-          // Use optimized query with tenant_id (after migration)
-          managerGroupsQuery = managerGroupsQuery.eq('tenant_id', user.tenant_id);
-        } else {
-          // Fallback: use join-based approach for pre-migration databases
-          console.warn('Migration not applied - using fallback query logic');
-        }
-      } catch (error) {
-        console.warn('Could not detect tenant_id column, using fallback logic:', error);
-      }
+      // tenant_id columns exist in production (approve route already filters on them);
+      // in-query filtering replaces the per-request information_schema detection.
+      managerGroupsQuery = managerGroupsQuery.eq('tenant_id', user.tenant_id);
 
       const { data: managerGroups, error: managerGroupsError } = await managerGroupsQuery;
 
@@ -225,25 +208,7 @@ export async function GET(req: NextRequest) {
         .select('employee_id, tenant_id')
         .in('group_id', groupIds);
 
-      try {
-        // Reuse tenant_id detection result for consistency
-        const { data: hasTenantId } = await supabase
-          .from('information_schema.columns')
-          .select('column_name')
-          .eq('table_name', 'employee_group_members')
-          .eq('column_name', 'tenant_id')
-          .maybeSingle();
-
-        if (hasTenantId) {
-          // Use optimized query with tenant_id (after migration)
-          groupMembersQuery = groupMembersQuery.eq('tenant_id', user.tenant_id);
-        } else {
-          // Fallback: let RLS policies handle filtering for pre-migration databases
-          console.warn('Using fallback for employee_group_members - migration may not be applied');
-        }
-      } catch (error) {
-        console.warn('Could not detect tenant_id in employee_group_members, using fallback:', error);
-      }
+      groupMembersQuery = groupMembersQuery.eq('tenant_id', user.tenant_id);
 
       const { data: groupMembers, error: groupMembersError } = await groupMembersQuery;
 

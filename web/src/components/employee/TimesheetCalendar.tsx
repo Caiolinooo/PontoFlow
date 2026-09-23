@@ -2,8 +2,9 @@
 // Enhanced calendar with modern UI - v2.0
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import BiometricSetup from './BiometricSetup';
-import BiometricVerify from './BiometricVerify';
+import dynamic from 'next/dynamic';
+const BiometricSetup = dynamic(() => import('./BiometricSetup'), { ssr: false });
+const BiometricVerify = dynamic(() => import('./BiometricVerify'), { ssr: false });
 
 type Entry = {
   id: string;

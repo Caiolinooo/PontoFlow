@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
-import { getUserFromToken } from './lib/auth/custom-auth';
+import { getUserFromToken, getUserFromTokenFast } from './lib/auth/custom-auth';
 
 // Protected routes that require authentication
 const protectedRoutes = [
@@ -49,7 +49,7 @@ export async function middleware(request: NextRequest) {
   // Handle root path - redirect based on authentication
   if (pathname === '/' || pathnameWithoutLocale === '' || pathnameWithoutLocale === '/') {
     const token = request.cookies.get('timesheet_session')?.value;
-    const user = token ? await getUserFromToken(token) : null;
+    const user = token ? ((await getUserFromTokenFast(token)) ?? (await getUserFromToken(token))) : null;
 
     if (user) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
@@ -83,7 +83,7 @@ export async function middleware(request: NextRequest) {
   // If it's a protected route, check authentication and RBAC
   if (isProtectedRoute) {
     const token = request.cookies.get('timesheet_session')?.value;
-    const user = token ? await getUserFromToken(token) : null;
+    const user = token ? ((await getUserFromTokenFast(token)) ?? (await getUserFromToken(token))) : null;
 
     // If no user, redirect to signin
     if (!user) {
@@ -125,7 +125,7 @@ export async function middleware(request: NextRequest) {
   // If user is authenticated and trying to access signin/signup, redirect to dashboard
   if (isPublicRoute && (pathnameWithoutLocale === '/auth/signin' || pathnameWithoutLocale === '/auth/signup')) {
     const token = request.cookies.get('timesheet_session')?.value;
-    const user = token ? await getUserFromToken(token) : null;
+    const user = token ? ((await getUserFromTokenFast(token)) ?? (await getUserFromToken(token))) : null;
 
     if (user) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
