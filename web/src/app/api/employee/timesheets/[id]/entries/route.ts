@@ -123,31 +123,11 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     // Create a map for quick lookup
     const envMap = new Map(environments.map(e => [e.id, e.slug]));
 
-    // Map environment slugs to valid tipo values
+    // Map environment slugs to the CANONICAL tipo vocabulary
+    // (migrations/CANONICAL-SCHEMA-ALIGN.sql): 'normal','extra','feriado','folga'.
+    // The environment itself is stored in environment_id; tipo classifies the day.
     const mapEnvironmentSlugToTipo = (slug: string): string => {
-      const slugMap: Record<string, string> = {
-        'embarque': 'embarque',
-        'desembarque': 'desembarque',
-        'offshore': 'trabalho',
-        'regime-offshore': 'trabalho',
-        'folga': 'folga',
-        'pausa': 'pausa',
-        'refeicao': 'refeicao',
-        'almoco-start': 'trabalho', // Map "Almoço Start" to valid tipo
-        'inicio': 'inicio',
-        'fim': 'fim',
-        'espera': 'espera',
-        'trabalho': 'trabalho',
-        'ferias': 'ferias',
-        'licenca': 'licenca',
-        'doenca': 'doenca',
-        'treinamento': 'treinamento',
-        'manutencao': 'manutencao',
-        'viagem': 'viagem',
-        'administrativo': 'administrativo'
-      };
-
-      return slugMap[slug.toLowerCase()] || 'trabalho'; // Default to 'trabalho' for unknown slugs
+      return slug.toLowerCase() === 'folga' ? 'folga' : 'normal';
     };
 
     // Prepare all entries for batch insert
