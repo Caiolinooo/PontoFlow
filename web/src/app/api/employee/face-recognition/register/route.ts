@@ -41,28 +41,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Deactivate any existing face data for this employee
-    await supabase
+    // Upsert on the unique employee_id key: re-enrollment (new device, re-register)
+    // must replace the previous encoding instead of violating the constraint.
+    const { data: faceData, error: upsertError } = await supabase
       .from('employee_face_data')
-      .update({ is_active: false })
-      .eq('employee_id', employee_id);
-
-    // Insert new face data
-    const { data: faceData, error: insertError } = await supabase
-      .from('employee_face_data')
-      .insert({
-        employee_id,
-        face_encoding,
-        face_image_url: face_image_url || null,
-        confidence_score: confidence_score || null,
-        is_active: true,
-        registered_at: new Date().toISOString(),
-      })
+      .upsert(
+        {
+          employee_id,
+          face_encoding,
+          face_image_url: face_image_url || null,
+          confidence_score: confidence_score || null,
+          is_active: true,
+          registered_at: new Date().toISOString(),
+        },
+        { onConflict: 'employee_id' }
+      )
       .select()
       .single();
 
-    if (insertError) {
-      console.error('Error inserting face data:', insertError);
+    if (upsertError) {
+      console.error('Error upserting face data:', upsertError);
       return NextResponse.json(
         { error: 'Failed to register face data' },
         { status: 500 }
