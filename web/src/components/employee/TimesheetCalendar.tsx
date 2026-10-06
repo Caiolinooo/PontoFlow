@@ -269,10 +269,10 @@ export default function TimesheetCalendar({
 
     // Extend period to next 6 months to allow cross-month suggestions
     const periodEnd = new Date(periodo_fim);
-    periodEnd.setMonth(periodEnd.getMonth() + 6);
+    periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 6);
 
     let currentDate = new Date(start);
-    currentDate.setDate(currentDate.getDate() + 1); // Start from next day
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1); // Start from next day
 
     if (startTipo === 'embarque') {
       // EMBARQUE: User is boarding, so they will work offshore
@@ -291,7 +291,7 @@ export default function TimesheetCalendar({
           });
         }
 
-        currentDate.setDate(currentDate.getDate() + 1);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
       }
 
       // Day N+1: Desembarque (return home)
@@ -307,7 +307,7 @@ export default function TimesheetCalendar({
           });
         }
 
-        currentDate.setDate(currentDate.getDate() + 1);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
       }
 
       // Days N+2 to N+M+1: Folga (days off at home)
@@ -325,7 +325,7 @@ export default function TimesheetCalendar({
           });
         }
 
-        currentDate.setDate(currentDate.getDate() + 1);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
       }
 
       // Day N+M+2: Next embarque (suggestion only)
@@ -359,7 +359,7 @@ export default function TimesheetCalendar({
           });
         }
 
-        currentDate.setDate(currentDate.getDate() + 1);
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
       }
 
       // Day M+1: Next embarque (suggestion only)
@@ -383,18 +383,19 @@ export default function TimesheetCalendar({
     return suggestions;
   };
 
-  // Generate calendar days
+  // Generate calendar days (UTC: date-only strings must not depend on local timezone,
+  // otherwise SSR (UTC) and client (BRT) render different days -> hydration mismatch)
   const days = useMemo(() => {
     const start = new Date(periodo_ini);
     const end = new Date(periodo_fim);
     const list: string[] = [];
     const d = new Date(start);
     while (d <= end) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
       list.push(`${y}-${m}-${day}`);
-      d.setDate(d.getDate() + 1);
+      d.setUTCDate(d.getUTCDate() + 1);
     }
     return list;
   }, [periodo_ini, periodo_fim]);
@@ -402,7 +403,7 @@ export default function TimesheetCalendar({
   // Get first day of month for calendar offset
   const firstDayOfWeek = useMemo(() => {
     const d = new Date(periodo_ini);
-    return d.getDay();
+    return d.getUTCDay();
   }, [periodo_ini]);
 
   // Get environment by ID
@@ -825,7 +826,7 @@ export default function TimesheetCalendar({
           {t('title')}
         </h1>
         <p className="text-sm text-[var(--muted-foreground)]">
-          {new Date(periodo_ini).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
+          {new Date(periodo_ini).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })}
         </p>
         {blocked && !isAfterDeadline() && (
           <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-200 rounded-lg text-xs sm:text-sm animate-scale-in">
@@ -968,7 +969,7 @@ export default function TimesheetCalendar({
             <div className="p-6 border-b border-[var(--border)]">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-2xl font-bold text-[var(--foreground)]">
-                  {new Date(selectedDate).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {new Date(selectedDate).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}
                 </h2>
                 <button
                   onClick={handleCloseModal}
@@ -1317,7 +1318,7 @@ export default function TimesheetCalendar({
                               <div className="flex-1">
                                 <div className="flex items-center gap-3">
                                   <span className="text-sm font-medium text-[var(--foreground)]">
-                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                                   </span>
                                   <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
                                     {env?.slug || 'offshore'}
@@ -1370,7 +1371,7 @@ export default function TimesheetCalendar({
                               <div className="flex-1">
                                 <div className="flex items-center gap-3">
                                   <span className="text-sm font-medium text-[var(--foreground)]">
-                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                                   </span>
                                   <div className="inline-block px-3 py-1 rounded-md text-xs bg-purple-100 text-purple-800">
                                     {env?.slug || 'desembarque'}
@@ -1432,7 +1433,7 @@ export default function TimesheetCalendar({
                               <div className="flex-1">
                                 <div className="flex items-center gap-3">
                                   <span className="text-sm font-medium text-[var(--foreground)]">
-                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                                   </span>
                                   <div className="inline-block px-3 py-1 rounded-md text-xs bg-gray-100 text-gray-800">
                                     {env?.slug || 'folga'}
@@ -1488,7 +1489,7 @@ export default function TimesheetCalendar({
                               <div className="flex-1">
                                 <div className="flex items-center gap-3">
                                   <span className="text-sm font-medium text-[var(--foreground)]">
-                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                                    {new Date(suggestion.date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                                   </span>
                                   <div className="inline-block px-3 py-1 rounded-md text-xs bg-blue-100 text-blue-800">
                                     {env?.slug || 'embarque'}
