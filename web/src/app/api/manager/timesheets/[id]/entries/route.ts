@@ -82,13 +82,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: 'environment_not_found' }, { status: 400 });
     }
 
+    // Canonical tipo vocabulary (migrations/CANONICAL-SCHEMA-ALIGN.sql):
+    // 'normal','extra','feriado','folga'. Environment lives in environment_id.
+    const tipo = environment.slug.toLowerCase() === 'folga' ? 'folga' : 'normal';
     const ins = await supabase
       .from('timesheet_entries')
       .insert({
         tenant_id: ts!.tenant_id,
         timesheet_id: id,
         data: parsed.data.data,
-        tipo: environment.slug, // For backward compatibility
+        tipo,
         environment_id: parsed.data.environment_id,
         hora_ini: parsed.data.hora_ini ?? null,
         hora_fim: parsed.data.hora_fim ?? null,
@@ -108,7 +111,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       newValues: {
         timesheet_id: id,
         data: parsed.data.data,
-        tipo: environment.slug,
+        tipo,
         hora_ini: parsed.data.hora_ini ?? null,
         hora_fim: parsed.data.hora_fim ?? null,
         justification: eff.locked ? parsed.data.justification ?? '' : undefined
