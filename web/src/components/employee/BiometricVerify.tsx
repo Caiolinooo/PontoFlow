@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { extractFaceDescriptor, compareFaceDescriptors, loadFaceModels } from '@/lib/face-recognition';
+import { extractFaceDescriptor, compareFaceDescriptors, loadFaceModels, attachStreamToVideo, cameraErrorMessage, type FaceMatchResult } from '@/lib/face-recognition';
 
 interface Props {
   cachedDescriptor: Float32Array;
@@ -43,76 +43,99 @@ export default function BiometricVerify({ cachedDescriptor, onSuccess, onCancel,
   };
   const t = dict[locale as keyof typeof dict] || dict.pt;
 
-  // Auto-start and process
+  // Load models and start the camera once
   useEffect(() => {
     let activeStream: MediaStream | null = null;
     let isMounted = true;
-    
-    async function runVerificationRound() {
-      if (!isMounted) return;
+
+    async function init() {
       try {
         setStatus('loading_models');
         await loadFaceModels();
-        
+        if (!isMounted) return;
+
         setStatus('starting_camera');
-        activeStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+        activeStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
         });
-        
+        if (!isMounted) {
+          activeStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        // Mounts the <video>; the verification effect binds srcObject below.
         setStream(activeStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = activeStream;
-        }
-        
-        // Wait for video to start playing before capturing
-        await new Promise(r => setTimeout(r, 1000));
-        
-        if (!isMounted) return;
-        setStatus('processing');
-        
-        // Take a few attempts to get a clear face
-        let matchResult = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          if (!videoRef.current) break;
-          
-          const descriptor = await extractFaceDescriptor(videoRef.current);
-          if (descriptor) {
-            matchResult = compareFaceDescriptors(descriptor, cachedDescriptor);
-            if (matchResult.isMatch) {
-              break; // Stop trying if we have a match
-            }
-          }
-          await new Promise(r => setTimeout(r, 500)); // wait halfway before next frame
-        }
-        
-        if (!isMounted) return;
-
-        if (matchResult && matchResult.isMatch) {
-          setStatus('success');
-          setTimeout(() => {
-             if (isMounted) onSuccess(matchResult!.score);
-          }, 1000);
-        } else {
-          throw new Error('Identidade não reconhecida. Tente novamente em um local iluminado e mantenha o rosto reto.');
-        }
-
-      } catch (err: any) {
+      } catch (err) {
         if (!isMounted) return;
         console.error('Biometric verification error:', err);
         setStatus('error');
-        setErrorMsg(err.message || 'Falha ao validar biometria');
+        setErrorMsg(cameraErrorMessage(err));
       }
     }
-    
-    runVerificationRound();
-    
+
+    init();
+
     return () => {
       isMounted = false;
       if (activeStream) {
         activeStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [cachedDescriptor, onSuccess]);
+  }, []);
+
+  // Attach the stream to the mounted <video> and run the verification round
+  // only once real frames are playing. Runs once per stream (retry = remount).
+  const verificationStartedRef = useRef(false);
+  useEffect(() => {
+    const video = videoRef.current;
+    const activeStream = stream;
+    if (!video || !activeStream || verificationStartedRef.current) return;
+    verificationStartedRef.current = true;
+    let isMounted = true;
+
+    async function runVerificationRound(videoEl: HTMLVideoElement, mediaStream: MediaStream) {
+      try {
+        await attachStreamToVideo(videoEl, mediaStream);
+        if (!isMounted) return;
+        setStatus('processing');
+
+        // Take a few attempts to get a clear face
+        let matchResult: FaceMatchResult | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (!isMounted) return;
+          const descriptor = await extractFaceDescriptor(videoEl);
+          if (descriptor) {
+            matchResult = compareFaceDescriptors(descriptor, cachedDescriptor);
+            if (matchResult.isMatch) break;
+          }
+          await new Promise(r => setTimeout(r, 500));
+        }
+
+        if (!isMounted) return;
+        if (matchResult?.isMatch) {
+          setStatus('success');
+          const score = matchResult.score;
+          setTimeout(() => {
+            if (isMounted) onSuccess(score);
+          }, 1000);
+        } else {
+          setStatus('error');
+          setErrorMsg('Identidade não reconhecida. Tente novamente em um local iluminado e mantenha o rosto reto.');
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Biometric verification error:', err);
+        setStatus('error');
+        setErrorMsg(cameraErrorMessage(err));
+      }
+    }
+
+    runVerificationRound(video, activeStream);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [stream, cachedDescriptor, onSuccess]);
 
   return (
     <div className="fixed inset-0 z-[110] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-md animate-fade-in">

@@ -28,6 +28,62 @@ export async function loadFaceModels() {
 }
 
 /**
+ * Maps getUserMedia / video play errors to user-friendly Portuguese messages.
+ */
+export function cameraErrorMessage(err: unknown): string {
+  if (err instanceof DOMException) {
+    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+      return 'Permissão de câmera negada. Libere o acesso à câmera no navegador e tente novamente.';
+    }
+    if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+      return 'Nenhuma câmera encontrada neste dispositivo.';
+    }
+    if (err.name === 'NotReadableError' || err.name === 'AbortError') {
+      return 'Câmera em uso por outro aplicativo. Feche os outros apps e tente novamente.';
+    }
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return 'Falha ao acessar a câmera';
+}
+
+/**
+ * Attaches a MediaStream to a video element and resolves once frames are
+ * actually playing (or rejects with a friendly error). Required because
+ * setting srcObject before the element is mounted (or before play()) leaves
+ * the video black forever.
+ */
+export function attachStreamToVideo(video: HTMLVideoElement, stream: MediaStream): Promise<void> {
+  const { promise, resolve, reject } = Promise.withResolvers<void>();
+  const cleanup = () => {
+    video.removeEventListener('playing', onPlaying);
+    video.removeEventListener('error', onError);
+  };
+  const onPlaying = () => {
+    cleanup();
+    resolve();
+  };
+  const onError = () => {
+    cleanup();
+    reject(new Error('Falha ao iniciar o vídeo da câmera'));
+  };
+  if (video.srcObject !== stream) {
+    video.srcObject = stream;
+  }
+  video.addEventListener('playing', onPlaying, { once: true });
+  video.addEventListener('error', onError, { once: true });
+  if (!video.paused && video.readyState >= 2) {
+    // Already playing (e.g. re-attach)
+    cleanup();
+    resolve();
+  } else {
+    video.play().catch(() => {
+      /* autoplay attribute retries; 'playing' listener resolves */
+    });
+  }
+  return promise;
+}
+
+/**
  * Extracts a face descriptor (Float32Array of 128 dimensions) from a video or image element.
  * @param mediaElement HTMLImageElement | HTMLVideoElement | HTMLCanvasElement
  * @returns Float32Array length 128 or null if no face found
@@ -47,14 +103,21 @@ export async function extractFaceDescriptor(mediaElement: HTMLImageElement | HTM
   return detection.descriptor;
 }
 
+/** Result of comparing a live face descriptor against the enrolled one. */
+export interface FaceMatchResult {
+  isMatch: boolean;
+  distance: number;
+  score: number;
+}
+
 /**
  * Compares two face descriptors and returns a confidence score (0.0 to 1.0).
  * Lower Euclidean distance means higher similarity.
  * @param descriptor1 Float32Array
  * @param descriptor2 Float32Array
- * @returns 
+ * @returns
  */
-export function compareFaceDescriptors(descriptor1: Float32Array, descriptor2: Float32Array): { isMatch: boolean; distance: number; score: number } {
+export function compareFaceDescriptors(descriptor1: Float32Array, descriptor2: Float32Array): FaceMatchResult {
   // Compute euclidean distance
   const distance = faceapi.euclideanDistance(descriptor1, descriptor2);
   

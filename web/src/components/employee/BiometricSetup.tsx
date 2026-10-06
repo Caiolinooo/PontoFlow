@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { extractFaceDescriptor, loadFaceModels } from '@/lib/face-recognition';
+import { extractFaceDescriptor, loadFaceModels, attachStreamToVideo, cameraErrorMessage } from '@/lib/face-recognition';
 
 interface Props {
   employeeId: string;
@@ -48,39 +48,65 @@ export default function BiometricSetup({ employeeId, onSuccess, onCancel, locale
   // Initialize models and camera
   useEffect(() => {
     let activeStream: MediaStream | null = null;
-    
+    let isMounted = true;
+
     async function init() {
       try {
         setStatus('loading_models');
         await loadFaceModels();
-        
+        if (!isMounted) return;
+
         setStatus('starting_camera');
-        activeStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+        activeStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
         });
-        
-        setStream(activeStream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = activeStream;
+        if (!isMounted) {
+          activeStream.getTracks().forEach(track => track.stop());
+          return;
         }
-        
-        setStatus('ready');
-      } catch (err: any) {
+
+        // Mounts the <video> element; the attach effect below binds srcObject
+        // and flips status to 'ready' once frames are actually playing.
+        setStream(activeStream);
+      } catch (err) {
+        if (!isMounted) return;
         console.error('Biometric setup error:', err);
         setStatus('error');
-        setErrorMsg(err.message || 'Falha ao acessar câmera');
+        setErrorMsg(cameraErrorMessage(err));
       }
     }
-    
+
     init();
-    
+
     return () => {
-      // Cleanup camera on unmount
+      isMounted = false;
       if (activeStream) {
         activeStream.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
+
+  // Attach the stream to the mounted <video> and wait for real frames
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream) return;
+    let isMounted = true;
+
+    attachStreamToVideo(video, stream)
+      .then(() => {
+        if (isMounted) setStatus(current => (current === 'starting_camera' ? 'ready' : current));
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error('Biometric video attach error:', err);
+        setStatus('error');
+        setErrorMsg(cameraErrorMessage(err));
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [stream]);
 
   const handleCapture = async () => {
     if (!videoRef.current) return;
