@@ -84,23 +84,37 @@ export function attachStreamToVideo(video: HTMLVideoElement, stream: MediaStream
 }
 
 /**
+ * Detection configs tried in order: first is fast, fallbacks trade speed for
+ * recall. inputSize 224 @ 0.5 misses clear faces at typical webcam distance
+ * (measured: 640x480 frame with face filling ~40% of height returned null,
+ * while 416 @ 0.35 scored 0.96 on the same frame).
+ */
+const DETECTION_ATTEMPTS: ReadonlyArray<{ inputSize: number; scoreThreshold: number }> = [
+  { inputSize: 224, scoreThreshold: 0.5 },
+  { inputSize: 416, scoreThreshold: 0.35 },
+  { inputSize: 512, scoreThreshold: 0.25 },
+];
+
+/**
  * Extracts a face descriptor (Float32Array of 128 dimensions) from a video or image element.
  * @param mediaElement HTMLImageElement | HTMLVideoElement | HTMLCanvasElement
  * @returns Float32Array length 128 or null if no face found
  */
 export async function extractFaceDescriptor(mediaElement: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement): Promise<Float32Array | null> {
   await loadFaceModels();
-  
-  const detection = await faceapi
-    .detectSingleFace(mediaElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
-    .withFaceLandmarks()
-    .withFaceDescriptor();
-    
-  if (!detection) {
-    return null;
+
+  for (const options of DETECTION_ATTEMPTS) {
+    const detection = await faceapi
+      .detectSingleFace(mediaElement, new faceapi.TinyFaceDetectorOptions(options))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (detection) {
+      return detection.descriptor;
+    }
   }
-  
-  return detection.descriptor;
+
+  return null;
 }
 
 /** Result of comparing a live face descriptor against the enrolled one. */
