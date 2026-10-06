@@ -131,6 +131,19 @@ const nextConfig = {
         ]
       },
       {
+        // Biometric status must never be cached: after enrollment the client
+        // re-checks this endpoint and a stale 'not registered' loops the user
+        // back into setup. Must come AFTER the generic /api rule to override it.
+        source: '/api/employee/face-recognition/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate'
+          }
+        ]
+      },
+
+      {
         source: '/_next/static/(.*)',
         headers: [
           {
