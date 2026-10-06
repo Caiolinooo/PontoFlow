@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { cache } from 'react';
-import { getUserFromToken, type User } from './custom-auth';
+import { getUserFromToken, getUserFromTokenFast, type User } from './custom-auth';
 
 /**
  * Get the current authenticated user from the session cookie
@@ -16,7 +16,11 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     return null;
   }
 
-  return getUserFromToken(token);
+  // Claims fast path first (same trust model as middleware): DB cascade only
+  // for legacy claim-less tokens. SSO-issued tokens carry claims and may belong
+  // to profiles outside Supabase Auth (e.g. legacy users_unified), which the
+  // DB path cannot resolve.
+  return (await getUserFromTokenFast(token)) ?? (await getUserFromToken(token));
 });
 
 /**
@@ -65,7 +69,7 @@ export const getApiUser = cache(async (): Promise<User | null> => {
     return null;
   }
 
-  const user = await getUserFromToken(token);
+  const user = (await getUserFromTokenFast(token)) ?? (await getUserFromToken(token));
   if (!user) {
     console.error('getApiUser: getUserFromToken returned null');
   }
