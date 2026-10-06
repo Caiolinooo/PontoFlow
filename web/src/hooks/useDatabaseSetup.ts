@@ -3,7 +3,7 @@
  * 
  * Hook React para integrar o sistema de validação automática
  * Fornece estado, controles e callbacks para o componente modal
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

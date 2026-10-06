@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Linking } from 'react-native';
 import { supabase } from '../lib/supabase';
+import {
+  isBiometricAvailable,
+  isBiometricEnabled,
+  portalLogin,
+  requestSsoUrl,
+  savePortalSession,
+  setBiometricEnabled,
+  setPortalUnlocked,
+} from '../lib/portal-auth';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
@@ -23,6 +32,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'portal' | 'direto'>('portal');
   const [error, setError] = useState<string | null>(null);
   const [envStatus, setEnvStatus] = useState<{ valid: boolean; message?: string }>({ valid: true });
   const isConnected = useNetworkStatus();
@@ -117,6 +127,74 @@ export default function LoginScreen() {
     }
   }
 
+  // Login com a credencial do Portal ABZ -> SSO -> WebView do ponto (decisão B)
+  async function signInWithPortal() {
+    setError(null);
+
+    if (!email.trim()) {
+      Alert.alert('Campo obrigatorio', 'Por favor, insira seu email do portal.');
+      return;
+    }
+    if (!password.trim()) {
+      Alert.alert('Campo obrigatorio', 'Por favor, insira sua senha do portal.');
+      return;
+    }
+    if (!isConnected) {
+      Alert.alert(
+        'Sem conexao',
+        'Verifique sua conexao com a internet e tente novamente.',
+        [
+          { text: 'Abrir configuracoes', onPress: () => Linking.openSettings() },
+          { text: 'Cancelar', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const session = await portalLogin(email, password);
+      await savePortalSession(session);
+      setPortalUnlocked(true);
+      offerBiometricUnlock();
+
+      try {
+        const url = await requestSsoUrl(session.token);
+        router.replace({ pathname: '/ponto-portal', params: { url } });
+      } catch (ssoErr: unknown) {
+        // Login ok, mas Time Sheet indisponível ou cadastro sem flag: mantém a sessão
+        console.warn('[Login] SSO indisponivel:', ssoErr);
+        Alert.alert(
+          'Time Sheet indisponivel',
+          ssoErr instanceof Error
+            ? ssoErr.message
+            : 'Nao foi possivel abrir o Time Sheet agora. Tente novamente mais tarde.'
+        );
+        router.replace('/ponto-portal');
+      }
+    } catch (err: unknown) {
+      console.error('[Login] Erro no login do portal:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao entrar com o portal.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Oferece unlock biométrico local do token do portal (1x por dispositivo)
+  function offerBiometricUnlock() {
+    (async () => {
+      if ((await isBiometricEnabled()) || !(await isBiometricAvailable())) return;
+      Alert.alert(
+        'Desbloqueio biometrico',
+        'Deseja usar biometria para desbloquear o app nas proximas vezes?',
+        [
+          { text: 'Agora nao', style: 'cancel' },
+          { text: 'Ativar', onPress: () => setBiometricEnabled(true) },
+        ]
+      );
+    })().catch(() => {});
+  }
+
   function handleForgotPassword() {
     Linking.openURL('https://your-app-url.com/reset-password');
   }
@@ -162,6 +240,27 @@ export default function LoginScreen() {
             </View>
           )}
 
+          <View style={styles.modeTabs}>
+            <TouchableOpacity
+              style={[styles.modeTab, mode === 'portal' && styles.modeTabActive]}
+              onPress={() => setMode('portal')}
+              disabled={loading}
+            >
+              <Text style={[styles.modeTabText, mode === 'portal' && styles.modeTabTextActive]}>
+                Entrar com o Portal
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeTab, mode === 'direto' && styles.modeTabActive]}
+              onPress={() => setMode('direto')}
+              disabled={loading}
+            >
+              <Text style={[styles.modeTabText, mode === 'direto' && styles.modeTabTextActive]}>
+                Login direto
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.inputContainer}>
             <Feather name="mail" size={20} color="#94A3B8" style={styles.icon} />
             <TextInput
@@ -193,13 +292,13 @@ export default function LoginScreen() {
 
           <TouchableOpacity 
             style={[styles.button, loading && styles.buttonDisabled]} 
-            onPress={signInWithEmail} 
+            onPress={mode === 'portal' ? signInWithPortal : signInWithEmail} 
             disabled={loading || !isConnected}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Entrar no Ponto</Text>
+              <Text style={styles.buttonText}>{mode === 'portal' ? 'Entrar com o Portal' : 'Entrar no Ponto'}</Text>
             )}
           </TouchableOpacity>
 
@@ -229,6 +328,30 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+  },
+  modeTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#1E293B',
+    borderRadius: 10,
+    padding: 4,
+    marginBottom: 20,
+  },
+  modeTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modeTabActive: {
+    backgroundColor: '#3B82F6',
+  },
+  modeTabText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modeTabTextActive: {
+    color: '#FFFFFF',
   },
   header: {
     alignItems: 'center',

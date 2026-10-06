@@ -35,30 +35,23 @@ const TOKEN_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
 const TOKEN_ISSUER = 'pontoflow';
 
 /**
- * Get JWT secret from environment
- * Returns null if not configured (allows fallback to legacy mode)
+ * Get JWT secret from environment.
+ * Throws when JWT_SECRET is missing or too short — there is NO insecure
+ * fallback. Boot validation lives in src/instrumentation.ts; this throw is
+ * defense-in-depth so no code path can silently degrade to unsigned tokens.
  */
-function getJWTSecret(): string | null {
+function getJWTSecret(): string {
   const secret = process.env.JWT_SECRET;
 
   if (!secret) {
-    console.warn('[JWT] WARNING: JWT_SECRET is not set! Using legacy base64 tokens (INSECURE)');
-    return null;
+    throw new Error('[JWT] FATAL: JWT_SECRET is not set. Configure a secret of at least 32 characters (see .env.example).');
   }
 
   if (secret.length < 32) {
-    console.error('[JWT] WARNING: JWT_SECRET is too short (minimum 32 characters)');
-    return null;
+    throw new Error('[JWT] FATAL: JWT_SECRET is too short (minimum 32 characters).');
   }
 
   return secret;
-}
-
-/**
- * Check if JWT is enabled (JWT_SECRET is configured)
- */
-export function isJWTEnabled(): boolean {
-  return getJWTSecret() !== null;
 }
 
 /**
@@ -146,20 +139,15 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Generate JWT token for user
- * Returns null if JWT_SECRET is not configured (caller should use legacy method)
+ * Generate JWT token for user.
+ * Throws if JWT_SECRET is not configured (fail-fast; no legacy fallback).
  */
 export async function generateToken(
   userId: string,
   claims?: { role?: string; tenant_id?: string; email?: string; name?: string }
-): Promise<string | null> {
+): Promise<string> {
   try {
     const secret = getJWTSecret();
-
-    // Fallback to legacy mode if no secret configured
-    if (!secret) {
-      return null;
-    }
 
     const now = Date.now();
 
@@ -199,16 +187,12 @@ export async function generateToken(
 
 /**
  * Verify and decode JWT token
- * Returns payload if valid, null if invalid/expired or JWT not configured
+ * Returns payload if valid, null if invalid/expired.
+ * Throws if JWT_SECRET is not configured (fail-fast; no legacy fallback).
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    // Check if JWT is enabled
     const secret = getJWTSecret();
-    if (!secret) {
-      // JWT not configured, caller should use legacy verification
-      return null;
-    }
 
     // Split token into parts
     const parts = token.split('.');
@@ -310,8 +294,8 @@ export function decodeTokenUnsafe(token: string): JWTPayload | null {
 }
 
 /**
- * Migrate old base64 token to JWT
- * Used during migration period (Option B - immediate)
+ * Decode a legacy base64 token and re-issue a JWT for its user.
+ * Only used to migrate sessions created before the JWT cutover.
  *
  * @param legacyToken Old base64 token (format: "userId:timestamp")
  * @returns New JWT token or null if invalid
@@ -354,81 +338,6 @@ export async function migrateLegacyToken(legacyToken: string): Promise<string | 
     return await generateToken(userId);
   } catch (error) {
     console.error('[JWT] Error migrating legacy token:', error);
-    return null;
-  }
-}
-
-// ==========================================
-// LEGACY FALLBACK (Base64 tokens - INSECURE)
-// ==========================================
-// These functions are used when JWT_SECRET is not configured
-// WARNING: These tokens are NOT SECURE and can be easily forged!
-
-/**
- * Generate legacy base64 token (INSECURE - for fallback only)
- * @deprecated Use JWT tokens instead
- */
-export function generateLegacyToken(userId: string): string {
-  const token = `${userId}:${Date.now()}`;
-  return btoa(token);
-}
-
-/**
- * Verify legacy base64 token (INSECURE - for fallback only)
- * @deprecated Use JWT tokens instead
- * Returns userId if valid, null if invalid/expired
- */
-export function verifyLegacyToken(token: string): string | null {
-  try {
-    // Decode base64
-    let decoded: string;
-    try {
-      const binary = atob(token);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      const decoder = new TextDecoder();
-      decoded = decoder.decode(bytes);
-    } catch (error) {
-      console.log('[Legacy] Failed to decode base64 token');
-      return null;
-    }
-
-    // Parse userId and timestamp
-    const parts = decoded.split(':');
-    if (parts.length !== 2) {
-      console.log('[Legacy] Invalid token format');
-      return null;
-    }
-
-    const [userId, timestamp] = parts;
-    const timestampNum = parseInt(timestamp);
-
-    if (!userId || !timestamp || isNaN(timestampNum)) {
-      console.log('[Legacy] Invalid token format');
-      return null;
-    }
-
-    // Check if token is too old (7 days)
-    const tokenAge = Date.now() - timestampNum;
-    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-
-    if (tokenAge > maxAge) {
-      console.log('[Legacy] Token expired');
-      return null;
-    }
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId)) {
-      console.log('[Legacy] Invalid user ID format:', userId);
-      return null;
-    }
-
-    return userId;
-  } catch (error) {
-    console.error('[Legacy] Error verifying token:', error);
     return null;
   }
 }

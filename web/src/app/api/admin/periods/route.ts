@@ -95,7 +95,7 @@ export async function GET() {
       .maybeSingle();
 
     const tenantTimezone = tenant?.timezone || 'America/Sao_Paulo';
-    const deadlineDay = settings?.deadline_day ?? 16; // Default to day 16 for ABZ Group
+    const deadlineDay = settings?.deadline_day ?? 5; // Default: day 5 (tenant_settings.deadline_day overrides)
 
     // Calculate current periods based on tenant deadline configuration
     const now = new Date();
@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     const tenantTimezone = tenant?.timezone || 'America/Sao_Paulo';
-    const deadlineDay = settings?.deadline_day ?? 16;
+    const deadlineDay = settings?.deadline_day ?? 5; // Default: day 5 (tenant_settings.deadline_day overrides)
 
     // Calculate actual period boundaries based on deadline configuration
     const targetMonth = raw || new Date().toISOString().slice(0, 7); // Use current month if not provided

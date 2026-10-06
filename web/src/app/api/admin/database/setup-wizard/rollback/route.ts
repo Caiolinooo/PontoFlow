@@ -3,7 +3,7 @@
  * 
  * Handles rollback operations for the database setup wizard
  * Executes the ROLLBACK.sql script to undo all wizard changes
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { NextRequest, NextResponse } from 'next/server';

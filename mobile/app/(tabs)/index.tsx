@@ -1,8 +1,9 @@
-import { StyleSheet, Text, View, ScrollView, RefreshControl, ActivityIndicator, Image } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, RefreshControl, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { getPortalUser } from '../../lib/portal-auth';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 function getBRTDate() {
   const now = new Date();
@@ -39,11 +40,18 @@ export default function HomeScreen() {
     todayEntriesCount: 0,
     todayEntries: [] as any[]
   });
+  const [portalOnly, setPortalOnly] = useState<{ email: string } | null>(null);
+  const router = useRouter();
 
   const loadData = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        // Sessão via Portal ABZ (sem sessão Supabase): home vira atalho para o ponto
+        const portalUser = await getPortalUser();
+        setPortalOnly({ email: portalUser?.email ?? '' });
+        return;
+      }
       setSession(session);
 
       // Fetch Employee and Profile
@@ -126,6 +134,26 @@ export default function HomeScreen() {
     return (
       <View className="flex-1 bg-slate-900 justify-center items-center">
         <ActivityIndicator size="large" color="#3B82F6" />
+      </View>
+    );
+  }
+
+  if (portalOnly) {
+    return (
+      <View className="flex-1 bg-slate-900 justify-center items-center px-8">
+        <View className="w-20 h-20 bg-blue-500/20 rounded-full justify-center items-center mb-6">
+          <Feather name="clock" size={36} color="#3B82F6" />
+        </View>
+        <Text className="text-xl font-bold text-white text-center">Time Sheet</Text>
+        {!!portalOnly.email && (
+          <Text className="text-sm text-slate-400 mt-1 text-center">{portalOnly.email}</Text>
+        )}
+        <TouchableOpacity
+          className="mt-8 bg-blue-500 rounded-xl px-8 py-4"
+          onPress={() => router.push('/ponto-portal')}
+        >
+          <Text className="text-white font-semibold text-base">Abrir Time Sheet</Text>
+        </TouchableOpacity>
       </View>
     );
   }

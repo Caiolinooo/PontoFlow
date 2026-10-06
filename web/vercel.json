@@ -1,2 +1,8 @@
-{}
-
+{
+  "crons": [
+    {
+      "path": "/api/cron/webhook-dispatch",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

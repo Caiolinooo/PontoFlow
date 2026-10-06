@@ -1,8 +1,12 @@
 /**
- * Entrega de folhas de ponto ao Departamento Pessoal (Portal ABZ).
+ * Entrega de folhas de ponto ao Departamento Pessoal (DP) do cliente.
+ *
+ * O alvo de entrega é configuração por tenant — NÃO existe bucket padrão:
+ *   tenants.settings.dp_delivery = { "bucket": "<storage-bucket>", "webhook_url": "<opcional>" }
+ * Sem essa config o recurso fica desligado (nada é gravado na fila).
  *
  * Fluxo: timesheet aprovado -> PDF individual (gerador de relatorios
- * detalhado existente) -> upload no bucket privado 'dp-folhas' sob
+ * detalhado existente) -> upload no bucket privado configurado sob
  * dp/{centro_custo}/{AAAA-MM}/{colaborador}.pdf -> registro em
  * dp_deliveries (vinculo colaborador <-> centro de custo <-> arquivo).
  * Reaproveita a mesma chamada em re-aprovacao (upsert idempotente).
@@ -10,8 +14,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateDetailedReport, type ReportFilters, type TimesheetBasic } from '@/lib/reports/generator';
 import { generateReportPDF } from '@/lib/reports/pdf-generator';
-
-export const DP_BUCKET = 'dp-folhas';
 
 export type DpDeliveryStatus = 'pendente' | 'entregue';
 
@@ -28,9 +30,36 @@ export interface DpTimesheet {
 
 export interface DpFileResult {
   ok: boolean;
-  status: DpDeliveryStatus;
+  /** 'desabilitado' quando o tenant não configurou settings.dp_delivery. */
+  status: DpDeliveryStatus | 'desabilitado';
   storagePath?: string;
   error?: string;
+}
+
+export interface DpDeliveryConfig {
+  bucket: string;
+  webhookUrl?: string;
+}
+
+/**
+ * Lê o alvo de entrega de DP do tenant (tenants.settings.dp_delivery).
+ * Retorna null quando o recurso não está configurado para o tenant.
+ */
+export async function resolveDpDeliveryConfig(
+  sb: SupabaseClient,
+  tenantId: string
+): Promise<DpDeliveryConfig | null> {
+  const { data: tenant } = await sb
+    .from('tenants')
+    .select('settings')
+    .eq('id', tenantId)
+    .maybeSingle();
+  const raw = tenant?.settings?.dp_delivery as { bucket?: unknown; webhook_url?: unknown } | undefined;
+  if (!raw || typeof raw.bucket !== 'string' || raw.bucket.trim() === '') return null;
+  return {
+    bucket: raw.bucket.trim(),
+    webhookUrl: typeof raw.webhook_url === 'string' && raw.webhook_url.trim() !== '' ? raw.webhook_url.trim() : undefined,
+  };
 }
 
 /** Remove acentos, espacos e caracteres inseguros para uso em path de Storage. */
@@ -58,8 +87,8 @@ export function buildDpStoragePath(input: {
 }
 
 /** Cria o bucket privado se ainda nao existir (idempotente). */
-export async function ensureDpBucket(sb: SupabaseClient): Promise<void> {
-  const { error } = await sb.storage.createBucket(DP_BUCKET, { public: false });
+export async function ensureDpBucket(sb: SupabaseClient, bucket: string): Promise<void> {
+  const { error } = await sb.storage.createBucket(bucket, { public: false });
   if (error && !/already exists|duplicate/i.test(error.message)) throw error;
 }
 
@@ -79,11 +108,16 @@ export async function loadDpTimesheet(sb: SupabaseClient, timesheetId: string): 
 }
 
 /**
- * Gera o PDF da folha, sobe para o Storage e registra na fila.
+ * Gera o PDF da folha, sobe para o Storage configurado pelo tenant e registra na fila.
  * Nunca lanca: falha vira registro 'pendente' com last_error para reprocesso.
+ * Tenant sem settings.dp_delivery -> recurso desligado, nada é gravado.
  */
 export async function fileTimesheetForDp(sb: SupabaseClient, timesheetId: string): Promise<DpFileResult> {
   const ts = await loadDpTimesheet(sb, timesheetId);
+  const config = await resolveDpDeliveryConfig(sb, ts.tenant_id);
+  if (!config) {
+    return { ok: true, status: 'desabilitado' };
+  }
   const centroCusto = ts.employee?.centro_custo || 'sem-cc';
 
   const baseRow = {
@@ -93,6 +127,7 @@ export async function fileTimesheetForDp(sb: SupabaseClient, timesheetId: string
     centro_custo: centroCusto,
     periodo_ini: ts.periodo_ini,
     periodo_fim: ts.periodo_fim,
+    storage_bucket: config.bucket,
   };
   const storagePath = buildDpStoragePath({
     centroCusto,
@@ -117,9 +152,9 @@ export async function fileTimesheetForDp(sb: SupabaseClient, timesheetId: string
       locale: 'pt-BR',
     });
 
-    await ensureDpBucket(sb);
+    await ensureDpBucket(sb, config.bucket);
     const { error: upErr } = await sb.storage
-      .from(DP_BUCKET)
+      .from(config.bucket)
       .upload(storagePath, pdf, { contentType: 'application/pdf', upsert: true });
     if (upErr) throw upErr;
 
@@ -128,6 +163,29 @@ export async function fileTimesheetForDp(sb: SupabaseClient, timesheetId: string
       { onConflict: 'timesheet_id' }
     );
     if (dbErr) throw dbErr;
+
+    if (config.webhookUrl) {
+      // Notificacao best-effort do webhook configurado pelo tenant.
+      try {
+        await fetch(config.webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'dp.timesheet_filed',
+            tenantId: ts.tenant_id,
+            timesheetId: ts.id,
+            employeeId: ts.employee_id,
+            centroCusto,
+            periodoIni: ts.periodo_ini,
+            periodoFim: ts.periodo_fim,
+            bucket: config.bucket,
+            storagePath,
+          }),
+        });
+      } catch (webhookErr) {
+        console.warn('[DP] Webhook de entrega falhou (entrega no storage concluida):', webhookErr);
+      }
+    }
 
     return { ok: true, status: 'entregue', storagePath };
   } catch (err) {

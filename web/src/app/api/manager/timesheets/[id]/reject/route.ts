@@ -5,6 +5,7 @@ import {getServiceSupabase} from '@/lib/supabase/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
 import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatcher';
 import { logAudit } from '@/lib/audit/logger';
+import { emitIntegrationEvent } from '@/lib/integration/v1/webhooks';
 
 const Schema = z.object({
   reason: z.string().min(3),
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
     // Fetch employee + profile for email + locale
     const {data: emp, error: e1} = await supabase
       .from('employees')
-      .select('id, profile_id')
+      .select('id, profile_id, external_id')
       .eq('id', updated.employee_id)
       .single();
     if (e1 || !emp) {
@@ -147,6 +148,18 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
         }
       });
     } catch {}
+
+    // Integration API v1: emite timesheet.rejected (outbox; falha não derruba).
+    if (emp.external_id) {
+      emitIntegrationEvent(supabase, updated.tenant_id, {
+        type: 'timesheet.rejected',
+        externalId: emp.external_id,
+        timesheetId: updated.id,
+        periodStart: updated.periodo_ini,
+        periodEnd: updated.periodo_fim,
+        at: new Date().toISOString(),
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ok: true, id});
   } catch (error) {

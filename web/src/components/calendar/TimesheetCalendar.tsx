@@ -292,7 +292,8 @@ export default function TimesheetCalendar({
     }
   };
 
-  const blocked = status !== 'draft';
+  // Canonical status vocabulary is Portuguese; 'draft' tolerated for legacy rows
+  const blocked = status !== 'rascunho' && status !== 'draft';
 
   return (
     <div className="space-y-3 sm:space-y-4 animate-fade-in">

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiRole } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
-import { DP_BUCKET } from '@/lib/dp/delivery';
+import { resolveDpDeliveryConfig } from '@/lib/dp/delivery';
 
 // GET /api/admin/dp/deliveries/[id]/file - stream do PDF do bucket privado
 export async function GET(_req: NextRequest, context: {params: Promise<{id: string}>}) {
@@ -12,13 +12,17 @@ export async function GET(_req: NextRequest, context: {params: Promise<{id: stri
 
     const { data: row, error } = await supabase
       .from('dp_deliveries')
-      .select('storage_path')
+      .select('storage_path, storage_bucket, tenant_id')
       .eq('id', id)
       .single();
     if (error || !row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-    const { data: file, error: dlErr } = await supabase.storage.from(DP_BUCKET).download(row.storage_path);
-    if (dlErr || !file) return NextResponse.json({ error: 'file_not_found' }, { status: 404 });
+    const bucket = row.storage_bucket
+      || (await resolveDpDeliveryConfig(supabase, row.tenant_id))?.bucket;
+    if (!bucket) return NextResponse.json({ error: 'dp_delivery_not_configured' }, { status: 409 });
+
+    const { data: file, error: dlErr } = await supabase.storage.from(bucket).download(row.storage_path);
+    if (dlErr || !file) return NextResponse.json({ error: dlErr?.message ?? 'file_not_found' }, { status: 404 });
 
     const filename = row.storage_path.split('/').pop() ?? 'folha-de-ponto.pdf';
     return new NextResponse(await file.arrayBuffer(), {

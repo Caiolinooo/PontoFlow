@@ -800,10 +800,10 @@ export default function TimesheetCalendar({
     }
   };
 
-  // Allow editing if status is 'draft', 'rejected', OR if we're after the period deadline
-  // This ensures users can edit timesheets even after period end (e.g., after day 16 for ABZ Group)
+  // Allow editing if status is 'rascunho'/'recusado' (canonical pt; en tolerated
+  // for legacy rows), OR if we're after the period deadline.
   // REJECTED timesheets MUST be editable so users can correct and resubmit
-  const canEditTimesheet = status === 'draft' || status === 'rejected' || isAfterDeadline();
+  const canEditTimesheet = status === 'rascunho' || status === 'recusado' || status === 'draft' || status === 'rejected' || isAfterDeadline();
   const blocked = !canEditTimesheet;
 
   return (
@@ -837,7 +837,7 @@ export default function TimesheetCalendar({
             ⚠️ Período fechado - Você pode editar até que seu gestor aprove ou feche o período
           </div>
         )}
-        {status === 'rejected' && (
+        {(status === 'recusado' || status === 'rejected') && (
           <div className="mt-2 p-3 bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200 rounded-lg text-xs sm:text-sm border-2 border-red-300 dark:border-red-700 animate-scale-in">
             <div className="flex items-start gap-2">
               <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

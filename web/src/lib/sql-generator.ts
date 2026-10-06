@@ -3,7 +3,7 @@
  * 
  * Gerador automático de scripts SQL para criação de estruturas de banco
  * Baseado nos resultados da validação, gera SQL otimizado para correção
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import {

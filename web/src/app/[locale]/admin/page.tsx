@@ -72,6 +72,13 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
       color: 'from-amber-500/20 to-amber-600/10'
     },
     {
+      title: t('modules.integrations.title') || 'Integrations',
+      description: t('modules.integrations.description') || 'API keys, webhook endpoints and delivery events',
+      href: `/${locale}/admin/integrations`,
+      icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1',
+      color: 'from-violet-500/20 to-violet-600/10'
+    },
+    {
       title: t('modules.settings.title') || 'Settings',
       description: t('modules.settings.description') || 'System configuration and preferences',
       href: `/${locale}/admin/settings`,

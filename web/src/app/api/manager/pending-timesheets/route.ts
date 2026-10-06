@@ -7,6 +7,8 @@ import {
   getPeriodStatus
 } from '@/lib/periods/calculator';
 import { formatTimesheetPeriodDisplay } from '@/lib/timezone/utils';
+import { emitIntegrationEvent } from '@/lib/integration/v1/webhooks';
+import { summarizeTimesheet } from '@/lib/integration/v1/timesheets';
 
 // Cache key prefix for this endpoint
 const CACHE_PREFIX = 'manager_pending_timesheets';
@@ -39,12 +41,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const month = searchParams.get('month'); // YYYY-MM format
     const statusParam = searchParams.get('status') || 'enviado';
-    // Map Portuguese status to English (database uses English)
+    // Canonical DB vocabulary is Portuguese; accept legacy English params
     const statusMap: Record<string, string> = {
-      'rascunho': 'draft',
-      'enviado': 'submitted',
-      'aprovado': 'approved',
-      'recusado': 'rejected'
+      'draft': 'rascunho',
+      'submitted': 'enviado',
+      'approved': 'aprovado',
+      'rejected': 'recusado',
+      'locked': 'bloqueado'
     };
     const status = statusMap[statusParam] || statusParam;
     const employeeId = searchParams.get('employeeId');
@@ -61,7 +64,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get tenant settings for custom deadline configuration with fallbacks
-    let deadlineDay = 16; // Default: 16th for ABZ Group
+    let deadlineDay = 5; // Default: day 5 (tenant_settings.deadline_day overrides)
     let tenantTimezone = 'America/Sao_Paulo';
     
     try {
@@ -72,12 +75,12 @@ export async function GET(req: NextRequest) {
         .single();
         
       if (tenantSettings) {
-        deadlineDay = tenantSettings?.deadline_day ?? 16;
+        deadlineDay = tenantSettings?.deadline_day ?? 5;
         tenantTimezone = tenantSettings?.timezone || 'America/Sao_Paulo';
       }
     } catch (err) {
       console.warn('Could not fetch tenant_settings, using defaults:', err);
-      deadlineDay = 16;
+      deadlineDay = 5;
       tenantTimezone = 'America/Sao_Paulo';
     }
     
@@ -422,8 +425,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Perform batch update
-    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    // Perform batch update (canonical Portuguese status vocabulary)
+    const newStatus = action === 'approve' ? 'aprovado' : 'recusado';
     
     const { data: updatedTimesheets, error: updateError } = await supabase
       .from('timesheets')
@@ -432,7 +435,7 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString()
       })
       .in('id', timesheetIds)
-      .select('id, employee_id, status');
+      .select('id, employee_id, tenant_id, status, periodo_ini, periodo_fim');
 
     if (updateError) {
       return NextResponse.json(
@@ -441,12 +444,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create audit entries for each timesheet
+    // Create audit entries for each timesheet (canonical approvals columns)
     const auditEntries = updatedTimesheets?.map(timesheet => ({
+      tenant_id: timesheet.tenant_id,
       timesheet_id: timesheet.id,
       manager_id: user.id,
-      status: action,
-      reason: reason || null,
+      status: newStatus,
+      mensagem: reason || null,
       created_at: new Date().toISOString()
     })) || [];
 
@@ -459,6 +463,38 @@ export async function POST(req: NextRequest) {
         console.warn('Failed to create audit entries:', auditError);
         // Don't fail the whole operation for audit issues
       }
+    }
+
+    // Integration API v1: emite timesheet.approved/rejected em lote (outbox; falha não derruba).
+    try {
+      const employeeIds = [...new Set((updatedTimesheets ?? []).map((t) => t.employee_id))];
+      const { data: emps } = await supabase
+        .from('employees')
+        .select('id, external_id')
+        .in('id', employeeIds);
+      const externalByEmployee = new Map((emps ?? []).map((e) => [e.id, e.external_id as string | null]));
+      for (const t of updatedTimesheets ?? []) {
+        const externalId = externalByEmployee.get(t.employee_id);
+        if (!externalId) continue;
+        const base = {
+          externalId,
+          timesheetId: t.id,
+          periodStart: t.periodo_ini,
+          periodEnd: t.periodo_fim,
+          at: new Date().toISOString(),
+        };
+        if (action === 'approve') {
+          emitIntegrationEvent(supabase, t.tenant_id, {
+            type: 'timesheet.approved',
+            ...base,
+            ...(await summarizeTimesheet(supabase, t.id)),
+          }).catch(() => {});
+        } else {
+          emitIntegrationEvent(supabase, t.tenant_id, { type: 'timesheet.rejected', ...base }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('[integration/v1] batch emit failed:', e);
     }
 
     // Invalidate cache for this user's pending timesheets

@@ -2,7 +2,7 @@
  * Layer Card Component
  * 
  * Individual layer card showing status and action buttons
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

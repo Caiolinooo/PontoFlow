@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     // Find employee for current user
     const { data: employee, error: empError } = await supabase
       .from('employees')
-      .select('id')
+      .select('id, active')
       .eq('tenant_id', user.tenant_id)
       .eq('profile_id', user.id)
       .limit(1)
@@ -48,6 +48,11 @@ export async function POST(req: NextRequest) {
 
     if (!employee) {
       return NextResponse.json({ error: 'employee_not_configured' }, { status: 400 });
+    }
+
+    // Integration API v1: pessoa desligada (active=false) não cria timesheet
+    if (employee.active === false) {
+      return NextResponse.json({ error: 'employee_inactive' }, { status: 403 });
     }
 
     // Check effective lock (employee > groups > environments > tenant)

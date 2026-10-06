@@ -6,6 +6,8 @@ import {dispatchNotification} from '@/lib/notifications/dispatcher';
 import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatcher';
 import { logAudit } from '@/lib/audit/logger';
 import { fileTimesheetForDp } from '@/lib/dp/delivery';
+import { emitIntegrationEvent } from '@/lib/integration/v1/webhooks';
+import { summarizeTimesheet } from '@/lib/integration/v1/timesheets';
 
 export async function POST(_req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
@@ -25,7 +27,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
     // Departamento Pessoal: colaborador sem centro de custo nao pode ser aprovado
     const { data: emp, error: e1 } = await supabase
       .from('employees')
-      .select('id, display_name, profile_id, centro_custo')
+      .select('id, display_name, profile_id, centro_custo, external_id')
       .eq('id', ts.employee_id)
       .single();
     if (e1 || !emp) return NextResponse.json({ error: e1?.message ?? 'employee_not_found' }, { status: 500 });
@@ -59,6 +61,19 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
       .single();
 
     if (error || !updated) return NextResponse.json({error: error?.message ?? 'not_found'}, {status: 400});
+
+    // Integration API v1: emite timesheet.approved (outbox; falha não derruba).
+    if (emp.external_id) {
+      emitIntegrationEvent(supabase, updated.tenant_id, {
+        type: 'timesheet.approved',
+        externalId: emp.external_id,
+        timesheetId: updated.id,
+        periodStart: updated.periodo_ini,
+        periodEnd: updated.periodo_fim,
+        ...(await summarizeTimesheet(supabase, updated.id)),
+        at: new Date().toISOString(),
+      }).catch(() => {});
+    }
 
     // Insert approval audit row
     await supabase.from('approvals').insert({

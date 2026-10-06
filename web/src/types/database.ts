@@ -2,7 +2,7 @@
  * Database Validation Types
  * 
  * Tipos TypeScript para sistema de validação automática de banco de dados
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { createClient } from '@supabase/supabase-js';

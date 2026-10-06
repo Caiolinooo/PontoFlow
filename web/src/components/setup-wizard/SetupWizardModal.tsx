@@ -3,7 +3,7 @@
  * 
  * Main modal interface for the database setup wizard
  * Provides step-by-step wizard UI with real-time progress tracking
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

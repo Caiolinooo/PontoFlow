@@ -2,6 +2,10 @@ import '@testing-library/jest-dom';
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
+// jwt.ts faz fail-fast sem JWT_SECRET (>= 32 chars); em testes, definir um
+// valor default para não exigir env real.
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-key-with-32-plus-chars!';
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();

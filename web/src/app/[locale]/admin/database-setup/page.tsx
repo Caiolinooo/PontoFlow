@@ -3,7 +3,7 @@
  * 
  * Página administrativa para gerenciamento do sistema de validação
  * Permite configurar, validar e otimizar o banco de dados
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { requireRole } from '@/lib/auth/server';

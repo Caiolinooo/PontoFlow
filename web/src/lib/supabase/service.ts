@@ -13,8 +13,14 @@ export function getServiceSupabase() {
   }
 
   // This client is for server-only usage (Edge/Node). Do not expose the service key to the client.
+  // fetch com cache desabilitado: o Next.js estende o fetch global e cacheia
+  // GETs do PostgREST no Data Cache (.next/cache), o que serviria linhas
+  // STALE entre requests/restarts (ex.: tenants.auth_mode recém-alterado).
+  const noStoreFetch: typeof fetch = (input, init) =>
+    fetch(input, { ...init, cache: 'no-store' });
   return createClient(url, serviceKey, {
-    auth: {persistSession: false, autoRefreshToken: false}
+    auth: {persistSession: false, autoRefreshToken: false},
+    global: {fetch: noStoreFetch},
   });
 }
 

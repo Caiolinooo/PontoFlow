@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { generateToken, verifyToken, generateLegacyToken, verifyLegacyToken } from './jwt';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { generateToken, verifyToken } from './jwt';
 
 // Lazy initialization to avoid build-time errors
 let _supabase: ReturnType<typeof createClient> | null = null;
@@ -85,6 +85,30 @@ export interface AuthSession {
   token: string;
   expiresAt: number;
 }
+/**
+ * Reject password login for tenants in SSO-only mode (D11).
+ * Returns the error message when the tenant forbids password auth, else null.
+ */
+async function getSsoOnlyLoginError(
+  supabaseAdmin: SupabaseClient,
+  tenantId: string | null | undefined
+): Promise<string | null> {
+  if (!tenantId) return null;
+  try {
+    const { data: tenant } = await supabaseAdmin
+      .from('tenants')
+      .select('auth_mode')
+      .eq('id', tenantId)
+      .maybeSingle();
+    if (tenant?.auth_mode === 'sso_only') {
+      return 'Login por senha desabilitado para esta organização. Acesse pelo portal (SSO).';
+    }
+  } catch {
+    // Column may not exist yet on legacy databases — fail open.
+  }
+  return null;
+}
+
 
 /**
  * Authenticate user using Supabase Auth or users_unified table
@@ -108,7 +132,15 @@ export async function signInWithCredentials(
 
     if (authError || !authData.user) {
       console.log('[AUTH] Supabase Auth failed:', authError?.message);
-      console.log('[AUTH] Trying users_unified table fallback...');
+
+      // Legacy users_unified (bcrypt) fallback — disabled by default.
+      // Only enable for legacy deployments that still authenticate against
+      // the users_unified table (ENABLE_LEGACY_ABZ_AUTH=true).
+      if (process.env.ENABLE_LEGACY_ABZ_AUTH !== 'true') {
+        return { error: 'Credenciais inválidas' };
+      }
+
+      console.log('[AUTH] Trying users_unified table fallback (legacy mode enabled)...');
 
       // Fallback: Try users_unified table
       const { data: unifiedUserData, error: unifiedError } = await supabaseAdmin
@@ -185,13 +217,17 @@ export async function signInWithCredentials(
         return { error: 'Conta inativa. Entre em contato com o administrador.' };
       }
 
-      // Generate token (JWT or legacy fallback) with login-time claims for DB-less auth
-      const token = (await generateToken(unifiedUser.id, {
+      const unifiedTenantId = unifiedUser.tenant_id || tenantRole?.tenant_id || profile?.tenant_id;
+      const ssoOnlyError = await getSsoOnlyLoginError(supabaseAdmin, unifiedTenantId);
+      if (ssoOnlyError) return { error: ssoOnlyError };
+
+      // Generate JWT with login-time claims for DB-less auth
+      const token = await generateToken(unifiedUser.id, {
         role: userRole,
-        tenant_id: unifiedUser.tenant_id || tenantRole?.tenant_id || profile?.tenant_id,
+        tenant_id: unifiedTenantId,
         email: unifiedUser.email,
         name: unifiedUser.name || profile?.display_name || unifiedUser.email.split('@')[0],
-      })) || generateLegacyToken(unifiedUser.id);
+      });
 
       return {
         user: {
@@ -283,13 +319,17 @@ export async function signInWithCredentials(
 
     console.log('[AUTH] Login successful!');
 
-    // Generate token (JWT or legacy fallback) with login-time claims for DB-less auth
-    const token = (await generateToken(userData.id, {
+    const passwordTenantId = tenantRole?.tenant_id || profile?.tenant_id;
+    const ssoOnlyError = await getSsoOnlyLoginError(supabaseAdmin, passwordTenantId);
+    if (ssoOnlyError) return { error: ssoOnlyError };
+
+    // Generate JWT with login-time claims for DB-less auth
+    const token = await generateToken(userData.id, {
       role: userRole,
-      tenant_id: tenantRole?.tenant_id || profile?.tenant_id,
+      tenant_id: passwordTenantId,
       email: authEmail,
       name: profile?.display_name || authEmail.split('@')[0],
-    })) || generateLegacyToken(userData.id);
+    });
 
     return {
       user: {
@@ -316,24 +356,15 @@ export async function signInWithCredentials(
 }
 
 /**
- * Get user from session token (JWT or legacy base64)
+ * Get user from session token (JWT)
  */
 export async function getUserFromToken(token: string): Promise<User | null> {
   try {
-    // Try JWT first
     const payload = await verifyToken(token);
-    let userId: string | null = null;
-
-    if (payload) {
-      // JWT token verified successfully
-      userId = payload.sub;
-    } else {
-      // Fallback to legacy base64 token
-      userId = verifyLegacyToken(token);
-      if (!userId) {
-        return null;
-      }
+    if (!payload) {
+      return null;
     }
+    const userId = payload.sub;
 
     const supabase = getSupabase();
     const supabaseAdmin = getSupabaseAdmin();
@@ -342,9 +373,15 @@ export async function getUserFromToken(token: string): Promise<User | null> {
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
 
     if (authError || !authUser?.user) {
-      console.log('[getUserFromToken] User not found in Supabase Auth. UserID:', userId, 'Error:', authError?.message);
-      console.log('[getUserFromToken] Trying users_unified table fallback...');
+      // Legacy users_unified session lookup — disabled by default
+      // (ENABLE_LEGACY_ABZ_AUTH=true only for legacy deployments).
+      if (process.env.ENABLE_LEGACY_ABZ_AUTH !== 'true') {
+        console.log('[getUserFromToken] User not found in Supabase Auth and legacy fallback is disabled. UserID:', userId);
+        return null;
+      }
 
+      console.log('[getUserFromToken] User not found in Supabase Auth. UserID:', userId, 'Error:', authError?.message);
+      console.log('[getUserFromToken] Trying users_unified table fallback (legacy mode enabled)...');
       // Fallback: Try users_unified table
       const { data: unifiedUserData, error: unifiedError } = await supabaseAdmin
         .from('users_unified')

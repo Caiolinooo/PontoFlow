@@ -1,6 +1,6 @@
 /**
  * Advanced period calculation system for custom tenant deadlines
- * Supports custom deadline days (e.g., ABZ tenant with deadline on day 16)
+ * Supports custom deadline days (e.g., a tenant with deadline on day 16)
  */
 
 import { addMonths, subMonths, startOfMonth, endOfMonth, differenceInDays, isAfter, isBefore, parseISO } from 'date-fns';

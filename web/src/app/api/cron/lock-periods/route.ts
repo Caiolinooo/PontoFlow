@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase/service';
+import { emitIntegrationEvent } from '@/lib/integration/v1/webhooks';
 
 /**
  * Cron job to automatically lock periods based on tenant deadline_day settings
@@ -134,6 +135,12 @@ export async function GET(req: NextRequest) {
                 period: periodMonth,
                 deadline: deadlineDay,
               });
+              // Integration API v1: period.locked (outbox; falha não derruba o cron)
+              emitIntegrationEvent(supabase, tenant.id, {
+                type: 'period.locked',
+                periodMonth,
+                at: new Date().toISOString(),
+              }).catch(() => {});
             }
           } else if (!existingLock.locked) {
             // Update existing lock to locked
@@ -160,6 +167,12 @@ export async function GET(req: NextRequest) {
                 period: periodMonth,
                 deadline: deadlineDay,
               });
+              // Integration API v1: period.locked (outbox; falha não derruba o cron)
+              emitIntegrationEvent(supabase, tenant.id, {
+                type: 'period.locked',
+                periodMonth,
+                at: new Date().toISOString(),
+              }).catch(() => {});
             }
           } else {
             results.push({

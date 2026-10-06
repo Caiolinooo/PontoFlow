@@ -3,7 +3,7 @@
  * 
  * Sistema completo de validação de estruturas de banco de dados
  * Verifica todas as 17 tabelas, índices, políticas RLS e funções
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { createClient } from '@supabase/supabase-js';

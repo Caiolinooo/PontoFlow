@@ -3,7 +3,7 @@
  *
  * Coordenador principal do sistema de validação automática
  * Integra validação, geração e execução de SQL com monitoramento
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { createClient } from '@supabase/supabase-js';

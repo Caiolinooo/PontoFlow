@@ -3,7 +3,7 @@
  * 
  * Componente cliente que integra com a API e fornece interface
  * para validação e configuração automática do banco de dados
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

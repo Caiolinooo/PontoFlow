@@ -1,6 +1,7 @@
 import { Text, View, ScrollView, Image, Pressable, Alert } from 'react-native';
 import { useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { clearPortalSession, getPortalUser } from '../../lib/portal-auth';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
 
@@ -8,11 +9,17 @@ export default function SettingsScreen() {
   const [session, setSession] = useState<any>(null);
   const [employee, setEmployee] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [portalEmail, setPortalEmail] = useState('');
 
   const loadData = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        // Sessão via Portal ABZ: exibe o email do portal
+        const portalUser = await getPortalUser();
+        setPortalEmail(portalUser?.email ?? '');
+        return;
+      }
       setSession(session);
 
       const { data: prof } = await supabase
@@ -51,6 +58,7 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             await supabase.auth.signOut();
+            await clearPortalSession();
             router.replace('/login');
           }
         }
@@ -59,7 +67,7 @@ export default function SettingsScreen() {
   };
 
   const username = employee?.name || profile?.name || session?.user?.email?.split('@')[0] || 'Colaborador';
-  const email = session?.user?.email || '';
+  const email = session?.user?.email || portalEmail;
   const avatarUrl = profile?.avatar_url;
 
   return (

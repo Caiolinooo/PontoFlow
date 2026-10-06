@@ -3,7 +3,7 @@
  * 
  * Custom hook for managing database setup wizard state and API interactions
  * Integrates with Phase 3 backend API endpoints
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

@@ -94,6 +94,15 @@ export async function POST(
 
     // Resend invitation email
     try {
+      // Resolve tenant branding for the email footer (fallback: generic product name)
+      const { data: tenantRow } = await supabase
+        .from('tenants')
+        .select('settings')
+        .eq('id', invitation.tenant_id || currentUser.tenant_id)
+        .maybeSingle();
+      const companyName =
+        (tenantRow?.settings?.branding?.company_name_override as string | undefined) || 'PontoFlow';
+
       const userLocale = 'pt-BR';
       const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || getBaseUrlSync()}/${userLocale}/auth/accept-invite?token=${invitation.token}`;
 
@@ -114,6 +123,7 @@ export async function POST(
           role: roleNames[invitation.role] || invitation.role,
           inviteUrl,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          companyName,
         }),
       });
     } catch (emailError) {
@@ -139,6 +149,7 @@ function generateReminderEmail({
   role,
   inviteUrl,
   expiresAt,
+  companyName,
 }: {
   firstName: string;
   lastName: string;
@@ -146,6 +157,7 @@ function generateReminderEmail({
   role: string;
   inviteUrl: string;
   expiresAt: string;
+  companyName: string;
 }) {
   const expiresDate = new Date(expiresAt).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -216,7 +228,7 @@ function generateReminderEmail({
               <tr>
                 <td style="padding: 24px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; text-align: center;">
                   <p style="margin: 0; font-size: 12px; color: #999999;">
-                    © ${new Date().getFullYear()} ABZ Group - PontoFlow. Todos os direitos reservados.
+                    © ${new Date().getFullYear()} ${companyName}. Todos os direitos reservados.
                   </p>
                 </td>
               </tr>

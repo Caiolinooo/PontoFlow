@@ -3,6 +3,7 @@ import {requireApiAuth} from '@/lib/auth/server';
 import {dispatchNotification} from '@/lib/notifications/dispatcher';
 import { getServiceSupabase } from '@/lib/supabase/server';
 import { getEffectivePeriodLock } from '@/lib/periods/resolver';
+import { emitIntegrationEvent } from '@/lib/integration/v1/webhooks';
 
 export async function POST(_req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
@@ -59,7 +60,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
     // Fetch employee and profile
     const {data: emp} = await supabase
       .from('employees')
-      .select('id, display_name, profile_id')
+      .select('id, display_name, profile_id, external_id')
       .eq('id', ts.employee_id)
       .single();
     const {data: empProfile} = await supabase
@@ -102,6 +103,19 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
           });
         } catch {}
       }
+    }
+
+    // Integration API v1: emite timesheet.submitted (outbox; falha não derruba).
+    // Só emite para pessoas provisionadas via integração (external_id preenchido).
+    if (emp?.external_id) {
+      emitIntegrationEvent(supabase, ts.tenant_id, {
+        type: 'timesheet.submitted',
+        externalId: emp.external_id,
+        timesheetId: ts.id,
+        periodStart: ts.periodo_ini,
+        periodEnd: ts.periodo_fim,
+        at: new Date().toISOString(),
+      }).catch(() => {});
     }
 
     return NextResponse.json({ok: true, id});

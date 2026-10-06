@@ -200,10 +200,10 @@ export default async function AdminTimesheetsPage({
               className="w-full px-3 py-2 border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] rounded text-sm"
             >
               <option value="">{t('allStatuses')}</option>
-              <option value="draft">{t('statusDraft')}</option>
-              <option value="submitted">{t('statusSubmitted')}</option>
-              <option value="approved">{t('statusApproved')}</option>
-              <option value="rejected">{t('statusRejected')}</option>
+              <option value="rascunho">{t('statusDraft')}</option>
+              <option value="enviado">{t('statusSubmitted')}</option>
+              <option value="aprovado">{t('statusApproved')}</option>
+              <option value="recusado">{t('statusRejected')}</option>
             </select>
           </div>
 

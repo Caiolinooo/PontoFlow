@@ -3,7 +3,7 @@
  * 
  * API para validação e configuração automática do banco de dados
  * Integra com o sistema de validação e setup
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -3,7 +3,7 @@
  * 
  * API endpoint for step-by-step database setup using migration scripts
  * Supports execute, validate, status, and dry-run operations
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { NextRequest, NextResponse } from 'next/server';

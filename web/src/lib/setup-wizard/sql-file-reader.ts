@@ -3,7 +3,7 @@
  * 
  * Reads and parses SQL migration files from the setup-wizard directory
  * Provides utilities for loading, validating, and executing SQL scripts
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 // Only import fs and path on server side

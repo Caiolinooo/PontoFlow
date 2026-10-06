@@ -2,7 +2,7 @@
  * Wizard Step Content Component
  * 
  * Renders different content based on wizard step
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

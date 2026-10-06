@@ -28,12 +28,13 @@ CREATE TABLE IF NOT EXISTS public.system_config (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Step 2: Insert default configuration (enabled for ABZ Group)
+-- Step 2: Insert default configuration (DISABLED by default; enable only for
+-- legacy deployments that still sync profiles into users_unified)
 INSERT INTO public.system_config (key, value, description)
 VALUES (
   'enable_users_unified_sync',
-  'true',
-  'Enable automatic sync from profiles to users_unified (ABZ Group only)'
+  'false',
+  'Enable automatic sync from profiles to users_unified (legacy deployments only)'
 )
 ON CONFLICT (key) DO NOTHING;
 

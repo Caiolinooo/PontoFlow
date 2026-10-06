@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { supabase } from '../lib/supabase';
+import { onPortalUnlockedChange, restorePortalSession } from '../lib/portal-auth';
 import '../global.css';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -47,16 +48,21 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+
   const [session, setSession] = useState<any>(null);
+  const [portalUnlocked, setPortalUnlocked] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsInitialized(true);
-    });
+    const unsubscribePortal = onPortalUnlockedChange(setPortalUnlocked);
+
+    Promise.all([
+      supabase.auth.getSession().then(({ data: { session } }) => setSession(session)),
+      // Cold start: restaura sessão do portal (com unlock biométrico, se ativo)
+      restorePortalSession(),
+    ]).finally(() => setIsInitialized(true));
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -64,6 +70,7 @@ function RootLayoutNav() {
 
     return () => {
       subscription.unsubscribe();
+      unsubscribePortal();
     };
   }, []);
 
@@ -71,15 +78,16 @@ function RootLayoutNav() {
     if (!isInitialized) return;
 
     const inLoginScreen = segments[0] === 'login';
+    const authed = !!session || portalUnlocked;
 
-    if (!session && !inLoginScreen) {
+    if (!authed && !inLoginScreen) {
       // Block unauthenticated access
       router.replace('/login');
-    } else if (session && inLoginScreen) {
+    } else if (authed && inLoginScreen) {
       // Redirect logged-in users away from auth
       router.replace('/');
     }
-  }, [session, isInitialized, segments]);
+  }, [session, portalUnlocked, isInitialized, segments]);
 
   if (!isInitialized) return null;
 
@@ -89,6 +97,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="ponto-portal" options={{ headerShown: false, animation: 'fade' }} />
       </Stack>
     </ThemeProvider>
   );

@@ -2,7 +2,7 @@
  * Step Progress Component
  * 
  * Displays detailed progress for each layer with real-time updates
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

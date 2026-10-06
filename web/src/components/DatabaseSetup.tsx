@@ -3,7 +3,7 @@
  * 
  * Interface moderna e responsiva para o sistema de validação de banco
  * Permite visualizar relatório, confirmar execução e acompanhar progresso
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 'use client';

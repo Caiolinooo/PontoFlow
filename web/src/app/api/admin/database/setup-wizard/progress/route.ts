@@ -3,7 +3,7 @@
  * 
  * Real-time progress tracking for wizard execution
  * Provides detailed information about layer execution status
- * Timesheet Manager - ABZ Group
+ * PontoFlow - Timesheet Manager
  */
 
 import { NextRequest, NextResponse } from 'next/server';

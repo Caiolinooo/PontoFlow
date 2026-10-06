@@ -1,12 +1,14 @@
 /**
- * OMEGA Invoice Export API
- * 
- * Generates invoices compatible with OMEGA Maximus Project format
- * Aligned with docs/export/OMEGA-mapping-v1.md
+ * OMEGA Invoice Export API (exportador OPCIONAL)
+ *
+ * Generates invoices compatible with OMEGA Maximus Project format.
+ * Desligado por padrão: só responde quando o tenant habilita
+ * tenants.settings.features.omega_invoice_export === true.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import {
   generateOmegaInvoice,
@@ -15,6 +17,18 @@ import {
   exportOmegaInvoices,
 } from '@/lib/invoice/omega-generator';
 import type { OmegaExportFormat } from '@/lib/invoice/omega-types';
+
+/** 404 quando o exportador OMEGA não está habilitado para o tenant. */
+async function omegaExportNotEnabled(tenantId: string) {
+  const svc = getServiceSupabase();
+  const { data: tenantCfg } = await svc
+    .from('tenants')
+    .select('settings')
+    .eq('id', tenantId)
+    .maybeSingle();
+  const enabled = tenantCfg?.settings?.features?.omega_invoice_export === true;
+  return enabled ? null : NextResponse.json({ error: 'omega_export_not_enabled' }, { status: 404 });
+}
 
 /**
  * POST /api/export/omega-invoice
@@ -77,6 +91,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const notEnabled = await omegaExportNotEnabled(tenantId);
+    if (notEnabled) return notEnabled;
 
     // Fetch timesheet with related data
     const { data: timesheet, error: timesheetError } = await supabase
@@ -243,6 +260,9 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const notEnabled = await omegaExportNotEnabled(tenantId);
+    if (notEnabled) return notEnabled;
 
     // Fetch all timesheets
     const { data: timesheets, error: timesheetsError } = await supabase

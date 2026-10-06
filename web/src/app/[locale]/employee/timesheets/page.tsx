@@ -68,7 +68,7 @@ export default async function TimesheetsPage({ params }: { params: Promise<{ loc
         employee_id: emp.id,
         periodo_ini,
         periodo_fim,
-        status: 'draft',
+        status: 'rascunho',
       })
       .select('id, status, periodo_ini, periodo_fim')
       .single();

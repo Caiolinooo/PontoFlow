@@ -6,6 +6,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const nextConfig = {
   // Performance optimizations
   experimental: {
+    instrumentationHook: true,
     optimizeCss: true,
     optimizePackageImports: [
       '@supabase/supabase-js',
