@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { isApplicationAdmin } from '@/lib/auth/roles';
 
 type Tenant = {
   tenant_id: string;
@@ -16,9 +17,10 @@ type Tenant = {
 type Props = {
   currentTenantId: string;
   locale: string;
+  isAdmin?: boolean;
 };
 
-export default function TenantSelector({ currentTenantId, locale }: Props) {
+export default function TenantSelector({ currentTenantId, isAdmin: isAdminFromServer = false }: Props) {
   const t = useTranslations('admin.myTimesheet.tenantSelector');
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,19 +28,22 @@ export default function TenantSelector({ currentTenantId, locale }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Check if current user is admin
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(isAdminFromServer);
+  const [roleReady, setRoleReady] = useState(isAdminFromServer);
 
   useEffect(() => {
     async function checkUserRole() {
       try {
-        const res = await fetch('/api/admin/me/tenant');
+        const res = await fetch('/api/auth/session');
         if (res.ok) {
           const data = await res.json();
-          setIsAdmin(data.user?.role === 'ADMIN');
+          const role = data.user?.role ?? data.user_role;
+          setIsAdmin((current) => current || isApplicationAdmin(role));
         }
       } catch (err) {
         console.error('Error checking user role:', err);
+      } finally {
+        setRoleReady(true);
       }
     }
     checkUserRole();
@@ -62,7 +67,7 @@ export default function TenantSelector({ currentTenantId, locale }: Props) {
   }, []);
 
   // Don't show selector if user only has one tenant AND is not admin
-  if (loading || (tenants.length <= 1 && !isAdmin)) {
+  if (loading || !roleReady || (tenants.length <= 1 && !isAdmin)) {
     return null;
   }
 

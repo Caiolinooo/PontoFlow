@@ -16,11 +16,10 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     return null;
   }
 
-  // Claims fast path first (same trust model as middleware): DB cascade only
-  // for legacy claim-less tokens. SSO-issued tokens carry claims and may belong
-  // to profiles outside Supabase Auth (e.g. legacy users_unified), which the
-  // DB path cannot resolve.
-  return (await getUserFromTokenFast(token)) ?? (await getUserFromToken(token));
+  // DB first. A JWT claim is a login snapshot and goes stale (TENANT_ADMIN
+  // while users_unified / user_metadata already say ADMIN). Fast path only
+  // when the DB lookup cannot resolve the token.
+  return (await getUserFromToken(token)) ?? (await getUserFromTokenFast(token));
 });
 
 /**
@@ -69,7 +68,7 @@ export const getApiUser = cache(async (): Promise<User | null> => {
     return null;
   }
 
-  const user = (await getUserFromTokenFast(token)) ?? (await getUserFromToken(token));
+  const user = (await getUserFromToken(token)) ?? (await getUserFromTokenFast(token));
   if (!user) {
     console.error('getApiUser: getUserFromToken returned null');
   }

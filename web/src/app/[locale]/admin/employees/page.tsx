@@ -9,8 +9,10 @@ import { isMetaUI } from '@/lib/flags';
 
 export default function EmployeesListPage() {
   const t = useTranslations('admin.employees');
+  const tBio = useTranslations('biometrics');
   const tErr = useTranslations('errors');
   const tUsers = useTranslations('admin.users');
+  const [resettingId, setResettingId] = useState<string | null>(null);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +138,7 @@ export default function EmployeesListPage() {
                 <th className="text-left px-6 py-3 font-medium">{safe('vessel', 'Vessel')}</th>
                 <th className="text-left px-6 py-3 font-medium">{safe('position', 'Position')}</th>
                 <th className="text-left px-6 py-3 font-medium">{safe('costCenter', 'Cost Center')}</th>
+                <th className="text-left px-6 py-3 font-medium">{tBio('adminColumn')}</th>
                 <th className="text-left px-6 py-3 font-medium">{safe('actions', 'Actions')}</th>
               </tr>
             </thead>
@@ -173,6 +176,39 @@ export default function EmployeesListPage() {
                   <td className="px-6 py-3">{r.vessel_id || '-'}</td>
                   <td className="px-6 py-3">{r.cargo || '-'}</td>
                   <td className="px-6 py-3">{r.centro_custo || '-'}</td>
+                  <td className="px-6 py-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-[var(--muted-foreground)]">
+                        {r.biometric_registered ? tBio('registered') : tBio('notRegistered')}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!r.biometric_registered || resettingId === r.id}
+                        className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium disabled:opacity-40"
+                        onClick={async () => {
+                          if (!confirm(tBio('resetConfirm'))) return;
+                          setResettingId(r.id);
+                          try {
+                            const resp = await fetch(`/api/admin/employees/${r.id}/biometrics`, { method: 'DELETE' });
+                            const body = await resp.json().catch(() => ({}));
+                            if (resp.status === 403) {
+                              alert(tBio('resetForbidden'));
+                              return;
+                            }
+                            if (!resp.ok || body.success === false) {
+                              alert(body.error || tBio('resetFailed'));
+                              return;
+                            }
+                            setRows(rows.map(x => x.id === r.id ? { ...x, biometric_registered: false } : x));
+                          } finally {
+                            setResettingId(null);
+                          }
+                        }}
+                      >
+                        {tBio('reset')}
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-6 py-3">
                     <div className="flex gap-2">
                       <button className="px-3 py-1.5 rounded-lg bg-[var(--muted)] text-[var(--foreground)] text-xs font-medium hover:bg-[var(--muted)]/80 transition-colors" onClick={async () => {

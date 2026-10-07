@@ -63,6 +63,37 @@
       }
     }
   },
+  "biometrics": {
+    "setupTitle": "Facial biometric setup",
+    "setupSubtitle": "Register your face so you can clock in securely, including offline.",
+    "verifyTitle": "Biometric check",
+    "loadingModels": "Loading artificial intelligence models...",
+    "startingCamera": "Starting camera...",
+    "ready": "Centre your face, then blink or turn your head slightly.",
+    "processing": "Analysing face, please wait...",
+    "successEnroll": "Face registered.",
+    "successVerify": "Identity confirmed.",
+    "capture": "Capture and register",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "noFace": "No face detected. Improve the light and look at the camera.",
+    "livenessFailed": "We could not confirm a live person. Blink or turn your head slightly.",
+    "serverRejected": "The server did not confirm this identity. Try again in a brighter place.",
+    "notRecognized": "Identity not recognised. Try again in a brighter place, facing the camera.",
+    "enrollBannerTitle": "Biometric enrolment pending",
+    "enrollBannerBody": "Register your face before clocking in. Only you enrol. Only an administrator can erase that enrolment.",
+    "enrollBannerAction": "Register biometrics",
+    "errorPrefix": "Error: ",
+    "adminColumn": "Biometrics",
+    "registered": "Enrolled",
+    "notRegistered": "Not enrolled",
+    "reset": "Reset",
+    "resetConfirm": "Erase this employee's biometrics? They will need to register their face again.",
+    "resetDone": "Biometrics erased.",
+    "resetFailed": "Failed to reset biometrics.",
+    "registerFailed": "Failed to register biometrics.",
+    "resetForbidden": "Only an administrator can reset biometrics."
+  },
   "buttons": {
     "back": "Back",
     "home": "Home"

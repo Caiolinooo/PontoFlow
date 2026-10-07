@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
+import { canResetBiometrics } from '@/lib/biometrics/access';
 
 type AccessCheck = { supabase: ReturnType<typeof getServiceSupabase>; error?: never } | { supabase?: never; error: NextResponse };
 
 // Biometric templates are sensitive: only the employee themself (or an ADMIN)
-// may read status/encoding or deactivate registration.
+// may read status/encoding. Deleting the template is ADMIN-only (see DELETE).
 async function assertFaceAccess(employee_id: string): Promise<AccessCheck> {
   const user = await requireApiAuth();
   const supabase = getServiceSupabase();
@@ -67,6 +68,7 @@ export async function GET(
     }
 
     return NextResponse.json({
+      success: true,
       is_registered: !!faceData,
       face_data: faceData ? {
         id: faceData.id,
@@ -105,27 +107,39 @@ export async function DELETE(
 ) {
   try {
     const { employee_id } = await params;
-    const access = await assertFaceAccess(employee_id);
-    if (access.error) return access.error;
-    const supabase = access.supabase;
+    const user = await requireApiAuth();
+    if (!canResetBiometrics(user.role)) {
+      return NextResponse.json({ success: false, error: 'forbidden' }, { status: 403 });
+    }
+    const supabase = getServiceSupabase();
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select('id, tenant_id')
+      .eq('id', employee_id)
+      .maybeSingle();
+    if (empError || !employee) {
+      return NextResponse.json({ success: false, error: 'employee_not_found' }, { status: 404 });
+    }
+    if (user.tenant_id && employee.tenant_id !== user.tenant_id) {
+      return NextResponse.json({ success: false, error: 'forbidden' }, { status: 403 });
+    }
 
-    // Deactivate face data
     const { error } = await supabase
       .from('employee_face_data')
-      .update({ is_active: false })
+      .delete()
       .eq('employee_id', employee_id);
 
     if (error) {
-      console.error('Error deactivating face data:', error);
+      console.error('Error removing face data:', error);
       return NextResponse.json(
-        { error: 'Failed to remove face data' },
+        { success: false, error: 'Failed to remove face data' },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Face data removed successfully',
+      data: { employee_id, reset: true },
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

@@ -5,6 +5,16 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.5.0] - 2026-10-07
+
+### Added
+- Cadastro biométrico inicial do colaborador na folha de ponto, com o descritor facial gravado para verificação posterior
+- Verificação facial no servidor antes da marcação
+- Reset do template biométrico por colaborador, exclusivo do papel ADMIN
+
+### Fixed
+- Card Admin do dashboard ficava oculto quando a sessão antiga gravava TENANT_ADMIN. O papel ADMIN do cadastro passa a valer na releitura da sessão, e o card aparece no próximo carregamento
+
 ## [1.2.0] - 2025-11-06
 
 ### Added

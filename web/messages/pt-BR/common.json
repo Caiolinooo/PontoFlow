@@ -63,6 +63,37 @@
       }
     }
   },
+  "biometrics": {
+    "setupTitle": "Configuração de Biometria Facial",
+    "setupSubtitle": "Cadastre o seu rosto para bater o ponto com segurança, inclusive offline.",
+    "verifyTitle": "Validação Biométrica",
+    "loadingModels": "Carregando modelos de inteligência artificial...",
+    "startingCamera": "Iniciando câmera...",
+    "ready": "Posicione o rosto no centro e pisque ou vire levemente a cabeça.",
+    "processing": "Analisando rosto, aguarde...",
+    "successEnroll": "Rosto cadastrado com sucesso!",
+    "successVerify": "Identidade confirmada!",
+    "capture": "Capturar e cadastrar",
+    "cancel": "Cancelar",
+    "retry": "Tentar novamente",
+    "noFace": "Nenhum rosto detectado. Melhore a iluminação e olhe para a câmera.",
+    "livenessFailed": "Não confirmamos que é uma pessoa ao vivo. Pisque os olhos ou vire levemente a cabeça.",
+    "serverRejected": "Identidade não confirmada pelo servidor. Tente de novo em um local iluminado.",
+    "notRecognized": "Identidade não reconhecida. Tente de novo em um local iluminado, com o rosto reto.",
+    "enrollBannerTitle": "Cadastro biométrico pendente",
+    "enrollBannerBody": "Antes de bater o ponto, cadastre o seu rosto. Só você faz o cadastro. Só um administrador pode apagar esse cadastro.",
+    "enrollBannerAction": "Cadastrar biometria",
+    "errorPrefix": "Erro: ",
+    "adminColumn": "Biometria",
+    "registered": "Cadastrada",
+    "notRegistered": "Sem cadastro",
+    "reset": "Resetar",
+    "resetConfirm": "Apagar a biometria deste colaborador? Ele precisará cadastrar o rosto de novo.",
+    "resetDone": "Biometria apagada.",
+    "resetFailed": "Falha ao resetar a biometria.",
+    "registerFailed": "Falha ao cadastrar a biometria.",
+    "resetForbidden": "Somente um administrador pode resetar a biometria."
+  },
   "buttons": {
     "back": "Voltar",
     "home": "Início"

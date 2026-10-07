@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
-import { getServerSupabase } from '@/lib/supabase/server';
+import { getServiceSupabase } from '@/lib/supabase/server';
 
 /**
  * GET /api/employee/tenants
- * 
- * Returns all tenants (organizations) that the current user belongs to
- * Used for multi-tenant support - allows users to switch between organizations
+ *
+ * Returns all tenants (organizations) that the current user belongs to.
+ * Service role: the session cookie is timesheet_session, not a Supabase
+ * auth cookie, so the anon client sees zero employee rows under RLS.
  */
 
 export async function GET(_req: NextRequest) {
   try {
     const user = await requireApiAuth();
-    const supabase = await getServerSupabase();
+    const supabase = getServiceSupabase();
 
     // Get all employee records for this user (one per tenant)
     // Note: We fetch employees and tenants separately to avoid ambiguous relationship error

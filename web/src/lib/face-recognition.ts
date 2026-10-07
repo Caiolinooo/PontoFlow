@@ -1,4 +1,13 @@
 import * as faceapi from 'face-api.js';
+import {
+  averageDescriptors,
+  eyeAspectRatio,
+  FACE_MATCH_THRESHOLD,
+  livenessPassed,
+  matchFaceDescriptors,
+  parseFaceDescriptor,
+  type LivenessFrame,
+} from '@/lib/biometrics/descriptor';
 
 let isModelLoaded = false;
 let loadPromise: Promise<void> | null = null;
@@ -132,17 +141,72 @@ export interface FaceMatchResult {
  * @returns
  */
 export function compareFaceDescriptors(descriptor1: Float32Array, descriptor2: Float32Array): FaceMatchResult {
-  // Compute euclidean distance
-  const distance = faceapi.euclideanDistance(descriptor1, descriptor2);
-  
-  // face-api.js recommends 0.6 as a threshold. 
-  // Custom tuned threshold for "bater ponto" -> 0.45 or 0.5 (stricter is better to prevent spoofing)
-  const threshold = 0.5;
-  const isMatch = distance < threshold;
-  
-  // Convert distance (0 to ~1.2) to a percentage score (0 to 1) for UI display
-  // Using 1.0 as the maximum expected distance for score calculation
-  const score = Math.max(0, 1 - (distance / 1.0));
-  
-  return { isMatch, distance, score };
+  const left = parseFaceDescriptor(Array.from(descriptor1));
+  const right = parseFaceDescriptor(Array.from(descriptor2));
+  if (!left || !right) {
+    return { isMatch: false, distance: Number.POSITIVE_INFINITY, score: 0 };
+  }
+  const match = matchFaceDescriptors(left, right, FACE_MATCH_THRESHOLD);
+  return { isMatch: match.isMatch, distance: match.distance, score: match.score };
+}
+
+export interface LiveFaceCapture {
+  descriptor: Float32Array;
+  samples: number;
+}
+
+/**
+ * Samples the webcam until a blink or a small head turn proves a live person,
+ * then returns the average of the open-eye descriptors.
+ * Resolves null when the timeout ends without liveness or without a face.
+ */
+export async function captureLiveFace(
+  video: HTMLVideoElement,
+  options?: { timeoutMs?: number; signal?: AbortSignal }
+): Promise<LiveFaceCapture | null> {
+  await loadFaceModels();
+  const timeoutMs = options?.timeoutMs ?? 12000;
+  const deadline = Date.now() + timeoutMs;
+  const frames: LivenessFrame[] = [];
+  const openDescriptors: number[][] = [];
+  let lastDescriptor: number[] | null = null;
+
+  while (Date.now() < deadline) {
+    if (options?.signal?.aborted) return null;
+    if (video.readyState < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      continue;
+    }
+
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (detection) {
+      const leftEar = eyeAspectRatio(detection.landmarks.getLeftEye());
+      const rightEar = eyeAspectRatio(detection.landmarks.getRightEye());
+      const nose = detection.landmarks.getNose();
+      const box = detection.detection.box;
+      lastDescriptor = Array.from(detection.descriptor);
+      if (leftEar !== null && rightEar !== null && nose.length > 0 && box.width > 0) {
+        const ear = (leftEar + rightEar) / 2;
+        const noseX = (nose[0].x - box.x) / box.width;
+        frames.push({ ear, noseX });
+        if (ear > 0.25) openDescriptors.push(lastDescriptor);
+      }
+    }
+
+    if (livenessPassed(frames)) {
+      const source = openDescriptors.length > 0 ? openDescriptors : lastDescriptor ? [lastDescriptor] : [];
+      const mean = averageDescriptors(source);
+      if (mean) {
+        return { descriptor: new Float32Array(mean), samples: source.length };
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 180));
+  }
+
+  return null;
 }

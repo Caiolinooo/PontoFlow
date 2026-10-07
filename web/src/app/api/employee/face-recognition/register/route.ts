@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
+import { parseFaceDescriptor } from '@/lib/biometrics/descriptor';
 
 /**
  * POST /api/employee/face-recognition/register
@@ -24,7 +25,14 @@ export async function POST(req: NextRequest) {
 
     if (!employee_id || !face_encoding) {
       return NextResponse.json(
-        { error: 'employee_id and face_encoding are required' },
+        { success: false, error: 'employee_id and face_encoding are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!parseFaceDescriptor(face_encoding)) {
+      return NextResponse.json(
+        { success: false, error: 'invalid_face_encoding' },
         { status: 400 }
       );
     }
@@ -38,14 +46,14 @@ export async function POST(req: NextRequest) {
 
     if (empError || !employee) {
       return NextResponse.json(
-        { error: 'Employee not found' },
+        { success: false, error: 'Employee not found' },
         { status: 404 }
       );
     }
 
     // Only the employee themself (or an ADMIN) may enroll/replace a face template
     if (user.role !== 'ADMIN' && employee.profile_id !== user.id) {
-      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+      return NextResponse.json({ success: false, error: 'forbidden' }, { status: 403 });
     }
 
     // Upsert on the unique employee_id key: re-enrollment (new device, re-register)
@@ -69,7 +77,7 @@ export async function POST(req: NextRequest) {
     if (upsertError) {
       console.error('Error upserting face data:', upsertError);
       return NextResponse.json(
-        { error: 'Failed to register face data' },
+        { success: false, error: 'Failed to register face data' },
         { status: 500 }
       );
     }

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { generateToken, verifyToken } from './jwt';
+import { resolveAppRole, type AppRole } from './roles';
 
 // Lazy initialization to avoid build-time errors
 let _supabase: ReturnType<typeof createClient> | null = null;
@@ -109,6 +110,25 @@ async function getSsoOnlyLoginError(
   return null;
 }
 
+/** super_admins (and the system owner row) are platform admins even when the JWT still says TENANT_ADMIN. */
+async function promoteSuperAdmin(
+  supabaseAdmin: SupabaseClient,
+  email: string | undefined,
+  role: AppRole
+): Promise<AppRole> {
+  if (role === 'ADMIN' || !email) return role;
+  try {
+    const { data } = await supabaseAdmin
+      .from('super_admins')
+      .select('email')
+      .ilike('email', email)
+      .maybeSingle();
+    if (data && typeof (data as { email?: string }).email === 'string') return 'ADMIN';
+  } catch (err) {
+    console.log('[AUTH] super_admins lookup failed', err);
+  }
+  return role;
+}
 
 /**
  * Authenticate user using Supabase Auth or users_unified table
@@ -207,7 +227,11 @@ export async function signInWithCredentials(
         console.log('[AUTH] No employee record found for unified user');
       }
 
-      const userRole = unifiedUser.role || tenantRole?.role || 'USER';
+      const userRole = await promoteSuperAdmin(
+        supabaseAdmin,
+        unifiedUser.email,
+        resolveAppRole(unifiedUser.role, profile?.role, tenantRole?.role)
+      );
       const isActive = unifiedUser.active !== false && employee?.ativo !== false;
 
       console.log('[AUTH] Unified user found:', unifiedUser.email, 'Role:', userRole, 'Active:', isActive);
@@ -305,7 +329,49 @@ export async function signInWithCredentials(
       console.log('[AUTH] No employee record found for user');
     }
 
-    const userRole = tenantRole?.role || userMeta.role || 'USER';
+    let unifiedRole: string | undefined;
+    let tenantRoleNames: Array<string | null | undefined> = [tenantRole?.role];
+    try {
+      const { data: allRoles } = await supabaseAdmin
+        .from('tenant_user_roles')
+        .select('role')
+        .eq('user_id', authData.user.id);
+      if (allRoles && allRoles.length > 0) {
+        tenantRoleNames = allRoles.map((row: { role?: string }) => row.role);
+      }
+    } catch (err) {
+      console.log('[AUTH] Failed to list tenant roles', err);
+    }
+    try {
+      const { data: unifiedById } = await supabaseAdmin
+        .from('users_unified')
+        .select('role')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+      unifiedRole = (unifiedById as { role?: string } | null)?.role;
+      if (!unifiedRole && authEmail) {
+        const { data: unifiedByEmail } = await supabaseAdmin
+          .from('users_unified')
+          .select('role')
+          .ilike('email', authEmail)
+          .maybeSingle();
+        unifiedRole = (unifiedByEmail as { role?: string } | null)?.role;
+      }
+    } catch (err) {
+      console.log('[AUTH] users_unified role lookup failed', err);
+    }
+
+    const userRole = await promoteSuperAdmin(
+      supabaseAdmin,
+      authEmail,
+      resolveAppRole(
+        userMeta.role,
+        authData.user.app_metadata?.role,
+        profile?.role,
+        unifiedRole,
+        ...tenantRoleNames
+      )
+    );
     const isActive = employee?.ativo !== false;
 
     console.log('[AUTH] User found:', authEmail, 'Role:', userRole, 'Active:', isActive);
@@ -438,7 +504,11 @@ export async function getUserFromToken(token: string): Promise<User | null> {
         console.log('[getUserFromToken] No employee record found for unified user');
       }
 
-      const userRole = unifiedUser.role || tenantRole?.role || 'USER';
+      const userRole = await promoteSuperAdmin(
+        supabaseAdmin,
+        unifiedUser.email,
+        resolveAppRole(unifiedUser.role, profile?.role, tenantRole?.role)
+      );
       const isActive = unifiedUser.active !== false && employee?.ativo !== false;
 
       console.log('[getUserFromToken] Unified user resolved. Role:', userRole, 'Active:', isActive);
@@ -480,13 +550,14 @@ export async function getUserFromToken(token: string): Promise<User | null> {
     let profile: any = null;
     let tenantRole: any = null;
     let employee: any = null;
+    let tenantRoleNames: Array<string | null | undefined> = [];
 
     try {
-      const { data: profileData } = await supabase
+      const { data: profileData } = await supabaseAdmin
         .from('profiles')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
       profile = profileData;
     } catch (err) {
       // Profile not found - this is OK, we'll use auth metadata
@@ -502,6 +573,7 @@ export async function getUserFromToken(token: string): Promise<User | null> {
 
       if (rolesData && rolesData.length > 0) {
         tenantRole = rolesData[0]; // Use first role for compatibility with existing code
+        tenantRoleNames = rolesData.map((row: { role?: string }) => row.role);
         console.log(`[getUserFromToken] Found ${rolesData.length} roles, using first:`, tenantRole);
       } else {
         console.log('[getUserFromToken] No tenant roles found in database');
@@ -511,15 +583,36 @@ export async function getUserFromToken(token: string): Promise<User | null> {
     }
 
     try {
-      const { data: employeeData } = await supabase
+      const { data: employeeData } = await supabaseAdmin
         .from('employees')
         .select('*')
-        .eq('user_id', userId)
-        .single();
+        .eq('profile_id', userId)
+        .limit(1)
+        .maybeSingle();
       employee = employeeData;
     } catch (err) {
       // Employee record not found - this is OK
       console.log('[getUserFromToken] No employee record found');
+    }
+
+    let unifiedRole: string | undefined;
+    try {
+      const { data: unifiedById } = await supabaseAdmin
+        .from('users_unified')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      unifiedRole = (unifiedById as { role?: string } | null)?.role;
+      if (!unifiedRole && authEmail) {
+        const { data: unifiedByEmail } = await supabaseAdmin
+          .from('users_unified')
+          .select('role')
+          .ilike('email', authEmail)
+          .maybeSingle();
+        unifiedRole = (unifiedByEmail as { role?: string } | null)?.role;
+      }
+    } catch (err) {
+      console.log('[getUserFromToken] No users_unified role:', err);
     }
 
     // Build user data with fallback logic:
@@ -529,7 +622,17 @@ export async function getUserFromToken(token: string): Promise<User | null> {
 
     // IMPORTANT: Use authMetadata.role first because tenant_user_roles.role is for tenant-level permissions (TENANT_ADMIN)
     // while authMetadata.role is the global application role (ADMIN, MANAGER, USER, etc.)
-    const userRole = authMetadata.role || tenantRole?.role || 'USER';
+    const userRole = await promoteSuperAdmin(
+      supabaseAdmin,
+      authEmail,
+      resolveAppRole(
+        authMetadata.role,
+        authUser.user.app_metadata?.role,
+        profile?.role,
+        unifiedRole,
+        ...tenantRoleNames
+      )
+    );
     const isActive = employee?.ativo !== false; // Default to active if no employee record
     
     const firstName = profile?.first_name || authMetadata.first_name || 'User';
@@ -641,7 +744,7 @@ export async function getUserFromTokenFast(token: string): Promise<User | null> 
     first_name: payload.name || '',
     last_name: '',
     name: payload.name || payload.email || '',
-    role: payload.role as User['role'],
+    role: resolveAppRole(payload.role),
     tenant_id: payload.tenant_id,
     phone_number: '',
     position: '',

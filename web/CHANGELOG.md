@@ -2,6 +2,18 @@
 <!-- markdownlint-disable MD024 -->
 
 
+## [0.5.0] - 2026-10-07
+
+### Added
+
+- Cadastro biométrico inicial do colaborador na folha de ponto
+- Verificação facial no servidor antes da marcação
+- Reset do template biométrico por colaborador, somente para o papel ADMIN
+
+### Fixed
+
+- Card Admin do dashboard oculto para sessão antiga com TENANT_ADMIN. A releitura do papel ADMIN mostra o card no próximo carregamento
+
 ## [0.1.7] - 2025-10-24
 
 ### Changed

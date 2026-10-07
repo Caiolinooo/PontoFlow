@@ -106,6 +106,22 @@ export async function GET() {
     }
   }
 
+  const registeredFaceIds = new Set<string>();
+  if (empIds.length) {
+    const { data: faces, error: faceErr } = await svc
+      .from('employee_face_data')
+      .select('employee_id')
+      .in('employee_id', empIds)
+      .eq('is_active', true);
+    if (faceErr) {
+      console.error('[admin/employees] biometric status lookup failed:', faceErr.message);
+    } else {
+      for (const face of faces ?? []) {
+        registeredFaceIds.add(face.employee_id as string);
+      }
+    }
+  }
+
   const enriched = (data ?? []).map(e => {
     const managersSet: Record<string, { id: string; label: string }> = {};
     for (const g of (groupsByEmp[e.id] || [])) {
@@ -116,7 +132,8 @@ export async function GET() {
       display_name: byProfile[e.profile_id]?.display_name ?? null,
       email: byProfile[e.profile_id]?.email ?? null,
       groups: groupsByEmp[e.id] ?? [],
-      managers: Object.values(managersSet)
+      managers: Object.values(managersSet),
+      biometric_registered: registeredFaceIds.has(e.id),
     };
   });
 

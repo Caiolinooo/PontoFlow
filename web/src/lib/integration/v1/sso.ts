@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sha256Hex } from './auth';
 import { generateToken } from '@/lib/auth/jwt';
+import { resolveAppRole, type AppRole } from '@/lib/auth/roles';
 import { getBaseUrl } from '@/lib/base-url';
 
 export const SSO_TOKEN_TTL_SECONDS = 60;
@@ -56,6 +57,37 @@ export interface SsoSession {
 }
 
 /**
+ * Papel real do usuário no ponto. SSO não pode carimbar USER em quem é admin,
+ * senão o card de admin some na tela de ponto.
+ */
+export async function resolveSsoAppRole(supabase: SupabaseClient, profileId: string): Promise<AppRole> {
+  const candidates: Array<string | null | undefined> = [];
+  try {
+    const { data: unified } = await supabase
+      .from('users_unified')
+      .select('role')
+      .eq('id', profileId)
+      .maybeSingle();
+    candidates.push(unified?.role as string | undefined);
+
+    const { data: tenantRoles } = await supabase
+      .from('tenant_user_roles')
+      .select('role')
+      .eq('user_id', profileId);
+    for (const row of tenantRoles ?? []) {
+      candidates.push((row as { role?: string }).role);
+    }
+
+    const { data: authUser } = await supabase.auth.admin.getUserById(profileId);
+    const metaRole = authUser?.user?.user_metadata?.role;
+    if (typeof metaRole === 'string') candidates.push(metaRole);
+  } catch (err) {
+    console.warn('[sso] role lookup failed, session stays USER:', err);
+  }
+  return resolveAppRole(...candidates);
+}
+
+/**
  * Consome o token (DELETE … RETURNING com expires_at > now(): uso único à prova de corrida)
  * e emite a sessão TS via generateToken existente. Null = inválido/expirado/já usado.
  */
@@ -89,7 +121,7 @@ export async function consumeSsoToken(supabase: SupabaseClient, token: string): 
     .maybeSingle();
 
   const sessionToken = await generateToken(employee.profile_id as string, {
-    role: 'USER',
+    role: await resolveSsoAppRole(supabase, employee.profile_id as string),
     tenant_id: consumed.tenant_id as string,
     email: (profile?.email as string | undefined) ?? '',
     name: (employee.name as string | undefined) ?? (profile?.display_name as string | undefined) ?? '',

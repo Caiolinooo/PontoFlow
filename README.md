@@ -119,7 +119,12 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
-### 0.4.0 (2025-11-05) - **VERSÃO ATUAL**
+### 0.5.0 (2026-10-07) - **VERSÃO ATUAL**
+- **feat(biometria)**: Cadastro inicial do colaborador na folha e verificação facial no servidor
+- **feat(biometria)**: Reset do template biométrico só para o papel ADMIN
+- **fix(admin)**: Card Admin visível para papel ADMIN. Sessão que ainda dizia TENANT_ADMIN escondia o card; a releitura do papel corrige isso no próximo carregamento
+
+### 0.4.0 (2025-11-05)
 - **feat(invitations)**: Sistema Completo de Convites de Usuários
   - ✅ Tabela `user_invitations` com estrutura completa para gerenciamento
   - ✅ Triggers automáticos para sincronização entre `auth.users` e `profiles`

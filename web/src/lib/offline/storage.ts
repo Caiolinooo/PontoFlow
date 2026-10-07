@@ -352,6 +352,11 @@ export class OfflineStorage {
     return result ? new Float32Array(result.descriptor) : null;
   }
 
+  async deleteFaceDescriptor(employee_id: string): Promise<void> {
+    if (!this.db) await this.init();
+    await this.db!.delete('faceDescriptors', employee_id);
+  }
+
   /**
    * Clear all pending timesheet ops
    */

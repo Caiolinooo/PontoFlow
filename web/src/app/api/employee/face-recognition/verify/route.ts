@@ -1,26 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
-
-// Same threshold as the client (lib/face-recognition.ts): face-api recommends 0.6,
-// this product uses 0.5 (stricter) for punch verification.
-const FACE_MATCH_THRESHOLD = 0.5;
-const DESCRIPTOR_LENGTH = 128;
-
-function parseDescriptor(raw: unknown): number[] | null {
-  const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  if (!Array.isArray(value) || value.length !== DESCRIPTOR_LENGTH) return null;
-  return value.every((n) => typeof n === 'number' && Number.isFinite(n)) ? value : null;
-}
-
-function euclideanDistance(a: number[], b: number[]): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) {
-    const d = a[i] - b[i];
-    sum += d * d;
-  }
-  return Math.sqrt(sum);
-}
+import {
+  FACE_DESCRIPTOR_LENGTH,
+  FACE_MATCH_THRESHOLD,
+  matchFaceDescriptors,
+  parseFaceDescriptor,
+} from '@/lib/biometrics/descriptor';
 
 /**
  * POST /api/employee/face-recognition/verify
@@ -89,26 +75,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'face_not_registered' }, { status: 404 });
     }
 
-    let storedDescriptor: number[] | null = null;
-    let liveDescriptor: number[] | null = null;
-    try {
-      storedDescriptor = parseDescriptor(storedFace.face_encoding);
-      liveDescriptor = parseDescriptor(face_encoding);
-    } catch {
-      // fall through to validation error
-    }
+    const storedDescriptor = parseFaceDescriptor(storedFace.face_encoding);
+    const liveDescriptor = parseFaceDescriptor(face_encoding);
 
     if (!storedDescriptor || !liveDescriptor) {
       return NextResponse.json(
-        { error: 'invalid_face_encoding', details: `expected ${DESCRIPTOR_LENGTH}-d numeric descriptor` },
+        { success: false, error: 'invalid_face_encoding', details: `expected ${FACE_DESCRIPTOR_LENGTH}-d numeric descriptor` },
         { status: 400 }
       );
     }
 
-    // Real comparison (euclidean distance on 128-d descriptors)
-    const distance = euclideanDistance(storedDescriptor, liveDescriptor);
-    const isVerified = distance < FACE_MATCH_THRESHOLD;
-    const faceMatchScore = Math.max(0, 1 - distance);
+    const match = matchFaceDescriptors(storedDescriptor, liveDescriptor, FACE_MATCH_THRESHOLD);
+    const distance = match.distance;
+    const isVerified = match.isMatch;
+    const faceMatchScore = match.score;
 
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null;
     const userAgent = req.headers.get('user-agent') || null;
@@ -150,6 +130,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      data: {
+        verification_id: verification.id,
+        is_verified: isVerified,
+        face_match_score: faceMatchScore,
+        distance,
+        threshold: FACE_MATCH_THRESHOLD,
+      },
       verification_id: verification.id,
       is_verified: isVerified,
       face_match_score: faceMatchScore,
