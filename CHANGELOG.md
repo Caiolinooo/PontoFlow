@@ -5,6 +5,11 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.6.1] - 2026-10-07
+
+### Fixed
+- Integration API: `POST /punches` aceita o código `invalid_at` quando a data/hora da batida (`at`) é inválida. O type-check rejeitava esse código porque ele não estava em `IntegrationErrorCode`. O OpenAPI documenta a resposta 400
+
 ## [0.6.0] - 2026-10-07
 
 ### Added

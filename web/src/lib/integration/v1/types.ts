@@ -114,6 +114,7 @@ export type IntegrationErrorCode =
   | 'employee_inactive'
   | 'no_open_punch'
   | 'period_locked'
+  | 'invalid_at'
   | 'tenant_not_found'
   | 'no_inviter'
   | 'internal_error';

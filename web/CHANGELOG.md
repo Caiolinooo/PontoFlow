@@ -2,6 +2,12 @@
 <!-- markdownlint-disable MD024 -->
 
 
+## [0.6.1] - 2026-10-07
+
+### Fixed
+
+- Integration API: `POST /punches` aceita o código `invalid_at` quando a data/hora da batida (`at`) é inválida. O type-check rejeitava esse código porque ele não estava em `IntegrationErrorCode`. O OpenAPI documenta a resposta 400
+
 ## [0.6.0] - 2026-10-07
 
 ### Added

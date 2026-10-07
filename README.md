@@ -119,7 +119,10 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
-### 0.6.0 (2026-10-07) - **VERSÃO ATUAL**
+### 0.6.1 (2026-10-07) - **VERSÃO ATUAL**
+- **fix(integration)**: `POST /punches` devolve 400 `invalid_at` quando a data/hora da batida é inválida. O código entra no contrato de erro e no OpenAPI
+
+### 0.6.0 (2026-10-07)
 - **feat(ponto)**: Entrada e saída na folha do colaborador, e `POST /punches` / `GET /punches/today` na Integration API
 - **feat(rubrica)**: `timesheet.approved` leva DIAS, HORAS, HE50, NOTURNO e FALTA (FALTA só na escala semanal)
 - **fix(auth)**: Fetch do Supabase sem cache e dashboard dinâmico, para o card Admin não usar sessão velha

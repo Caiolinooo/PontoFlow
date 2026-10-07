@@ -252,6 +252,7 @@ const SPEC = {
         parameters: [{ name: 'Idempotency-Key', in: 'header', required: true, schema: { type: 'string' } }],
         responses: {
           '201': { description: 'Batida gravada' },
+          '400': { description: 'invalid_at' },
           '404': { description: 'not_found' },
           '409': { description: 'employee_inactive, no_open_punch ou period_locked' },
         },
