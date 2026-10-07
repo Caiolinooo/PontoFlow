@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/supabase/service';
 
 export async function logAudit(params: {
   tenantId: string;
@@ -12,11 +12,9 @@ export async function logAudit(params: {
   userAgent?: string | null;
 }) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    await supabase.from('audit_log').insert({
+    // Service role: audit inserts must not depend on the caller's JWT/RLS.
+    const supabase = getServiceSupabase();
+    const { error } = await supabase.from('audit_log').insert({
       tenant_id: params.tenantId,
       user_id: params.userId,
       action: params.action,
@@ -27,6 +25,7 @@ export async function logAudit(params: {
       ip_address: params.ipAddress ?? null,
       user_agent: params.userAgent ?? null,
     });
+    if (error) console.error('[audit] insert error', error);
   } catch (e) {
     // Non-blocking: never throw from audit logger
     console.error('[audit] failed to log audit', e);
