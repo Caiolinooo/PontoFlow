@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
+
+type AccessCheck = { supabase: ReturnType<typeof getServiceSupabase>; error?: never } | { supabase?: never; error: NextResponse };
+
+// Biometric templates are sensitive: only the employee themself (or an ADMIN)
+// may read status/encoding or deactivate registration.
+async function assertFaceAccess(employee_id: string): Promise<AccessCheck> {
+  const user = await requireApiAuth();
+  const supabase = getServiceSupabase();
+  const { data: employee, error } = await supabase
+    .from('employees')
+    .select('id, profile_id')
+    .eq('id', employee_id)
+    .single();
+  if (error || !employee) {
+    return { error: NextResponse.json({ error: 'employee_not_found' }, { status: 404 }) };
+  }
+  if (user.role !== 'ADMIN' && employee.profile_id !== user.id) {
+    return { error: NextResponse.json({ error: 'forbidden' }, { status: 403 }) };
+  }
+  return { supabase };
+}
 
 /**
  * GET /api/employee/face-recognition/status/[employee_id]
@@ -11,7 +33,9 @@ export async function GET(
 ) {
   try {
     const { employee_id } = await params;
-    const supabase = getServiceSupabase();
+    const access = await assertFaceAccess(employee_id);
+    if (access.error) return access.error;
+    const supabase = access.supabase;
 
     // Get active face data
     const { data: faceData, error: faceError } = await supabase
@@ -60,6 +84,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
     console.error('Error in face recognition status:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -78,7 +105,9 @@ export async function DELETE(
 ) {
   try {
     const { employee_id } = await params;
-    const supabase = getServiceSupabase();
+    const access = await assertFaceAccess(employee_id);
+    if (access.error) return access.error;
+    const supabase = access.supabase;
 
     // Deactivate face data
     const { error } = await supabase
@@ -99,6 +128,9 @@ export async function DELETE(
       message: 'Face data removed successfully',
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
     console.error('Error removing face data:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

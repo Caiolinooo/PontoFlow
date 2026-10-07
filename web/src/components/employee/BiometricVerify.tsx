@@ -4,13 +4,28 @@ import { useState, useRef, useEffect } from 'react';
 import { extractFaceDescriptor, compareFaceDescriptors, loadFaceModels, attachStreamToVideo, cameraErrorMessage, type FaceMatchResult } from '@/lib/face-recognition';
 
 interface Props {
+  employeeId: string;
   cachedDescriptor: Float32Array;
-  onSuccess: (score: number) => void;
+  onSuccess: (score: number, verificationId?: string, offline?: boolean) => void;
   onCancel: () => void;
   locale?: string;
 }
 
-export default function BiometricVerify({ cachedDescriptor, onSuccess, onCancel, locale = 'pt' }: Props) {
+// Best-effort GPS for audit traceability (3s cap, silently null when denied/unavailable)
+function getBrowserGeolocation(): Promise<{ latitude: number; longitude: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null);
+    const timer = setTimeout(() => resolve(null), 3000);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { clearTimeout(timer); resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); },
+      () => { clearTimeout(timer); resolve(null); },
+      { timeout: 3000, maximumAge: 60000 }
+    );
+  });
+}
+
+export default function BiometricVerify({ employeeId, cachedDescriptor, onSuccess, onCancel, locale = 'pt' }: Props) {
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [status, setStatus] = useState<'loading_models' | 'starting_camera' | 'ready' | 'processing' | 'error' | 'success'>('loading_models');
@@ -101,23 +116,58 @@ export default function BiometricVerify({ cachedDescriptor, onSuccess, onCancel,
 
         // Take a few attempts to get a clear face
         let matchResult: FaceMatchResult | null = null;
+        let liveDescriptor: Float32Array | null = null;
         for (let attempt = 0; attempt < 3; attempt++) {
           if (!isMounted) return;
           const descriptor = await extractFaceDescriptor(videoEl);
           if (descriptor) {
             matchResult = compareFaceDescriptors(descriptor, cachedDescriptor);
-            if (matchResult.isMatch) break;
+            if (matchResult.isMatch) { liveDescriptor = descriptor; break; }
           }
           await new Promise(r => setTimeout(r, 500));
         }
 
         if (!isMounted) return;
-        if (matchResult?.isMatch) {
-          setStatus('success');
+        if (matchResult?.isMatch && liveDescriptor) {
           const score = matchResult.score;
-          setTimeout(() => {
-            if (isMounted) onSuccess(score);
-          }, 1000);
+
+          // Server-side verification: the server recomputes the distance against
+          // the stored template and issues a single-use verification_id that the
+          // punch entry must present. Without connectivity (TypeError), fall back
+          // to an explicitly client-attested offline punch.
+          try {
+            const gps = await getBrowserGeolocation();
+            const res = await fetch('/api/employee/face-recognition/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                employee_id: employeeId,
+                face_encoding: Array.from(liveDescriptor),
+                gps_latitude: gps?.latitude,
+                gps_longitude: gps?.longitude,
+                device_info: { platform: navigator.platform, language: navigator.language },
+              }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!isMounted) return;
+            if (res.ok && data.is_verified && data.verification_id) {
+              setStatus('success');
+              setTimeout(() => { if (isMounted) onSuccess(score, data.verification_id, false); }, 1000);
+            } else {
+              setStatus('error');
+              setErrorMsg('Identidade não confirmada pelo servidor. Tente novamente em um local iluminado e mantenha o rosto reto.');
+            }
+          } catch (netErr) {
+            if (!isMounted) return;
+            if (netErr instanceof TypeError) {
+              // Offline: local match already passed; punch is queued and the
+              // attestation is persisted as client-attested on sync.
+              setStatus('success');
+              setTimeout(() => { if (isMounted) onSuccess(score, undefined, true); }, 1000);
+            } else {
+              throw netErr;
+            }
+          }
         } else {
           setStatus('error');
           setErrorMsg('Identidade não reconhecida. Tente novamente em um local iluminado e mantenha o rosto reto.');

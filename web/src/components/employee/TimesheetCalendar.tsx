@@ -14,6 +14,8 @@ type Entry = {
   observacao?: string | null;
   environment_id?: string | null;
   face_score?: number;
+  verification_id?: string;
+  verified_offline?: boolean;
 };
 
 type Environment = {
@@ -74,6 +76,11 @@ export default function TimesheetCalendar({
   const [cachedDescriptor, setCachedDescriptor] = useState<Float32Array | null>(null);
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [showBiometricVerify, setShowBiometricVerify] = useState(false);
+
+  // Post-challenge continuation: what to do once BiometricVerify succeeds
+  // (single punch vs. offshore auto-fill batch), plus where to return on cancel.
+  const biometricContinuationRef = useRef<((score: number, verificationId?: string, offline?: boolean) => void) | null>(null);
+  const [biometricReturnTo, setBiometricReturnTo] = useState<'modal' | 'autofill'>('modal');
 
   // Batch operations queue
   const [pendingOperations, setPendingOperations] = useState<PendingOperation[]>([]);
@@ -471,11 +478,13 @@ export default function TimesheetCalendar({
       }
       
       setShowModal(false); // Temporarily hide the entry modal for camera view
+      setBiometricReturnTo('modal');
+      biometricContinuationRef.current = (score, verificationId, offline) => createSingleEntry(score, verificationId, offline);
       setShowBiometricVerify(true);
     }
   };
 
-  const createSingleEntry = (score?: number) => {
+  const createSingleEntry = (score?: number, verificationId?: string, offline?: boolean) => {
     if (!selectedDate) return;
 
     setError(null);
@@ -492,6 +501,8 @@ export default function TimesheetCalendar({
       hora_fim: null,
       observacao: form.observacao || null,
       face_score: score,
+      verification_id: verificationId,
+      verified_offline: offline === true,
     };
 
     // Add to pending operations
@@ -512,9 +523,25 @@ export default function TimesheetCalendar({
     });
 
     // Don't close modal - user can add more entries
+
   };
 
   const handleConfirmAutoFill = () => {
+    if (!selectedDate) return;
+
+    // Offshore auto-fill also requires a biometric challenge: one verification
+    // authorizes the whole batch created in the same request.
+    if (!isBiometricRegistered || !cachedDescriptor) {
+      setShowAutoFillModal(false);
+      setShowBiometricSetup(true);
+      return;
+    }
+    setBiometricReturnTo('autofill');
+    biometricContinuationRef.current = (score, verificationId, offline) => applyAutoFillEntries(score, verificationId, offline);
+    setShowBiometricVerify(true);
+  };
+
+  const applyAutoFillEntries = (score?: number, verificationId?: string, offline?: boolean) => {
     if (!selectedDate) return;
 
     setError(null);
@@ -530,6 +557,9 @@ export default function TimesheetCalendar({
         hora_ini: form.hora_ini || null,
         hora_fim: null,
         observacao: form.observacao || null,
+        face_score: score,
+        verification_id: verificationId,
+        verified_offline: offline === true,
       },
       ...selectedSuggestions.map(suggestion => ({
         data: suggestion.date,
@@ -537,6 +567,9 @@ export default function TimesheetCalendar({
         hora_ini: form.hora_ini || null,
         hora_fim: null,
         observacao: `Auto-gerado pela escala ${workSchedule?.work_schedule}`,
+        face_score: score,
+        verification_id: verificationId,
+        verified_offline: offline === true,
       }))
     ];
 
@@ -678,6 +711,9 @@ export default function TimesheetCalendar({
           hora_ini: op.entry.hora_ini,
           hora_fim: op.entry.hora_fim,
           observacao: op.entry.observacao,
+          face_score: op.entry.face_score,
+          verification_id: op.entry.verification_id,
+          verified_offline: op.entry.verified_offline,
         }));
 
         const createPromise = fetch(`/api/employee/timesheets/${timesheetId}/entries`, {
@@ -1563,14 +1599,20 @@ export default function TimesheetCalendar({
       {showBiometricVerify && cachedDescriptor && (
         <BiometricVerify
           locale={locale}
+          employeeId={employeeId}
           cachedDescriptor={cachedDescriptor}
-          onSuccess={(score) => {
+          onSuccess={(score, verificationId, offline) => {
             setShowBiometricVerify(false);
-            createSingleEntry(score);
+            const continuation = biometricContinuationRef.current;
+            biometricContinuationRef.current = null;
+            if (continuation) continuation(score, verificationId, offline);
+            else createSingleEntry(score, verificationId, offline);
           }}
           onCancel={() => {
              setShowBiometricVerify(false);
-             setShowModal(true);
+             biometricContinuationRef.current = null;
+             if (biometricReturnTo === 'autofill') setShowAutoFillModal(true);
+             else setShowModal(true);
           }}
         />
       )}

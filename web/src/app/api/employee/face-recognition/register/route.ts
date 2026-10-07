@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
 
 /**
@@ -15,9 +16,10 @@ import { getServiceSupabase } from '@/lib/supabase/server';
  */
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireApiAuth();
     const supabase = getServiceSupabase();
-    const body = await req.json();
 
+    const body = await req.json();
     const { employee_id, face_encoding, face_image_url, confidence_score } = body;
 
     if (!employee_id || !face_encoding) {
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
     // Verify employee exists
     const { data: employee, error: empError } = await supabase
       .from('employees')
-      .select('id, tenant_id')
+      .select('id, tenant_id, profile_id')
       .eq('id', employee_id)
       .single();
 
@@ -39,6 +41,11 @@ export async function POST(req: NextRequest) {
         { error: 'Employee not found' },
         { status: 404 }
       );
+    }
+
+    // Only the employee themself (or an ADMIN) may enroll/replace a face template
+    if (user.role !== 'ADMIN' && employee.profile_id !== user.id) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
     // Upsert on the unique employee_id key: re-enrollment (new device, re-register)
@@ -72,6 +79,9 @@ export async function POST(req: NextRequest) {
       data: faceData,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
     console.error('Error in face registration:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

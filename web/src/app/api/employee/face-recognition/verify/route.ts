@@ -1,15 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiAuth } from '@/lib/auth/server';
 import { getServiceSupabase } from '@/lib/supabase/server';
+
+// Same threshold as the client (lib/face-recognition.ts): face-api recommends 0.6,
+// this product uses 0.5 (stricter) for punch verification.
+const FACE_MATCH_THRESHOLD = 0.5;
+const DESCRIPTOR_LENGTH = 128;
+
+function parseDescriptor(raw: unknown): number[] | null {
+  const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  if (!Array.isArray(value) || value.length !== DESCRIPTOR_LENGTH) return null;
+  return value.every((n) => typeof n === 'number' && Number.isFinite(n)) ? value : null;
+}
+
+function euclideanDistance(a: number[], b: number[]): number {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) {
+    const d = a[i] - b[i];
+    sum += d * d;
+  }
+  return Math.sqrt(sum);
+}
 
 /**
  * POST /api/employee/face-recognition/verify
- * Verify a timesheet entry using facial recognition
- * 
+ * Server-side facial verification for punch (marcação de ponto).
+ *
+ * The live descriptor captured on the device is compared against the stored
+ * template HERE (never trust a client-reported score). Every attempt — success
+ * or failure — is persisted in timesheet_entry_verifications for audit, and a
+ * successful verification returns a verification_id that MUST be presented when
+ * creating the timesheet entry (single use, short-lived).
+ *
  * Body:
  * {
- *   entry_id: string;
  *   employee_id: string;
- *   face_encoding: string; // Base64 encoded face embedding to compare
+ *   face_encoding: number[] | string; // 128-d face-api descriptor (array or JSON)
  *   gps_latitude?: number;
  *   gps_longitude?: number;
  *   device_info?: object;
@@ -17,29 +43,38 @@ import { getServiceSupabase } from '@/lib/supabase/server';
  */
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireApiAuth();
     const supabase = getServiceSupabase();
     const body = await req.json();
 
-    const {
-      entry_id,
-      employee_id,
-      face_encoding,
-      gps_latitude,
-      gps_longitude,
-      device_info,
-    } = body;
+    const { employee_id, face_encoding, gps_latitude, gps_longitude, device_info } = body;
 
-    if (!entry_id || !employee_id || !face_encoding) {
+    if (!employee_id || !face_encoding) {
       return NextResponse.json(
-        { error: 'entry_id, employee_id, and face_encoding are required' },
+        { error: 'employee_id and face_encoding are required' },
         { status: 400 }
       );
     }
 
-    // Get stored face data for employee
+    // Ownership: the caller may only verify as their own employee record
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select('id, tenant_id, profile_id')
+      .eq('id', employee_id)
+      .single();
+
+    if (empError || !employee) {
+      return NextResponse.json({ error: 'employee_not_found' }, { status: 404 });
+    }
+
+    if (user.role !== 'ADMIN' && employee.profile_id !== user.id) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+
+    // Stored template
     const { data: storedFace, error: faceError } = await supabase
       .from('employee_face_data')
-      .select('*')
+      .select('id, face_encoding')
       .eq('employee_id', employee_id)
       .eq('is_active', true)
       .limit(1)
@@ -47,51 +82,65 @@ export async function POST(req: NextRequest) {
 
     if (faceError) {
       console.error('Error fetching face data:', faceError);
-      return NextResponse.json(
-        { error: 'Database error' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch face data' }, { status: 500 });
     }
 
     if (!storedFace) {
+      return NextResponse.json({ error: 'face_not_registered' }, { status: 404 });
+    }
+
+    let storedDescriptor: number[] | null = null;
+    let liveDescriptor: number[] | null = null;
+    try {
+      storedDescriptor = parseDescriptor(storedFace.face_encoding);
+      liveDescriptor = parseDescriptor(face_encoding);
+    } catch {
+      // fall through to validation error
+    }
+
+    if (!storedDescriptor || !liveDescriptor) {
       return NextResponse.json(
-        { error: 'No face data registered for this employee' },
-        { status: 404 }
+        { error: 'invalid_face_encoding', details: `expected ${DESCRIPTOR_LENGTH}-d numeric descriptor` },
+        { status: 400 }
       );
     }
 
-    // TODO: Implement actual face comparison algorithm
-    // For now, we'll simulate a match score
-    // In production, this would call a face recognition service (AWS Rekognition, Azure Face API, etc.)
-    const faceMatchScore = simulateFaceMatch(storedFace.face_encoding, face_encoding);
-    const isVerified = faceMatchScore >= 0.85; // 85% threshold
+    // Real comparison (euclidean distance on 128-d descriptors)
+    const distance = euclideanDistance(storedDescriptor, liveDescriptor);
+    const isVerified = distance < FACE_MATCH_THRESHOLD;
+    const faceMatchScore = Math.max(0, 1 - distance);
 
-    // Create verification record
+    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null;
+    const userAgent = req.headers.get('user-agent') || null;
+
+    // Persist the attempt (audit trail: successes AND failures)
     const { data: verification, error: verifyError } = await supabase
       .from('timesheet_entry_verifications')
       .insert({
-        entry_id,
+        entry_id: null, // linked after the punch entry is created
         employee_id,
         verification_method: 'facial_recognition',
         face_match_score: faceMatchScore,
-        gps_latitude: gps_latitude || null,
-        gps_longitude: gps_longitude || null,
-        device_info: device_info || null,
+        gps_latitude: typeof gps_latitude === 'number' ? gps_latitude : null,
+        gps_longitude: typeof gps_longitude === 'number' ? gps_longitude : null,
+        device_info: {
+          ...(device_info && typeof device_info === 'object' ? device_info : {}),
+          ip: ipAddress,
+          user_agent: userAgent,
+        },
         is_verified: isVerified,
-        verified_at: new Date().toISOString(),
+        verification_notes: isVerified
+          ? null
+          : `distance ${distance.toFixed(4)} >= threshold ${FACE_MATCH_THRESHOLD}`,
       })
-      .select()
+      .select('id')
       .single();
 
-    if (verifyError) {
-      console.error('Error creating verification:', verifyError);
-      return NextResponse.json(
-        { error: 'Failed to create verification record' },
-        { status: 500 }
-      );
+    if (verifyError || !verification) {
+      console.error('Error creating verification record:', verifyError);
+      return NextResponse.json({ error: 'Failed to create verification record' }, { status: 500 });
     }
 
-    // Update last_verified_at on face data
     if (isVerified) {
       await supabase
         .from('employee_face_data')
@@ -101,26 +150,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      verification_id: verification.id,
       is_verified: isVerified,
-      match_score: faceMatchScore,
-      verification: verification,
+      face_match_score: faceMatchScore,
+      distance,
+      threshold: FACE_MATCH_THRESHOLD,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
     console.error('Error in face verification:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-/**
- * Simulate face matching algorithm
- * In production, replace with actual face recognition service
- */
-function simulateFaceMatch(storedEncoding: string, providedEncoding: string): number {
-  // This is a placeholder - in production, use a real face recognition algorithm
-  // For now, return a random score between 0.7 and 1.0 for testing
-  return 0.7 + Math.random() * 0.3;
-}
-

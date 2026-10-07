@@ -11,7 +11,9 @@ const EntrySchema = z.object({
   hora_ini: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
   hora_fim: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
   observacao: z.string().max(1000).or(z.literal('')).nullable().optional().transform(v => v === '' ? null : v),
-  face_score: z.number().min(0).max(1).optional()
+  face_score: z.number().min(0).max(1).optional(),
+  verification_id: z.string().uuid().optional(),
+  verified_offline: z.boolean().optional()
 });
 
 // Support both single entry and batch insert
@@ -106,6 +108,87 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
 
     console.log(`🔵 ${isBatch ? 'BATCH' : 'SINGLE'} insert - ${entriesToCreate.length} entries`);
 
+    // ── Biometric enforcement ───────────────────────────────────────────
+    // If the employee has an active face template, every entry must carry either
+    // a fresh server-side verification (verification_id, single-use, 15 min) or
+    // an explicit offline attestation (verified_offline + face_score >= 0.5)
+    // which is persisted as client-attested. Otherwise the punch is rejected.
+    const VERIFICATION_WINDOW_MIN = 15;
+    const OFFLINE_MIN_SCORE = 0.5;
+    const validVerificationIds = new Set<string>();
+
+    const { data: activeFace } = await supabase
+      .from('employee_face_data')
+      .select('id')
+      .eq('employee_id', emp.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (activeFace) {
+      const withoutProof = entriesToCreate.filter(
+        (e) => !e.verification_id && !(e.verified_offline === true && typeof e.face_score === 'number' && e.face_score >= OFFLINE_MIN_SCORE)
+      );
+      if (withoutProof.length > 0) {
+        console.error(`❌ ${withoutProof.length} entr(ies) without biometric proof`);
+        await logAudit({
+          tenantId: ts.tenant_id,
+          userId: user.id,
+          action: 'face_verification_required',
+          resourceType: 'timesheet_entry',
+          resourceId: id,
+          oldValues: null,
+          newValues: { timesheet_id: id, rejected_entries: withoutProof.length }
+        });
+        return NextResponse.json({
+          error: 'face_verification_required',
+          details: 'Each entry requires a recent facial verification (verification_id) or an offline attestation (verified_offline + face_score >= 0.5).'
+        }, { status: 403 });
+      }
+
+      const requestedVerificationIds = [...new Set(
+        entriesToCreate.map((e) => e.verification_id).filter((v): v is string => !!v)
+      )];
+      if (requestedVerificationIds.length > 0) {
+        const since = new Date(Date.now() - VERIFICATION_WINDOW_MIN * 60 * 1000).toISOString();
+        const { data: verifications } = await supabase
+          .from('timesheet_entry_verifications')
+          .select('id')
+          .in('id', requestedVerificationIds)
+          .eq('employee_id', emp.id)
+          .eq('is_verified', true)
+          .gte('verified_at', since);
+
+        for (const v of verifications ?? []) validVerificationIds.add(v.id);
+
+        // Anti-replay: a verification already linked to a previously created
+        // entry cannot authorize new punches.
+        const { data: alreadyUsed } = await supabase
+          .from('timesheet_entries')
+          .select('verification_id')
+          .in('verification_id', requestedVerificationIds);
+        const usedIds = new Set((alreadyUsed ?? []).map((r) => r.verification_id));
+
+        const invalid = requestedVerificationIds.filter((vid) => !validVerificationIds.has(vid) || usedIds.has(vid));
+        if (invalid.length > 0) {
+          console.error('❌ Invalid/expired/reused verification ids:', invalid);
+          await logAudit({
+            tenantId: ts.tenant_id,
+            userId: user.id,
+            action: 'face_verification_required',
+            resourceType: 'timesheet_entry',
+            resourceId: id,
+            oldValues: null,
+            newValues: { timesheet_id: id, invalid_verification_ids: invalid }
+          });
+          return NextResponse.json({
+            error: 'face_verification_invalid',
+            details: 'verification_id is expired, failed, already used, or does not belong to this employee.'
+          }, { status: 403 });
+        }
+      }
+    }
+
     // Get all unique environment IDs
     const uniqueEnvIds = [...new Set(entriesToCreate.map((e: EntryInput) => e.environment_id))];
 
@@ -139,7 +222,8 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       environment_id: entry.environment_id,
       hora_ini: entry.hora_ini ?? null,
       hora_fim: entry.hora_fim ?? null,
-      observacao: entry.observacao ?? null
+      observacao: entry.observacao ?? null,
+      verification_id: entry.verification_id ?? null
     }));
 
     console.log('🔵 Inserting entries into database...');
@@ -158,29 +242,53 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
       return NextResponse.json({error: insertError?.message ?? 'Failed to create entries'}, {status: 400});
     }
 
-    // Insert face verification records if scores are provided
-    const verificationsData = insertedEntries.map((inserted, index) => {
-       const score = entriesToCreate[index].face_score;
-       if (score !== undefined && score !== null) {
-          return {
-             entry_id: inserted.id,
-             employee_id: emp.id,
-             verification_method: 'facial_recognition',
-             face_match_score: score,
-             is_verified: true,
-             verified_at: new Date().toISOString()
-          };
-       }
-       return null;
-    }).filter(Boolean);
+    // Offline attestations: entries punched without connectivity carry
+    // verified_offline + a client-computed score. Persist them as CLIENT-ATTESTED
+    // verification rows (distinguishable from server-side verifications) and link
+    // them back to their entries.
+    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null;
+    const userAgent = req.headers.get('user-agent') || null;
 
-    if (verificationsData.length > 0) {
-       const { error: verifyError } = await supabase.from('timesheet_entry_verifications').insert(verificationsData);
-       if (verifyError) {
-          console.error('❌ Failed to insert verifications:', verifyError);
-       } else {
-          console.log(`✅ Logged ${verificationsData.length} biometric verifications.`);
-       }
+    const offlineRows = insertedEntries
+      .map((inserted, index) => ({ inserted, source: entriesToCreate[index] }))
+      .filter(({ source }) => source.verified_offline === true && !source.verification_id)
+      .map(({ inserted, source }) => ({
+        entry_id: inserted.id,
+        employee_id: emp.id,
+        verification_method: 'facial_recognition_offline',
+        face_match_score: source.face_score ?? null,
+        is_verified: true,
+        verified_at: new Date().toISOString(),
+        device_info: { ip: ipAddress, user_agent: userAgent, attested: 'client_offline' },
+        verification_notes: 'client_attested_offline'
+      }));
+
+    if (offlineRows.length > 0) {
+      const { data: insertedVerifs, error: offlineError } = await supabase
+        .from('timesheet_entry_verifications')
+        .insert(offlineRows)
+        .select('id, entry_id');
+      if (offlineError) {
+        console.error('❌ Failed to insert offline verifications:', offlineError);
+      } else if (insertedVerifs) {
+        await Promise.all(
+          insertedVerifs.map((v) =>
+            supabase.from('timesheet_entries').update({ verification_id: v.id }).eq('id', v.entry_id)
+          )
+        );
+        console.log(`✅ Logged ${insertedVerifs.length} client-attested (offline) verifications.`);
+      }
+    }
+
+    // Backward-compat link: point each consumed server-side verification at the
+    // first entry of this request (entries already reference it via
+    // timesheet_entries.verification_id).
+    if (validVerificationIds.size > 0) {
+      await supabase
+        .from('timesheet_entry_verifications')
+        .update({ entry_id: insertedEntries[0].id })
+        .in('id', [...validVerificationIds])
+        .is('entry_id', null);
     }
 
     // Audit log for batch (non-blocking)
@@ -195,7 +303,7 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
         newValues: {
           timesheet_id: id,
           count: insertedEntries.length,
-          entries: insertedEntries.map(e => ({ id: e.id, data: e.data, environment_id: e.environment_id }))
+          entries: insertedEntries.map(e => ({ id: e.id, data: e.data, environment_id: e.environment_id, verification_id: e.verification_id }))
         }
       });
     } else {
@@ -212,6 +320,7 @@ export async function POST(req: NextRequest, context: {params: Promise<{id: stri
           environment_id: insertedEntries[0].environment_id,
           hora_ini: insertedEntries[0].hora_ini,
           hora_fim: insertedEntries[0].hora_fim,
+          verification_id: insertedEntries[0].verification_id,
         }
       });
     }
