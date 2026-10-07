@@ -83,6 +83,8 @@
     "enrollBannerTitle": "Biometric enrolment pending",
     "enrollBannerBody": "Register your face before clocking in. Only you enrol. Only an administrator can erase that enrolment.",
     "enrollBannerAction": "Register biometrics",
+    "enrolledStatusTitle": "Biometrics already enrolled",
+    "enrolledStatusBody": "Your face is already enrolled. Only an administrator can erase that enrolment.",
     "errorPrefix": "Error: ",
     "adminColumn": "Biometrics",
     "registered": "Enrolled",

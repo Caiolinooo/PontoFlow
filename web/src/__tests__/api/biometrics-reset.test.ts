@@ -48,8 +48,8 @@ describe('reset biométrico', () => {
     from.mockReset();
   });
 
-  it('colaborador recebe 403 na rota de status', async () => {
-    requireApiAuth.mockResolvedValue({ id: 'user-1', role: 'USER', tenant_id: 'tenant-1' });
+  it.each(['USER', 'MANAGER', 'TENANT_ADMIN'])('%s recebe 403 na rota de status', async (role) => {
+    requireApiAuth.mockResolvedValue({ id: 'user-1', role, tenant_id: 'tenant-1' });
     const res = await deleteEmployeeRoute(
       new Request('http://localhost/api/employee/face-recognition/status/emp-1', { method: 'DELETE' }),
       { params: Promise.resolve({ employee_id: 'emp-1' }) }
@@ -60,7 +60,7 @@ describe('reset biométrico', () => {
     expect(from).not.toHaveBeenCalled();
   });
 
-  it('TENANT_ADMIN recebe 403 na rota admin', async () => {
+  it.each(['USER', 'MANAGER', 'TENANT_ADMIN'])('%s recebe 403 na rota admin', async (role) => {
     requireApiRole.mockRejectedValue(new Error('Forbidden'));
     const res = await deleteAdminRoute(
       new Request('http://localhost/api/admin/employees/emp-1/biometrics', { method: 'DELETE' }),
@@ -70,6 +70,22 @@ describe('reset biométrico', () => {
     const body = await res.json();
     expect(body.success).toBe(false);
     expect(body.error).toBe('forbidden');
+    expect(role).not.toBe('ADMIN');
+  });
+
+  it('USER, MANAGER e TENANT_ADMIN não apagam o template mesmo se o gate de papel deixar passar', async () => {
+    for (const role of ['USER', 'MANAGER', 'TENANT_ADMIN']) {
+      requireApiRole.mockResolvedValue({ id: 'user-1', role, tenant_id: 'tenant-1' });
+      from.mockClear();
+      const res = await deleteAdminRoute(
+        new Request('http://localhost/api/admin/employees/emp-1/biometrics', { method: 'DELETE' }),
+        { params: Promise.resolve({ id: 'emp-1' }) }
+      );
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body).toEqual({ success: false, error: 'forbidden' });
+      expect(from).not.toHaveBeenCalled();
+    }
   });
 
   it('ADMIN apaga o template do colaborador do tenant ativo', async () => {

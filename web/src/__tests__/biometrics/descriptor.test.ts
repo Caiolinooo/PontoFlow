@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { canResetBiometrics } from '@/lib/biometrics/access';
 import {
   FACE_DESCRIPTOR_LENGTH,
+  FACE_MATCH_THRESHOLD,
+  euclideanDistance,
   livenessPassed,
   matchFaceDescriptors,
   parseFaceDescriptor,
@@ -21,6 +23,27 @@ describe('biometria', () => {
     const other = Array.from({ length: FACE_DESCRIPTOR_LENGTH }, (_, i) => (i % 2 === 0 ? 1 : -1));
     expect(matchFaceDescriptors(enrolled, same).isMatch).toBe(true);
     expect(matchFaceDescriptors(enrolled, other).isMatch).toBe(false);
+  });
+
+  it('distância euclidiana real no limiar 0.5 com vetores de 128 dims', () => {
+    const enrolled = Array.from({ length: FACE_DESCRIPTOR_LENGTH }, (_, i) => (i - 64) / 128);
+    const match = enrolled.slice();
+    match[0] = enrolled[0] + 0.49;
+    const miss = enrolled.slice();
+    miss[0] = enrolled[0] + 0.5;
+
+    const matchDistance = euclideanDistance(enrolled, match);
+    const missDistance = euclideanDistance(enrolled, miss);
+    expect(matchDistance).toBeCloseTo(0.49, 10);
+    expect(missDistance).toBeCloseTo(0.5, 10);
+    expect(FACE_MATCH_THRESHOLD).toBe(0.5);
+
+    const matched = matchFaceDescriptors(enrolled, match);
+    const rejected = matchFaceDescriptors(enrolled, miss);
+    expect(matched.distance).toBe(matchDistance);
+    expect(matched.isMatch).toBe(true);
+    expect(rejected.distance).toBe(missDistance);
+    expect(rejected.isMatch).toBe(false);
   });
 
   it('foto parada falha prova de vida; piscada e virada passam', () => {

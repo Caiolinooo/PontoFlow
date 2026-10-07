@@ -246,6 +246,24 @@ const SPEC = {
         },
       },
     },
+    '/punches': {
+      post: {
+        summary: 'Registra entrada ou saída. externalId = id do colaborador no sistema de origem.',
+        parameters: [{ name: 'Idempotency-Key', in: 'header', required: true, schema: { type: 'string' } }],
+        responses: {
+          '201': { description: 'Batida gravada' },
+          '404': { description: 'not_found' },
+          '409': { description: 'employee_inactive, no_open_punch ou period_locked' },
+        },
+      },
+    },
+    '/punches/today': {
+      get: {
+        summary: 'Última batida do dia civil America/Sao_Paulo.',
+        parameters: [{ name: 'externalId', in: 'query', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Estado do dia' }, '404': { description: 'not_found' } },
+      },
+    },
     '/webhook-endpoints': {
       post: {
         summary: 'Cria endpoint de webhook. O secret HMAC é retornado UMA única vez.',

@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import TenantSelectorModal, { TenantOption } from '@/components/admin/TenantSelectorModal';
 import { MetaPageHeader } from '@/components/ui/meta/PageHeader';
+import { canResetBiometrics } from '@/lib/biometrics/access';
 import { isMetaUI } from '@/lib/flags';
 
 export default function EmployeesListPage() {
@@ -13,6 +14,7 @@ export default function EmployeesListPage() {
   const tErr = useTranslations('errors');
   const tUsers = useTranslations('admin.users');
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [allowBiometricReset, setAllowBiometricReset] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,20 @@ export default function EmployeesListPage() {
   // Locale from pathname for breadcrumbs
   const pathname = usePathname() || '';
   const locale = pathname.split('/')[1] || 'pt-BR';
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const session = await fetch('/api/auth/session', { cache: 'no-store' });
+        if (session.ok) {
+          const body = await session.json();
+          setAllowBiometricReset(canResetBiometrics(body.user?.role));
+        }
+      } catch {
+        setAllowBiometricReset(false);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -181,8 +197,10 @@ export default function EmployeesListPage() {
                       <span className="text-xs text-[var(--muted-foreground)]">
                         {r.biometric_registered ? tBio('registered') : tBio('notRegistered')}
                       </span>
+                      {allowBiometricReset && (
                       <button
                         type="button"
+                        id={`biometrics-reset-${r.id}`}
                         disabled={!r.biometric_registered || resettingId === r.id}
                         className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium disabled:opacity-40"
                         onClick={async () => {
@@ -207,6 +225,7 @@ export default function EmployeesListPage() {
                       >
                         {tBio('reset')}
                       </button>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-3">

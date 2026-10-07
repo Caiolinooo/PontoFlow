@@ -878,13 +878,20 @@ export default function TimesheetCalendar({
         <p className="text-sm text-[var(--muted-foreground)]">
           {new Date(periodo_ini).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })}
         </p>
+        {biometricStatusLoaded && isBiometricRegistered && (
+          <div id="biometric-enrolled-status" className="mt-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
+            <p className="text-sm font-bold text-[var(--foreground)]">{tBio('enrolledStatusTitle')}</p>
+            <p className="text-xs text-[var(--muted-foreground)]">{tBio('enrolledStatusBody')}</p>
+          </div>
+        )}
         {biometricStatusLoaded && !isBiometricRegistered && (
-          <div className="mt-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div id="biometric-enroll-banner" className="mt-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-sm font-bold text-[var(--foreground)]">{tBio('enrollBannerTitle')}</p>
               <p className="text-xs text-[var(--muted-foreground)]">{tBio('enrollBannerBody')}</p>
             </div>
             <button
+              id="biometric-enroll-start"
               type="button"
               onClick={() => {
                 pendingPunchAfterEnrollRef.current = false;

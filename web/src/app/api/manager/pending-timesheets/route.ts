@@ -8,7 +8,7 @@ import {
 } from '@/lib/periods/calculator';
 import { formatTimesheetPeriodDisplay } from '@/lib/timezone/utils';
 import { emitIntegrationEvent } from '@/lib/integration/v1/webhooks';
-import { summarizeTimesheet } from '@/lib/integration/v1/timesheets';
+import { approvedMetrics } from '@/lib/integration/v1/timesheets';
 
 // Cache key prefix for this endpoint
 const CACHE_PREFIX = 'manager_pending_timesheets';
@@ -487,7 +487,7 @@ export async function POST(req: NextRequest) {
           emitIntegrationEvent(supabase, t.tenant_id, {
             type: 'timesheet.approved',
             ...base,
-            ...(await summarizeTimesheet(supabase, t.id)),
+            ...(await approvedMetrics(supabase, t.id, t.employee_id)),
           }).catch(() => {});
         } else {
           emitIntegrationEvent(supabase, t.tenant_id, { type: 'timesheet.rejected', ...base }).catch(() => {});

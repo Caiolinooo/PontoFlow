@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ISODate, TimesheetSummary } from './types';
+import type { ISODate, RubricLine, TimesheetSummary } from './types';
 
 interface EntryRow {
   data: string | null;
@@ -46,6 +46,89 @@ export function summarizeEntries(entries: EntryRow[]): { workedDays: number; wor
   }
 
   return { workedDays: Object.keys(byDate).length, workedMinutes };
+}
+
+function eachIsoDate(start: string, end: string): string[] {
+  const out: string[] = [];
+  const cursor = new Date(`${start}T12:00:00Z`);
+  const last = new Date(`${end}T12:00:00Z`);
+  if (Number.isNaN(cursor.getTime()) || Number.isNaN(last.getTime()) || cursor > last) return out;
+  while (cursor <= last) {
+    out.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return out;
+}
+
+function isWeekday(iso: string): boolean {
+  const day = new Date(`${iso}T12:00:00Z`).getUTCDay();
+  return day >= 1 && day <= 5;
+}
+
+/** Minutos do intervalo que caem em 22:00–05:00. Intervalo pode virar o dia. */
+export function nightMinutes(horaIni: string, horaFim: string): number {
+  const [sh, sm] = horaIni.split(':').map(Number);
+  const [eh, em] = horaFim.split(':').map(Number);
+  let start = sh * 60 + (sm || 0);
+  let end = eh * 60 + (em || 0);
+  if (end <= start) end += 24 * 60;
+  let total = 0;
+  for (let m = start; m < end; m += 1) {
+    const clock = m % (24 * 60);
+    if (clock >= 22 * 60 || clock < 5 * 60) total += 1;
+  }
+  return total;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Linhas de rubrica já calculadas no PontoFlow.
+ * DIAS, HORAS, HE50 (excesso de 8h no dia), NOTURNO.
+ * FALTA só em escala semanal (seg–sex sem apontamento). Offshore não inventa falta.
+ */
+export function rubricLinesFromEntries(
+  entries: EntryRow[],
+  opts: { periodStart: string; periodEnd: string; weekly: boolean },
+): RubricLine[] {
+  const summary = summarizeEntries(entries);
+  const byDate: Record<string, EntryRow[]> = {};
+  for (const e of entries) {
+    if (!e.data) continue;
+    (byDate[e.data] ??= []).push(e);
+  }
+
+  let extraMinutes = 0;
+  let night = 0;
+  for (const dayEntries of Object.values(byDate)) {
+    let dayMinutes = 0;
+    for (const e of dayEntries) {
+      if (!e.hora_ini || !e.hora_fim) continue;
+      const start = timeToMinutes(e.hora_ini);
+      let end = timeToMinutes(e.hora_fim);
+      if (end <= start) end += 24 * 60;
+      dayMinutes += end - start;
+      night += nightMinutes(e.hora_ini, e.hora_fim);
+    }
+    if (dayMinutes > 8 * 60) extraMinutes += dayMinutes - 8 * 60;
+  }
+
+  const lines: RubricLine[] = [
+    { code: 'DIAS', quantity: summary.workedDays },
+    { code: 'HORAS', quantity: round2(summary.workedMinutes / 60) },
+    { code: 'HE50', quantity: round2(extraMinutes / 60) },
+    { code: 'NOTURNO', quantity: round2(night / 60) },
+  ];
+
+  if (opts.weekly) {
+    const expected = eachIsoDate(opts.periodStart, opts.periodEnd).filter(isWeekday);
+    const worked = new Set(Object.keys(byDate));
+    const falta = expected.filter((d) => !worked.has(d)).length;
+    lines.push({ code: 'FALTA', quantity: falta });
+  }
+  return lines;
 }
 
 /** Resumo de um timesheet específico (usado no hook de approve). */
@@ -115,4 +198,42 @@ export async function listTimesheetSummaries(
       ...summary,
     };
   });
+}
+
+/** workedDays/workedMinutes + lines para o evento timesheet.approved. */
+export async function approvedMetrics(
+  supabase: SupabaseClient,
+  timesheetId: string,
+  employeeId: string,
+): Promise<{ workedDays: number; workedMinutes: number; lines: RubricLine[] }> {
+  const { data: sheet } = await supabase
+    .from('timesheets')
+    .select('periodo_ini, periodo_fim')
+    .eq('id', timesheetId)
+    .maybeSingle();
+  const { data: entries } = await supabase
+    .from('timesheet_entries')
+    .select('data, hora_ini, hora_fim')
+    .eq('timesheet_id', timesheetId);
+  const rows = (entries ?? []) as EntryRow[];
+  const summary = summarizeEntries(rows);
+
+  const { data: schedule } = await supabase
+    .from('employee_work_schedules')
+    .select('notes')
+    .eq('employee_id', employeeId)
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const notes = typeof schedule?.notes === 'string' ? schedule.notes : '';
+  const weekly = notes.includes('"kind":"weekly"');
+
+  return {
+    ...summary,
+    lines: rubricLinesFromEntries(rows, {
+      periodStart: (sheet?.periodo_ini as string) || '',
+      periodEnd: (sheet?.periodo_fim as string) || '',
+      weekly,
+    }),
+  };
 }

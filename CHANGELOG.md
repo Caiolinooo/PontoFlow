@@ -5,6 +5,19 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [0.6.0] - 2026-10-07
+
+### Added
+- Relógio de ponto na folha do colaborador (entrada e saída), gravado pela mesma função da Integration API
+- Integration API: `POST /punches` e `GET /punches/today` (escopo `punches:write`), descritos no OpenAPI
+- Evento `timesheet.approved` inclui linhas de rubrica: DIAS, HORAS, HE50 (excesso de 8h no dia), NOTURNO (22:00–05:00) e FALTA só na escala semanal
+
+### Fixed
+- Clientes Supabase da autenticação usam fetch sem cache, para o dashboard não reutilizar `user_metadata` ou `users_unified` antigos
+- Dashboard com `force-dynamic` e fetch sem cache
+- Botão Resetar biometria na lista de colaboradores só para o papel ADMIN
+- Folha de ponto mostra faixa de biometria já cadastrada ou cadastro pendente (pt-BR e en-GB)
+
 ## [0.5.0] - 2026-10-07
 
 ### Added

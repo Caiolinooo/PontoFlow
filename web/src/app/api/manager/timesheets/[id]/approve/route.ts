@@ -7,7 +7,7 @@ import { dispatchEnhancedNotification } from '@/lib/notifications/in-app-dispatc
 import { logAudit } from '@/lib/audit/logger';
 import { fileTimesheetForDp } from '@/lib/dp/delivery';
 import { emitIntegrationEvent } from '@/lib/integration/v1/webhooks';
-import { summarizeTimesheet } from '@/lib/integration/v1/timesheets';
+import { approvedMetrics } from '@/lib/integration/v1/timesheets';
 
 export async function POST(_req: NextRequest, context: {params: Promise<{id: string}>}) {
   try {
@@ -70,7 +70,7 @@ export async function POST(_req: NextRequest, context: {params: Promise<{id: str
         timesheetId: updated.id,
         periodStart: updated.periodo_ini,
         periodEnd: updated.periodo_fim,
-        ...(await summarizeTimesheet(supabase, updated.id)),
+        ...(await approvedMetrics(supabase, updated.id, updated.employee_id)),
         at: new Date().toISOString(),
       }).catch(() => {});
     }

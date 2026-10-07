@@ -6,6 +6,12 @@ import { resolveAppRole, type AppRole } from './roles';
 let _supabase: ReturnType<typeof createClient> | null = null;
 let _supabaseAdmin: ReturnType<typeof createClient> | null = null;
 
+// Next.js estende o fetch e cacheia GETs do PostgREST/GoTrue. Sem isto, um
+// refresh de /dashboard reutiliza user_metadata ou users_unified velhos e o
+// card de admin some mesmo com ADMIN no banco.
+const noStoreFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, cache: 'no-store' });
+
 // Client for regular operations (anon key)
 function getSupabase() {
   if (!_supabase) {
@@ -16,7 +22,10 @@ function getSupabase() {
       throw new Error('Missing Supabase environment variables');
     }
 
-    _supabase = createClient(url, key);
+    _supabase = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: noStoreFetch },
+    });
   }
   return _supabase;
 }
@@ -40,7 +49,8 @@ function getSupabaseAdmin() {
       auth: {
         autoRefreshToken: false,
         persistSession: false
-      }
+      },
+      global: { fetch: noStoreFetch },
     });
   }
   return _supabaseAdmin;

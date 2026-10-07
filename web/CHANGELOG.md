@@ -2,6 +2,21 @@
 <!-- markdownlint-disable MD024 -->
 
 
+## [0.6.0] - 2026-10-07
+
+### Added
+
+- Relógio de ponto na folha do colaborador (entrada e saída), pela mesma gravação da Integration API
+- Integration API: `POST /punches` e `GET /punches/today` (escopo `punches:write`)
+- Evento `timesheet.approved` com rubricas DIAS, HORAS, HE50, NOTURNO e FALTA (FALTA só na escala semanal)
+
+### Fixed
+
+- Auth Supabase sem cache de fetch, para o card Admin não sumir com sessão velha
+- Dashboard `force-dynamic` e fetch sem cache
+- Botão Resetar biometria visível só para ADMIN
+- Faixa na folha: biometria já cadastrada ou cadastro pendente (pt-BR e en-GB)
+
 ## [0.5.0] - 2026-10-07
 
 ### Added

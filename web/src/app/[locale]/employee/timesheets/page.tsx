@@ -3,6 +3,7 @@ import { getServerSupabase, getServiceSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import TimesheetCalendar from '@/components/employee/TimesheetCalendar';
+import PunchClock from '@/components/employee/PunchClock';
 import TenantSelector from '@/components/employee/TenantSelector';
 import { getTranslations } from 'next-intl/server';
 import { calculateCurrentTimesheetPeriod } from '@/lib/periods/calculator';
@@ -155,6 +156,7 @@ export default async function TimesheetsPage({ params }: { params: Promise<{ loc
         </a>
       )}
 
+      <PunchClock />
       <TimesheetCalendar
         timesheetId={timesheet.id}
         employeeId={emp.id}

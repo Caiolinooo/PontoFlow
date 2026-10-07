@@ -55,6 +55,7 @@ export type IntegrationEvent =
       periodEnd: ISODate;
       workedDays: number;
       workedMinutes: number;
+      lines: RubricLine[];
       at: string;
     }
   | { id: string; type: 'period.locked'; periodMonth: ISODate; at: string };
@@ -63,6 +64,14 @@ export type IntegrationEvent =
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 /** Evento sem `id` (o id é gerado na emissão e vira o id da linha de outbox). */
 export type IntegrationEventInput = DistributiveOmit<IntegrationEvent, 'id'>;
+
+export interface RubricLine {
+  code: string;
+  quantity: number;
+}
+
+export type PunchKind = 'in' | 'out';
+export type PunchSource = 'portal' | 'web';
 
 export interface TimesheetSummary {
   timesheetId: string;
@@ -80,7 +89,8 @@ export type IntegrationScope =
   | 'people:write'
   | 'timesheets:read'
   | 'sso:create'
-  | 'webhooks:manage';
+  | 'webhooks:manage'
+  | 'punches:write';
 
 export interface ApiKeyAuth {
   keyId: string;
@@ -102,6 +112,8 @@ export type IntegrationErrorCode =
   | 'cpf_conflict'
   | 'external_id_conflict'
   | 'employee_inactive'
+  | 'no_open_punch'
+  | 'period_locked'
   | 'tenant_not_found'
   | 'no_inviter'
   | 'internal_error';

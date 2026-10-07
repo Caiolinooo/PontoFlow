@@ -83,6 +83,8 @@
     "enrollBannerTitle": "Cadastro biométrico pendente",
     "enrollBannerBody": "Antes de bater o ponto, cadastre o seu rosto. Só você faz o cadastro. Só um administrador pode apagar esse cadastro.",
     "enrollBannerAction": "Cadastrar biometria",
+    "enrolledStatusTitle": "Biometria já cadastrada",
+    "enrolledStatusBody": "Seu rosto já está cadastrado. Só um administrador pode apagar esse cadastro.",
     "errorPrefix": "Erro: ",
     "adminColumn": "Biometria",
     "registered": "Cadastrada",

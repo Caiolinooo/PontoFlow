@@ -119,7 +119,13 @@ Todos respeitam o locale do destinatário (pt‑BR/en‑GB).
 
 ## Changelog
 
-### 0.5.0 (2026-10-07) - **VERSÃO ATUAL**
+### 0.6.0 (2026-10-07) - **VERSÃO ATUAL**
+- **feat(ponto)**: Entrada e saída na folha do colaborador, e `POST /punches` / `GET /punches/today` na Integration API
+- **feat(rubrica)**: `timesheet.approved` leva DIAS, HORAS, HE50, NOTURNO e FALTA (FALTA só na escala semanal)
+- **fix(auth)**: Fetch do Supabase sem cache e dashboard dinâmico, para o card Admin não usar sessão velha
+- **fix(biometria)**: Resetar só para ADMIN; faixa na folha distingue biometria já cadastrada de cadastro pendente
+
+### 0.5.0 (2026-10-07)
 - **feat(biometria)**: Cadastro inicial do colaborador na folha e verificação facial no servidor
 - **feat(biometria)**: Reset do template biométrico só para o papel ADMIN
 - **fix(admin)**: Card Admin visível para papel ADMIN. Sessão que ainda dizia TENANT_ADMIN escondia o card; a releitura do papel corrige isso no próximo carregamento

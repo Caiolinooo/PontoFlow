@@ -6,6 +6,9 @@ import AlertBanner from '@/components/AlertBanner';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import EmployeePendingStatus from '@/components/employee/EmployeePendingStatus';
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const user = await requireAuth(locale);
